@@ -457,7 +457,7 @@ import 'package:smart_road_app/VehicleOwner/OwnerDashboard.dart';
 import 'package:smart_road_app/controller/sharedprefrence.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:smart_road_app/services/google_auth_service.dart';
 
 class VehicleLoginPage extends StatefulWidget {
   const VehicleLoginPage({super.key});
@@ -541,6 +541,62 @@ class _LoginPageState extends State<VehicleLoginPage>
     }
   }
 
+  // Google Sign-In method
+  Future<void> _signInWithGoogle() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final UserCredential? userCredential = await GoogleAuthService.signInWithGoogle();
+
+      if (userCredential != null && userCredential.user != null) {
+        // Save login data to shared preferences
+        await AuthService.saveLoginData(userCredential.user!.email ?? '');
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Google Sign-In successful"),
+              backgroundColor: Colors.green,
+            ),
+          );
+
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => EnhancedVehicleDashboard()),
+            (route) => false,
+          );
+        }
+      } else {
+        // User cancelled the sign-in
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Sign-In was cancelled"),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Google Sign-In failed: ${e.toString()}"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
   void _login() async {
     // Validate inputs
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
@@ -568,11 +624,10 @@ class _LoginPageState extends State<VehicleLoginPage>
     });
 
     try {
-      UserCredential userCredential = await FirebaseAuth.instance
-          .signInWithEmailAndPassword(
-            email: _emailController.text.trim(),
-            password: _passwordController.text.trim(),
-          );
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
 
       // Save login data to shared preferences
       await AuthService.saveLoginData(_emailController.text.trim());
@@ -857,6 +912,59 @@ class _LoginPageState extends State<VehicleLoginPage>
                                                 color: Colors.white,
                                               ),
                                             ),
+                                    ),
+                                  ),
+
+                                  const SizedBox(height: 20),
+
+                                  // Divider with "OR"
+                                  Row(
+                                    children: [
+                                      Expanded(child: Divider()),
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                                        child: Text(
+                                          'OR',
+                                          style: TextStyle(
+                                            color: Colors.grey[600],
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                      Expanded(child: Divider()),
+                                    ],
+                                  ),
+
+                                  const SizedBox(height: 20),
+
+                                  // Google Sign-In Button
+                                  SizedBox(
+                                    width: double.infinity,
+                                    height: 50,
+                                    child: OutlinedButton.icon(
+                                      onPressed: _isLoading ? null : _signInWithGoogle,
+                                      icon: Image.network(
+                                        'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg',
+                                        height: 24,
+                                        width: 24,
+                                        errorBuilder: (context, error, stackTrace) {
+                                          return Icon(Icons.g_mobiledata, size: 24, color: Colors.red[600]);
+                                        },
+                                      ),
+                                      label: Text(
+                                        'Continue with Google',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.grey[800],
+                                        ),
+                                      ),
+                                      style: OutlinedButton.styleFrom(
+                                        side: BorderSide(color: Colors.grey[300]!),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                      ),
                                     ),
                                   ),
 

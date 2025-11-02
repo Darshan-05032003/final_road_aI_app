@@ -14,7 +14,7 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  
+
   Map<String, dynamic>? _profileData;
   bool _isLoading = true;
   bool _isEditing = false;
@@ -25,6 +25,7 @@ class _ProfilePageState extends State<ProfilePage> {
   final TextEditingController _companyIdController = TextEditingController();
   final TextEditingController _contactInfoController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _upiIdController = TextEditingController();
 
   @override
   void initState() {
@@ -39,32 +40,43 @@ class _ProfilePageState extends State<ProfilePage> {
         _errorMessage = null;
       });
 
-      final String userEmail = widget.userEmail ?? _auth.currentUser?.email ?? '';
-      
+      final String userEmail =
+          widget.userEmail ?? _auth.currentUser?.email ?? '';
+
       if (userEmail.isEmpty) {
         throw Exception('No user email available');
       }
 
       print('Loading profile data for: $userEmail');
 
-      // Fetch profile data from Firestore
-      final DocumentSnapshot profileSnapshot = await _firestore
-          .collection('garage')
+      // Try to fetch from garages collection first (new structure)
+      DocumentSnapshot? profileSnapshot = await _firestore
+          .collection('garages')
           .doc(userEmail)
-          .collection('profile')
-          .doc('companyDetails')
           .get();
+
+      String? loadedFrom = 'garages'; // Track where profile was loaded from
+
+      // If not found, try old structure (garage/{email}/profile/companyDetails)
+      if (!profileSnapshot.exists) {
+        profileSnapshot = await _firestore
+            .collection('garage')
+            .doc(userEmail)
+            .collection('profile')
+            .doc('companyDetails')
+            .get();
+        loadedFrom = 'garage/profile/companyDetails';
+      }
 
       if (profileSnapshot.exists) {
         setState(() {
-          _profileData = profileSnapshot.data() as Map<String, dynamic>;
+          _profileData = profileSnapshot!.data() as Map<String, dynamic>;
           _initializeControllers();
         });
-        print('Profile data loaded successfully');
+        print('Profile data loaded successfully from: $loadedFrom');
       } else {
         throw Exception('Profile data not found');
       }
-
     } on FirebaseException catch (e) {
       setState(() {
         _errorMessage = 'Firestore error: ${e.message}';
@@ -86,10 +98,17 @@ class _ProfilePageState extends State<ProfilePage> {
 
   void _initializeControllers() {
     if (_profileData != null) {
-      _companyNameController.text = _profileData!['companyName']?.toString() ?? '';
+      _companyNameController.text =
+          _profileData!['companyName']?.toString() ??
+          _profileData!['garageName']?.toString() ??
+          '';
       _companyIdController.text = _profileData!['companyId']?.toString() ?? '';
-      _contactInfoController.text = _profileData!['contactInfo']?.toString() ?? '';
+      _contactInfoController.text =
+          _profileData!['contactInfo']?.toString() ??
+          _profileData!['shopAddress']?.toString() ??
+          '';
       _emailController.text = _profileData!['email']?.toString() ?? '';
+      _upiIdController.text = _profileData!['upiId']?.toString() ?? '';
     }
   }
 
@@ -100,30 +119,76 @@ class _ProfilePageState extends State<ProfilePage> {
         _errorMessage = null;
       });
 
-      final String userEmail = widget.userEmail ?? _auth.currentUser?.email ?? '';
-      
+      final String userEmail =
+          widget.userEmail ?? _auth.currentUser?.email ?? '';
+
       if (userEmail.isEmpty) {
         throw Exception('No user email available');
       }
 
+      // Validate UPI ID format if provided
+      final upiId = _upiIdController.text.trim();
+      if (upiId.isNotEmpty) {
+        final upiRegex = RegExp(r'^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$');
+        if (!upiRegex.hasMatch(upiId)) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Please enter a valid UPI ID format (e.g., yourname@paytm)',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+          setState(() {
+            _isLoading = false;
+          });
+          return;
+        }
+      }
+
       final updatedData = {
         'companyName': _companyNameController.text.trim(),
+        'garageName': _companyNameController.text
+            .trim(), // Also update new structure
         'companyId': _companyIdController.text.trim(),
         'contactInfo': _contactInfoController.text.trim(),
+        'shopAddress': _contactInfoController.text
+            .trim(), // Also update new structure
         'email': _emailController.text.trim(),
+        'upiId': upiId,
         'updatedAt': FieldValue.serverTimestamp(),
       };
 
-      await _firestore
+      // Update both old and new structures for compatibility
+      // Use set with merge instead of update to handle missing documents
+      final batch = _firestore.batch();
+
+      // Check if old structure exists before updating
+      final oldProfileRef = _firestore
           .collection('garage')
           .doc(userEmail)
           .collection('profile')
-          .doc('companyDetails')
-          .update(updatedData);
+          .doc('companyDetails');
+      
+      // Check if document exists
+      final oldProfileSnapshot = await oldProfileRef.get();
+      if (oldProfileSnapshot.exists) {
+        // Document exists, use update
+        batch.update(oldProfileRef, updatedData);
+      } else {
+        // Document doesn't exist, use set with merge to create it
+        batch.set(oldProfileRef, updatedData, SetOptions(merge: true));
+      }
+
+      // Always update new structure using set with merge (works for both create and update)
+      final newProfileRef = _firestore.collection('garages').doc(userEmail);
+      batch.set(newProfileRef, updatedData, SetOptions(merge: true));
+
+      await batch.commit();
 
       // Reload profile data
       await _loadProfileData();
-      
+
       setState(() {
         _isEditing = false;
       });
@@ -134,7 +199,6 @@ class _ProfilePageState extends State<ProfilePage> {
           backgroundColor: Colors.green,
         ),
       );
-
     } on FirebaseException catch (e) {
       setState(() {
         _errorMessage = 'Update failed: ${e.message}';
@@ -187,9 +251,7 @@ class _ProfilePageState extends State<ProfilePage> {
     return Card(
       elevation: 4,
       margin: const EdgeInsets.all(16),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(15),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -303,7 +365,9 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                     )
                   : Text(
-                      _profileData!['contactInfo']?.toString() ?? 'Not set',
+                      _profileData!['contactInfo']?.toString() ??
+                          _profileData!['shopAddress']?.toString() ??
+                          'Not set',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
@@ -314,15 +378,40 @@ class _ProfilePageState extends State<ProfilePage> {
 
             const SizedBox(height: 16),
 
+            // UPI ID
+            _buildInfoRow(
+              'UPI ID',
+              _isEditing
+                  ? TextFormField(
+                      controller: _upiIdController,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        hintText: 'yourname@paytm',
+                        helperText: 'Used for receiving payments',
+                        prefixIcon: Icon(Icons.payment),
+                      ),
+                    )
+                  : Text(
+                      _profileData!['upiId']?.toString() ?? 'Not set',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: _profileData!['upiId']?.toString() != null
+                            ? Colors.green[700]
+                            : Colors.grey,
+                      ),
+                    ),
+              Icons.payment,
+            ),
+
+            const SizedBox(height: 16),
+
             // User ID (Read-only)
             _buildInfoRow(
               'User ID',
               Text(
                 _profileData!['userId']?.toString() ?? 'Not available',
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey,
-                ),
+                style: const TextStyle(fontSize: 14, color: Colors.grey),
               ),
               Icons.person,
             ),
@@ -335,10 +424,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 'Registered Since',
                 Text(
                   _formatTimestamp(_profileData!['createdAt']),
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                  ),
+                  style: const TextStyle(fontSize: 14, color: Colors.grey),
                 ),
                 Icons.calendar_today,
               ),
@@ -387,11 +473,7 @@ class _ProfilePageState extends State<ProfilePage> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(
-          icon,
-          color: Colors.purple,
-          size: 20,
-        ),
+        Icon(icon, color: Colors.purple, size: 20),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -437,10 +519,7 @@ class _ProfilePageState extends State<ProfilePage> {
           const SizedBox(height: 16),
           Text(
             'Loading profile...',
-            style: TextStyle(
-              color: Colors.grey[600],
-              fontSize: 16,
-            ),
+            style: TextStyle(color: Colors.grey[600], fontSize: 16),
           ),
         ],
       ),
@@ -452,26 +531,17 @@ class _ProfilePageState extends State<ProfilePage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.error_outline,
-            size: 64,
-            color: Colors.red[300],
-          ),
+          Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
           const SizedBox(height: 16),
           Text(
             _errorMessage ?? 'An error occurred',
-            style: const TextStyle(
-              fontSize: 16,
-              color: Colors.red,
-            ),
+            style: const TextStyle(fontSize: 16, color: Colors.red),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 20),
           ElevatedButton(
             onPressed: _loadProfileData,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.purple,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.purple),
             child: const Text('Retry'),
           ),
         ],
@@ -484,26 +554,16 @@ class _ProfilePageState extends State<ProfilePage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.person_outline,
-            size: 64,
-            color: Colors.grey[400],
-          ),
+          Icon(Icons.person_outline, size: 64, color: Colors.grey[400]),
           const SizedBox(height: 16),
           const Text(
             'No profile data found',
-            style: TextStyle(
-              fontSize: 18,
-              color: Colors.grey,
-            ),
+            style: TextStyle(fontSize: 18, color: Colors.grey),
           ),
           const SizedBox(height: 8),
           const Text(
             'Complete your profile setup',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey,
-            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey),
           ),
         ],
       ),
@@ -517,10 +577,7 @@ class _ProfilePageState extends State<ProfilePage> {
       appBar: AppBar(
         title: const Text(
           'Profile',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
         ),
         backgroundColor: Colors.white,
         elevation: 0,
@@ -537,90 +594,98 @@ class _ProfilePageState extends State<ProfilePage> {
       body: _isLoading
           ? _buildLoadingState()
           : _errorMessage != null
-              ? _buildErrorState()
-              : _profileData == null
-                  ? _buildEmptyState()
-                  : SingleChildScrollView(
+          ? _buildErrorState()
+          : _profileData == null
+          ? _buildEmptyState()
+          : SingleChildScrollView(
+              child: Column(
+                children: [
+                  // Profile Header
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(30),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.purple[800]!, Colors.purple[600]!],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        CircleAvatar(
+                          radius: 50,
+                          backgroundColor: Colors.white.withOpacity(0.2),
+                          child: const Icon(
+                            Icons.business,
+                            size: 40,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          _profileData!['companyName']?.toString() ??
+                              _profileData!['garageName']?.toString() ??
+                              'Company Name',
+                          style: const TextStyle(
+                            fontSize: 24,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _profileData!['userType']?.toString() == 'insurance'
+                              ? 'Insurance Company'
+                              : 'Service Provider',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Colors.white70,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Profile Information
+                  _buildProfileInfoCard(),
+
+                  // Additional Info Card
+                  Card(
+                    margin: const EdgeInsets.all(16),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Profile Header
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(30),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [Colors.purple[800]!, Colors.purple[600]!],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                            ),
-                            child: Column(
-                              children: [
-                                CircleAvatar(
-                                  radius: 50,
-                                  backgroundColor: Colors.white.withOpacity(0.2),
-                                  child: const Icon(
-                                    Icons.business,
-                                    size: 40,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  _profileData!['companyName']?.toString() ?? 'Company Name',
-                                  style: const TextStyle(
-                                    fontSize: 24,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  _profileData!['userType']?.toString() == 'insurance' 
-                                      ? 'Insurance Company' 
-                                      : 'Service Provider',
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.white70,
-                                  ),
-                                ),
-                              ],
+                          const Text(
+                            'Profile Information',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.purple,
                             ),
                           ),
-                          
-                          // Profile Information
-                          _buildProfileInfoCard(),
-                          
-                          // Additional Info Card
-                          Card(
-                            margin: const EdgeInsets.all(16),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Profile Information',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.purple,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  _buildInfoItem('Document ID', 'companyDetails'),
-                                  _buildInfoItem('Collection', 'garage/${_profileData!['email']}/profile'),
-                                  _buildInfoItem('Last Updated', _profileData!['updatedAt'] != null 
-                                      ? _formatTimestamp(_profileData!['updatedAt']) 
-                                      : 'Never'),
-                                ],
-                              ),
-                            ),
+                          const SizedBox(height: 12),
+                          _buildInfoItem('Document ID', 'companyDetails'),
+                          _buildInfoItem(
+                            'Collection',
+                            'garage/${_profileData!['email']}/profile',
+                          ),
+                          _buildInfoItem(
+                            'Last Updated',
+                            _profileData!['updatedAt'] != null
+                                ? _formatTimestamp(_profileData!['updatedAt'])
+                                : 'Never',
                           ),
                         ],
                       ),
                     ),
+                  ),
+                ],
+              ),
+            ),
     );
   }
 
@@ -630,19 +695,10 @@ class _ProfilePageState extends State<ProfilePage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.grey,
-              fontSize: 14,
-            ),
-          ),
+          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 14)),
           Text(
             value,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
           ),
         ],
       ),
@@ -655,6 +711,7 @@ class _ProfilePageState extends State<ProfilePage> {
     _companyIdController.dispose();
     _contactInfoController.dispose();
     _emailController.dispose();
+    _upiIdController.dispose();
     super.dispose();
   }
 }

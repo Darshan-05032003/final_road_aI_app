@@ -1,9 +1,10 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 class FirebaseMessagingHandler {
-  static final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
+  static FirebaseMessaging? _firebaseMessaging;
   static final FlutterLocalNotificationsPlugin _notificationsPlugin = FlutterLocalNotificationsPlugin();
   static bool _isInitialized = false;
 
@@ -12,6 +13,21 @@ class FirebaseMessagingHandler {
     
     try {
       print('Starting FCM initialization...');
+      
+      // Check if Firebase is initialized
+      if (Firebase.apps.isEmpty) {
+        print('Firebase not initialized yet, waiting...');
+        // Wait a bit for Firebase to initialize
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
+      
+      // Initialize FirebaseMessaging only if Firebase is ready
+      if (Firebase.apps.isNotEmpty) {
+        _firebaseMessaging = FirebaseMessaging.instance;
+      } else {
+        print('Firebase still not initialized, skipping FCM setup');
+        return;
+      }
       
       // Initialize local notifications first (fast operation)
       const AndroidInitializationSettings androidSettings = 
@@ -48,7 +64,8 @@ class FirebaseMessagingHandler {
 
   static void _requestPermissions() async {
     try {
-      final settings = await _firebaseMessaging.requestPermission(
+      if (_firebaseMessaging == null) return;
+      final settings = await _firebaseMessaging!.requestPermission(
         alert: true,
         badge: true,
         sound: true,
@@ -61,7 +78,8 @@ class FirebaseMessagingHandler {
 
   static void _getAndSaveToken() async {
     try {
-      String? token = await _firebaseMessaging.getToken();
+      if (_firebaseMessaging == null) return;
+      String? token = await _firebaseMessaging!.getToken();
       if (token != null) {
         print('FCM Token: $token');
         await _saveTokenToFirestore(token);
@@ -72,6 +90,7 @@ class FirebaseMessagingHandler {
   }
 
   static void _setupMessageHandlers() {
+    if (_firebaseMessaging == null || Firebase.apps.isEmpty) return;
     FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
     FirebaseMessaging.onMessageOpenedApp.listen(_handleBackgroundMessage);
   }

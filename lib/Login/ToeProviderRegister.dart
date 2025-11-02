@@ -1,4 +1,3 @@
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -9,16 +8,19 @@ class TowProviderRegistrationPage extends StatefulWidget {
   const TowProviderRegistrationPage({super.key});
 
   @override
-  _TowProviderRegistrationPageState createState() => _TowProviderRegistrationPageState();
+  _TowProviderRegistrationPageState createState() =>
+      _TowProviderRegistrationPageState();
 }
 
-class _TowProviderRegistrationPageState extends State<TowProviderRegistrationPage> {
+class _TowProviderRegistrationPageState
+    extends State<TowProviderRegistrationPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _driverNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passController = TextEditingController();
   final TextEditingController _truckNoController = TextEditingController();
   final TextEditingController _locationController = TextEditingController();
+  final TextEditingController _upiIdController = TextEditingController();
 
   bool _isLoading = false;
   bool _locationLoading = false;
@@ -32,7 +34,7 @@ class _TowProviderRegistrationPageState extends State<TowProviderRegistrationPag
     'Wheel Lift',
     'Integrated Tow Truck',
     'Heavy Duty',
-    'Light Duty'
+    'Light Duty',
   ];
 
   // Firebase instances
@@ -63,7 +65,9 @@ class _TowProviderRegistrationPageState extends State<TowProviderRegistrationPag
 
       if (permission == LocationPermission.deniedForever) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Location permission permanently denied')),
+          const SnackBar(
+            content: Text('Location permission permanently denied'),
+          ),
         );
         setState(() {
           _locationLoading = false;
@@ -83,7 +87,8 @@ class _TowProviderRegistrationPageState extends State<TowProviderRegistrationPag
       );
 
       Placemark place = placemarks[0];
-      String address = "${place.street}, ${place.locality}, ${place.administrativeArea}, ${place.postalCode}";
+      String address =
+          "${place.street}, ${place.locality}, ${place.administrativeArea}, ${place.postalCode}";
 
       setState(() {
         _currentLocation = position;
@@ -92,14 +97,15 @@ class _TowProviderRegistrationPageState extends State<TowProviderRegistrationPag
         _locationLoading = false;
       });
 
-      print('📍 Tow Provider Location: ${position.latitude}, ${position.longitude}');
+      print(
+        '📍 Tow Provider Location: ${position.latitude}, ${position.longitude}',
+      );
       print('🏠 Address: $address');
-
     } catch (e) {
       print('Error getting location: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to get location: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to get location: $e')));
       setState(() {
         _locationLoading = false;
       });
@@ -116,21 +122,52 @@ class _TowProviderRegistrationPageState extends State<TowProviderRegistrationPag
         return;
       }
 
+      // Check if UPI ID is provided
+      if (_upiIdController.text.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please enter your UPI ID for receiving payments'),
+          ),
+        );
+        return;
+      }
+
       setState(() {
         _isLoading = true;
       });
 
       try {
         // Create user with email and password
-        UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
-          email: _emailController.text.trim(),
-          password: _passController.text.trim(),
-        );
+        UserCredential userCredential = await _auth
+            .createUserWithEmailAndPassword(
+              email: _emailController.text.trim(),
+              password: _passController.text.trim(),
+            );
 
         // Get the created user
         User? user = userCredential.user;
-        
+
         if (user != null) {
+          // Validate UPI ID format if provided
+          final upiId = _upiIdController.text.trim();
+          if (upiId.isNotEmpty) {
+            final upiRegex = RegExp(r'^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$');
+            if (!upiRegex.hasMatch(upiId)) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    "Please enter a valid UPI ID format (e.g., yourname@paytm)",
+                  ),
+                  backgroundColor: Colors.red,
+                ),
+              );
+              setState(() {
+                _isLoading = false;
+              });
+              return;
+            }
+          }
+
           // Prepare tow provider data for Firestore with location
           Map<String, dynamic> towProviderData = {
             'driverName': _driverNameController.text.trim(),
@@ -141,6 +178,7 @@ class _TowProviderRegistrationPageState extends State<TowProviderRegistrationPag
             'serviceArea': _locationController.text.trim(),
             'latitude': _currentLocation!.latitude,
             'longitude': _currentLocation!.longitude,
+            'upiId': upiId,
             'createdAt': FieldValue.serverTimestamp(),
             'updatedAt': FieldValue.serverTimestamp(),
             'userId': user.uid,
@@ -153,6 +191,14 @@ class _TowProviderRegistrationPageState extends State<TowProviderRegistrationPag
             'reviews': 0,
           };
 
+          // Also save to tow collection with profile structure for consistency
+          await _firestore
+              .collection('tow')
+              .doc(_emailController.text.trim())
+              .collection('profile')
+              .doc('provider_details')
+              .set({...towProviderData, 'upiId': upiId});
+
           // Save tow provider data to Firestore in tow_providers collection
           await _firestore
               .collection('tow_providers')
@@ -162,7 +208,9 @@ class _TowProviderRegistrationPageState extends State<TowProviderRegistrationPag
           // Show success message
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text("Registration successful! Welcome to our tow provider network."),
+              content: Text(
+                "Registration successful! Welcome to our tow provider network.",
+              ),
               backgroundColor: Colors.green,
               duration: Duration(seconds: 3),
             ),
@@ -175,22 +223,21 @@ class _TowProviderRegistrationPageState extends State<TowProviderRegistrationPag
         }
       } on FirebaseAuthException catch (e) {
         String errorMessage = "Registration failed. Please try again.";
-        
+
         if (e.code == 'weak-password') {
-          errorMessage = "Password is too weak. Please use a stronger password.";
+          errorMessage =
+              "Password is too weak. Please use a stronger password.";
         } else if (e.code == 'email-already-in-use') {
           errorMessage = "An account already exists with this email.";
         } else if (e.code == 'invalid-email') {
           errorMessage = "Invalid email address format.";
         } else if (e.code == 'network-request-failed') {
-          errorMessage = "Network error. Please check your internet connection.";
+          errorMessage =
+              "Network error. Please check your internet connection.";
         }
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
         );
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -216,6 +263,7 @@ class _TowProviderRegistrationPageState extends State<TowProviderRegistrationPag
     _passController.dispose();
     _truckNoController.dispose();
     _locationController.dispose();
+    _upiIdController.dispose();
     super.dispose();
   }
 
@@ -229,12 +277,12 @@ class _TowProviderRegistrationPageState extends State<TowProviderRegistrationPag
           child: Column(
             children: [
               const SizedBox(height: 40),
-              
+
               // Header
               _buildHeader(),
-              
+
               const SizedBox(height: 30),
-              
+
               // Registration Form
               _buildRegistrationForm(),
             ],
@@ -282,10 +330,7 @@ class _TowProviderRegistrationPageState extends State<TowProviderRegistrationPag
         const SizedBox(height: 8),
         Text(
           'Start providing roadside assistance services',
-          style: TextStyle(
-            color: Colors.grey[600],
-            fontSize: 15,
-          ),
+          style: TextStyle(color: Colors.grey[600], fontSize: 15),
           textAlign: TextAlign.center,
         ),
       ],
@@ -295,9 +340,7 @@ class _TowProviderRegistrationPageState extends State<TowProviderRegistrationPag
   Widget _buildRegistrationForm() {
     return Card(
       elevation: 8,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Padding(
         padding: const EdgeInsets.all(25),
         child: Form(
@@ -319,9 +362,9 @@ class _TowProviderRegistrationPageState extends State<TowProviderRegistrationPag
                   return null;
                 },
               ),
-              
+
               const SizedBox(height: 20),
-              
+
               // Email Field
               _buildTextField(
                 controller: _emailController,
@@ -332,15 +375,17 @@ class _TowProviderRegistrationPageState extends State<TowProviderRegistrationPag
                   if (value == null || value.isEmpty) {
                     return 'Please enter email address';
                   }
-                  if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                  if (!RegExp(
+                    r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                  ).hasMatch(value)) {
                     return 'Please enter a valid email address';
                   }
                   return null;
                 },
               ),
-              
+
               const SizedBox(height: 20),
-              
+
               // Password Field
               _buildTextField(
                 controller: _passController,
@@ -357,9 +402,9 @@ class _TowProviderRegistrationPageState extends State<TowProviderRegistrationPag
                   return null;
                 },
               ),
-              
+
               const SizedBox(height: 20),
-              
+
               // Tow Truck No. Field
               _buildTextField(
                 controller: _truckNoController,
@@ -372,24 +417,45 @@ class _TowProviderRegistrationPageState extends State<TowProviderRegistrationPag
                   return null;
                 },
               ),
-              
+
               const SizedBox(height: 20),
-              
+
               // Truck Type Dropdown
               _buildTruckTypeDropdown(),
-              
+
               const SizedBox(height: 20),
-              
+
               // Location Field with GPS Button
               _buildLocationFieldWithGPS(),
-              
+
+              const SizedBox(height: 20),
+
+              // UPI ID Field
+              _buildTextField(
+                controller: _upiIdController,
+                label: 'UPI ID *',
+                icon: Icons.payment,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your UPI ID';
+                  }
+                  final upiRegex = RegExp(
+                    r'^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$',
+                  );
+                  if (!upiRegex.hasMatch(value.trim())) {
+                    return 'Invalid UPI ID format (e.g., yourname@paytm)';
+                  }
+                  return null;
+                },
+              ),
+
               const SizedBox(height: 30),
-              
+
               // Features List
               _buildFeaturesList(),
-              
+
               const SizedBox(height: 30),
-              
+
               // Register Button
               SizedBox(
                 width: double.infinity,
@@ -410,7 +476,9 @@ class _TowProviderRegistrationPageState extends State<TowProviderRegistrationPag
                           width: 22,
                           child: CircularProgressIndicator(
                             strokeWidth: 2.5,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
                           ),
                         )
                       : Row(
@@ -430,19 +498,16 @@ class _TowProviderRegistrationPageState extends State<TowProviderRegistrationPag
                         ),
                 ),
               ),
-              
+
               const SizedBox(height: 20),
-              
+
               // Login Link
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
                     "Already registered? ",
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 15,
-                    ),
+                    style: TextStyle(color: Colors.grey[600], fontSize: 15),
                   ),
                   GestureDetector(
                     onTap: () {
@@ -506,9 +571,7 @@ class _TowProviderRegistrationPageState extends State<TowProviderRegistrationPag
         labelText: 'Truck Type *',
         labelStyle: TextStyle(color: Colors.grey[600]),
         prefixIcon: const Icon(Icons.build_outlined, color: Colors.orange),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: Colors.orange[400]!, width: 2),
@@ -517,10 +580,7 @@ class _TowProviderRegistrationPageState extends State<TowProviderRegistrationPag
         fillColor: Colors.grey[50],
       ),
       items: _truckTypes.map((String type) {
-        return DropdownMenuItem<String>(
-          value: type,
-          child: Text(type),
-        );
+        return DropdownMenuItem<String>(value: type, child: Text(type));
       }).toList(),
       onChanged: (String? newValue) {
         setState(() {
@@ -566,7 +626,9 @@ class _TowProviderRegistrationPageState extends State<TowProviderRegistrationPag
                       child: Text(
                         _currentAddress,
                         style: TextStyle(
-                          color: _currentLocation != null ? Colors.green[700] : Colors.grey,
+                          color: _currentLocation != null
+                              ? Colors.green[700]
+                              : Colors.grey,
                           fontSize: 14,
                         ),
                       ),
@@ -582,7 +644,7 @@ class _TowProviderRegistrationPageState extends State<TowProviderRegistrationPag
                       backgroundColor: Colors.orange,
                       foregroundColor: Colors.white,
                     ),
-                    icon: _locationLoading 
+                    icon: _locationLoading
                         ? SizedBox(
                             width: 16,
                             height: 16,
@@ -592,17 +654,18 @@ class _TowProviderRegistrationPageState extends State<TowProviderRegistrationPag
                             ),
                           )
                         : Icon(Icons.my_location),
-                    label: Text(_locationLoading ? 'Getting Location...' : 'Use Current Location'),
+                    label: Text(
+                      _locationLoading
+                          ? 'Getting Location...'
+                          : 'Use Current Location',
+                    ),
                   ),
                 ),
                 if (_currentLocation != null) ...[
                   SizedBox(height: 8),
                   Text(
                     'Coordinates: ${_currentLocation!.latitude.toStringAsFixed(4)}, ${_currentLocation!.longitude.toStringAsFixed(4)}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                    ),
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                   ),
                 ],
               ],
@@ -685,13 +748,7 @@ class _TowProviderRegistrationPageState extends State<TowProviderRegistrationPag
         children: [
           Icon(Icons.check_circle, color: Colors.orange[400], size: 16),
           const SizedBox(width: 8),
-          Text(
-            text,
-            style: TextStyle(
-              color: Colors.orange[700],
-              fontSize: 13,
-            ),
-          ),
+          Text(text, style: TextStyle(color: Colors.orange[700], fontSize: 13)),
         ],
       ),
     );

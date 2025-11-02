@@ -1237,7 +1237,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smart_road_app/core/language/app_localizations.dart';
 import 'package:smart_road_app/core/language/language_selector.dart';
 import 'package:smart_road_app/garage/notification.dart';
@@ -1247,6 +1247,7 @@ import 'package:smart_road_app/garage/serviceRequest.dart';
 import 'package:smart_road_app/garage/spareParts.dart';
 import 'package:smart_road_app/garage/inventory.dart';
 import 'package:smart_road_app/garage/profile.dart';
+import 'package:smart_road_app/Login/GarageLoginScreen.dart';
 
 class AuthService {
   static Future<String?> getUserEmail() async {
@@ -1255,9 +1256,30 @@ class AuthService {
 
   static Future<void> signOut(BuildContext context) async {
     try {
+      // Sign out from Firebase Auth
       await FirebaseAuth.instance.signOut();
+      
+      // Clear SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('garageIsLoggedIn', false);
+      await prefs.remove('garageUserEmail');
+      
+      // Navigate back to login screen
+      if (context.mounted) {
+        Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const GarageLoginPage()),
+          (route) => false,
+        );
+      }
     } catch (e) {
       print('Error signing out: $e');
+      // Even if there's an error, try to navigate back to login
+      if (context.mounted) {
+        Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const GarageLoginPage()),
+          (route) => false,
+        );
+      }
     }
   }
 }

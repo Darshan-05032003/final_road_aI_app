@@ -124,7 +124,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
           .orderBy('createdAt', descending: true)
           .get();
 
-      print('Found ${querySnapshot.docs.length} inventory parts for $_userEmail');
+      print(
+        'Found ${querySnapshot.docs.length} inventory parts for $_userEmail',
+      );
 
       if (querySnapshot.docs.isEmpty) {
         print('No inventory parts found for this user');
@@ -148,18 +150,21 @@ class _InventoryScreenState extends State<InventoryScreen> {
             continue;
           }
 
-          loadedParts.add(SparePart(
-            id: doc.id,
-            name: data['name']?.toString() ?? 'Unnamed Part',
-            category: data['category']?.toString() ?? 'Uncategorized',
-            compatibleModels: data['compatibleModels']?.toString() ?? 'Not specified',
-            upiId: data['upiId']?.toString() ?? '',
-            description: data['description']?.toString() ?? '',
-            price: _parsePrice(data['price']),
-            stock: _parseStock(data['stock']),
-            imageUrl: data['imageUrl']?.toString() ?? '',
-            isAvailable: data['isAvailable'] ?? true,
-          ));
+          loadedParts.add(
+            SparePart(
+              id: doc.id,
+              name: data['name']?.toString() ?? 'Unnamed Part',
+              category: data['category']?.toString() ?? 'Uncategorized',
+              compatibleModels:
+                  data['compatibleModels']?.toString() ?? 'Not specified',
+              upiId: data['upiId']?.toString() ?? '',
+              description: data['description']?.toString() ?? '',
+              price: _parsePrice(data['price']),
+              stock: _parseStock(data['stock']),
+              imageUrl: data['imageUrl']?.toString() ?? '',
+              isAvailable: data['isAvailable'] ?? true,
+            ),
+          );
         } catch (e) {
           print('Error processing document ${doc.id}: $e');
         }
@@ -171,19 +176,22 @@ class _InventoryScreenState extends State<InventoryScreen> {
       });
 
       print('Successfully loaded ${inventoryParts.length} inventory parts');
-
     } on FirebaseException catch (e) {
       print('Firestore error loading inventory: ${e.code} - ${e.message}');
-      setState(() {
-        _errorMessage = 'Database error: ${e.message}';
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Database error: ${e.message}';
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       print('Error loading inventory parts: $e');
-      setState(() {
-        _errorMessage = 'Failed to load inventory: $e';
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Failed to load inventory: $e';
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -232,7 +240,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
       setState(() {
         final index = inventoryParts.indexWhere((part) => part.id == partId);
         if (index != -1) {
-          inventoryParts[index] = inventoryParts[index].copyWith(stock: newStock);
+          inventoryParts[index] = inventoryParts[index].copyWith(
+            stock: newStock,
+          );
         }
       });
 
@@ -242,7 +252,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
           backgroundColor: Colors.green,
         ),
       );
-
     } on FirebaseException catch (e) {
       print('Firestore error updating stock: ${e.code} - ${e.message}');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -263,7 +272,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   // Toggle availability for specific user's part
-  Future<void> _toggleAvailabilityInFirestore(String partId, bool currentStatus) async {
+  Future<void> _toggleAvailabilityInFirestore(
+    String partId,
+    bool currentStatus,
+  ) async {
     try {
       if (_userEmail == null) {
         throw Exception('User email not available');
@@ -285,17 +297,20 @@ class _InventoryScreenState extends State<InventoryScreen> {
       setState(() {
         final index = inventoryParts.indexWhere((part) => part.id == partId);
         if (index != -1) {
-          inventoryParts[index] = inventoryParts[index].copyWith(isAvailable: newStatus);
+          inventoryParts[index] = inventoryParts[index].copyWith(
+            isAvailable: newStatus,
+          );
         }
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Part ${newStatus ? 'enabled' : 'disabled'} successfully'),
+          content: Text(
+            'Part ${newStatus ? 'enabled' : 'disabled'} successfully',
+          ),
           backgroundColor: Colors.green,
         ),
       );
-
     } on FirebaseException catch (e) {
       print('Firestore error toggling availability: ${e.code} - ${e.message}');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -352,7 +367,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
           backgroundColor: Colors.green,
         ),
       );
-
     } catch (e) {
       print('Error adding new part: $e');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -387,26 +401,26 @@ class _InventoryScreenState extends State<InventoryScreen> {
       body: _isLoading
           ? _buildLoadingState()
           : _errorMessage != null
-              ? _buildErrorState()
-              : Column(
-                  children: [
-                    _buildInventoryHeader(),
-                    Expanded(
-                      child: inventoryParts.isEmpty
-                          ? _buildEmptyState()
-                          : RefreshIndicator(
-                              onRefresh: _loadInventoryParts,
-                              child: ListView.builder(
-                                padding: const EdgeInsets.all(16),
-                                itemCount: inventoryParts.length,
-                                itemBuilder: (context, index) {
-                                  return _buildInventoryItem(inventoryParts[index]);
-                                },
-                              ),
-                            ),
-                    ),
-                  ],
+          ? _buildErrorState()
+          : Column(
+              children: [
+                _buildInventoryHeader(),
+                Expanded(
+                  child: inventoryParts.isEmpty
+                      ? _buildEmptyState()
+                      : RefreshIndicator(
+                          onRefresh: _loadInventoryParts,
+                          child: ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: inventoryParts.length,
+                            itemBuilder: (context, index) {
+                              return _buildInventoryItem(inventoryParts[index]);
+                            },
+                          ),
+                        ),
                 ),
+              ],
+            ),
     );
   }
 
@@ -419,19 +433,13 @@ class _InventoryScreenState extends State<InventoryScreen> {
           const SizedBox(height: 16),
           Text(
             'Loading inventory...',
-            style: TextStyle(
-              color: Colors.grey[600],
-              fontSize: 16,
-            ),
+            style: TextStyle(color: Colors.grey[600], fontSize: 16),
           ),
           if (_userEmail != null) ...[
             const SizedBox(height: 8),
             Text(
               'for $_userEmail',
-              style: TextStyle(
-                color: Colors.grey[500],
-                fontSize: 12,
-              ),
+              style: TextStyle(color: Colors.grey[500], fontSize: 12),
             ),
           ],
         ],
@@ -444,18 +452,11 @@ class _InventoryScreenState extends State<InventoryScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.error_outline,
-            size: 64,
-            color: Colors.red[300],
-          ),
+          Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
           const SizedBox(height: 16),
           Text(
             _errorMessage ?? 'An error occurred',
-            style: const TextStyle(
-              fontSize: 16,
-              color: Colors.red,
-            ),
+            style: const TextStyle(fontSize: 16, color: Colors.red),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 20),
@@ -470,10 +471,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
           if (_userEmail != null)
             Text(
               'User: $_userEmail',
-              style: const TextStyle(
-                fontSize: 12,
-                color: Colors.grey,
-              ),
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
         ],
       ),
@@ -485,26 +483,16 @@ class _InventoryScreenState extends State<InventoryScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.inventory_2_outlined,
-            size: 64,
-            color: Colors.grey[400],
-          ),
+          Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey[400]),
           const SizedBox(height: 16),
           const Text(
             'No Inventory Items',
-            style: TextStyle(
-              fontSize: 18,
-              color: Colors.grey,
-            ),
+            style: TextStyle(fontSize: 18, color: Colors.grey),
           ),
           const SizedBox(height: 8),
           const Text(
             'Add your first spare part to get started',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey,
-            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey),
           ),
           const SizedBox(height: 20),
           ElevatedButton(
@@ -518,10 +506,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
             const SizedBox(height: 10),
             Text(
               'User: $_userEmail',
-              style: const TextStyle(
-                fontSize: 12,
-                color: Colors.grey,
-              ),
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
           ],
         ],
@@ -530,9 +515,15 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   Widget _buildInventoryHeader() {
-    final lowStockCount = inventoryParts.where((part) => part.stock < 5 && part.stock > 0).length;
-    final outOfStockCount = inventoryParts.where((part) => part.stock == 0).length;
-    final disabledCount = inventoryParts.where((part) => !part.isAvailable).length;
+    final lowStockCount = inventoryParts
+        .where((part) => part.stock < 5 && part.stock > 0)
+        .length;
+    final outOfStockCount = inventoryParts
+        .where((part) => part.stock == 0)
+        .length;
+    final disabledCount = inventoryParts
+        .where((part) => !part.isAvailable)
+        .length;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -554,23 +545,36 @@ class _InventoryScreenState extends State<InventoryScreen> {
               if (_userEmail != null)
                 Text(
                   'User: ${_userEmail!.split('@')[0]}',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey,
-                  ),
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
                 ),
             ],
           ),
           const SizedBox(height: 12),
           Row(
             children: [
-              _buildInventoryStat('Low Stock', lowStockCount.toString(), const Color(0xFFF59E0B)),
+              _buildInventoryStat(
+                'Low Stock',
+                lowStockCount.toString(),
+                const Color(0xFFF59E0B),
+              ),
               const SizedBox(width: 8),
-              _buildInventoryStat('Out of Stock', outOfStockCount.toString(), const Color(0xFFEF4444)),
+              _buildInventoryStat(
+                'Out of Stock',
+                outOfStockCount.toString(),
+                const Color(0xFFEF4444),
+              ),
               const SizedBox(width: 8),
-              _buildInventoryStat('Disabled', disabledCount.toString(), const Color(0xFF64748B)),
+              _buildInventoryStat(
+                'Disabled',
+                disabledCount.toString(),
+                const Color(0xFF64748B),
+              ),
               const SizedBox(width: 8),
-              _buildInventoryStat('Total Items', inventoryParts.length.toString(), const Color(0xFF2563EB)),
+              _buildInventoryStat(
+                'Total Items',
+                inventoryParts.length.toString(),
+                const Color(0xFF2563EB),
+              ),
             ],
           ),
         ],
@@ -600,10 +604,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
             const SizedBox(height: 4),
             Text(
               title,
-              style: const TextStyle(
-                color: Color(0xFF64748B),
-                fontSize: 12,
-              ),
+              style: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
             ),
           ],
         ),
@@ -612,7 +613,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   Widget _buildInventoryItem(SparePart part) {
-    final Color statusColor = _getStockStatusColor(part.stock, part.isAvailable);
+    final Color statusColor = _getStockStatusColor(
+      part.stock,
+      part.isAvailable,
+    );
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -637,10 +641,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
               color: statusColor.withOpacity(0.1),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(
-              Icons.inventory_2,
-              color: statusColor,
-            ),
+            child: Icon(Icons.inventory_2, color: statusColor),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -660,7 +661,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     ),
                     if (!part.isAvailable)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFFEF4444).withOpacity(0.1),
                           borderRadius: BorderRadius.circular(4),
@@ -710,10 +714,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
               const SizedBox(height: 4),
               Text(
                 '₹${part.price.toStringAsFixed(2)}',
-                style: const TextStyle(
-                  color: Color(0xFF64748B),
-                  fontSize: 12,
-                ),
+                style: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
               ),
             ],
           ),
@@ -750,8 +751,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   void _editStock(SparePart part) {
-    final TextEditingController stockController = TextEditingController(text: part.stock.toString());
-    
+    final TextEditingController stockController = TextEditingController(
+      text: part.stock.toString(),
+    );
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -771,7 +774,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              final int newStock = int.tryParse(stockController.text) ?? part.stock;
+              final int newStock =
+                  int.tryParse(stockController.text) ?? part.stock;
               _updateStockInFirestore(part.id, newStock);
               Navigator.pop(context);
             },

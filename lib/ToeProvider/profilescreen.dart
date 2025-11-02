@@ -12,10 +12,19 @@ class ProviderProfileScreen extends StatefulWidget {
 class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  
+
   Map<String, dynamic> _providerData = {};
   bool _isLoading = true;
   bool _hasError = false;
+  bool _isEditing = false;
+
+  // Controllers for editing
+  final TextEditingController _driverNameController = TextEditingController();
+  final TextEditingController _truckNumberController = TextEditingController();
+  final TextEditingController _truckTypeController = TextEditingController();
+  final TextEditingController _locationController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _upiIdController = TextEditingController();
 
   @override
   void initState() {
@@ -32,30 +41,41 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
 
       String userEmail = currentUser.email!;
 
-      DocumentSnapshot profileSnapshot = await _firestore
-          .collection('tow')
+      // Try to load from tow_providers collection first (new structure)
+      DocumentSnapshot? profileSnapshot = await _firestore
+          .collection('tow_providers')
           .doc(userEmail)
-          .collection('profile')
-          .doc('provider_details')
           .get();
+
+      // If not found, try old structure
+      if (!profileSnapshot.exists) {
+        profileSnapshot = await _firestore
+            .collection('tow')
+            .doc(userEmail)
+            .collection('profile')
+            .doc('provider_details')
+            .get();
+      }
 
       if (!profileSnapshot.exists) {
         // If no profile data exists, create default data structure
         setState(() {
           _providerData = _getDefaultProviderData(currentUser);
+          _initializeControllers();
           _isLoading = false;
         });
         return;
       }
 
-      Map<String, dynamic> firestoreData = profileSnapshot.data() as Map<String, dynamic>;
-      
+      Map<String, dynamic> firestoreData =
+          profileSnapshot.data() as Map<String, dynamic>;
+
       // Enhance with calculated fields
       setState(() {
         _providerData = _enhanceProviderData(firestoreData, currentUser);
+        _initializeControllers();
         _isLoading = false;
       });
-
     } catch (e) {
       print('Error loading provider data: $e');
       setState(() {
@@ -83,13 +103,21 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
     };
   }
 
-  Map<String, dynamic> _enhanceProviderData(Map<String, dynamic> data, User user) {
+  Map<String, dynamic> _enhanceProviderData(
+    Map<String, dynamic> data,
+    User user,
+  ) {
     // Calculate additional fields for display
     double rating = (data['rating'] as num?)?.toDouble() ?? 0.0;
     int totalJobs = (data['totalJobs'] as int?) ?? 0;
     double earnings = (data['earnings'] as num?)?.toDouble() ?? 0.0;
-    double successRate = (data['successRate'] as num?)?.toDouble() ?? 
-        (totalJobs > 0 ? ((totalJobs - (data['failedJobs'] as int? ?? 0)) / totalJobs * 100) : 0.0);
+    double successRate =
+        (data['successRate'] as num?)?.toDouble() ??
+        (totalJobs > 0
+            ? ((totalJobs - (data['failedJobs'] as int? ?? 0)) /
+                  totalJobs *
+                  100)
+            : 0.0);
 
     return {
       'driverName': data['driverName'] ?? user.displayName ?? 'Provider Name',
@@ -106,7 +134,21 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
       'earnings': earnings,
       'successRate': successRate,
       'userId': data['userId'] ?? user.uid,
+      'upiId': data['upiId'] ?? '',
     };
+  }
+
+  void _initializeControllers() {
+    _driverNameController.text = _providerData['driverName']?.toString() ?? '';
+    _truckNumberController.text =
+        _providerData['truckNumber']?.toString() ?? '';
+    _truckTypeController.text = _providerData['truckType']?.toString() ?? '';
+    _locationController.text =
+        _providerData['location']?.toString() ??
+        _providerData['serviceArea']?.toString() ??
+        '';
+    _phoneController.text = _providerData['phone']?.toString() ?? '';
+    _upiIdController.text = _providerData['upiId']?.toString() ?? '';
   }
 
   void _handleLogout() async {
@@ -131,13 +173,105 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
   }
 
   void _handleEditProfile() {
-    // Navigate to edit profile screen
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Navigate to edit profile screen'),
-        backgroundColor: Colors.blue,
-      ),
-    );
+    setState(() {
+      _isEditing = !_isEditing;
+      if (!_isEditing) {
+        // Reset controllers when canceling edit
+        _initializeControllers();
+      }
+    });
+  }
+
+  Future<void> _updateProfile() async {
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      User? currentUser = _auth.currentUser;
+      if (currentUser == null) {
+        throw Exception('User not logged in');
+      }
+
+      String userEmail = currentUser.email!;
+
+      // Validate UPI ID format if provided
+      final upiId = _upiIdController.text.trim();
+      if (upiId.isNotEmpty) {
+        final upiRegex = RegExp(r'^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$');
+        if (!upiRegex.hasMatch(upiId)) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Please enter a valid UPI ID format (e.g., yourname@paytm)',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+          setState(() {
+            _isLoading = false;
+          });
+          return;
+        }
+      }
+
+      final updatedData = {
+        'driverName': _driverNameController.text.trim(),
+        'truckNumber': _truckNumberController.text.trim(),
+        'truckType': _truckTypeController.text.trim(),
+        'location': _locationController.text.trim(),
+        'serviceArea': _locationController.text.trim(),
+        'phone': _phoneController.text.trim(),
+        'upiId': upiId,
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      // Update both collections for compatibility
+      final batch = _firestore.batch();
+
+      // Update tow_providers collection
+      final towProviderRef = _firestore
+          .collection('tow_providers')
+          .doc(userEmail);
+      batch.set(towProviderRef, updatedData, SetOptions(merge: true));
+
+      // Update old structure
+      final profileRef = _firestore
+          .collection('tow')
+          .doc(userEmail)
+          .collection('profile')
+          .doc('provider_details');
+      batch.set(profileRef, updatedData, SetOptions(merge: true));
+
+      await batch.commit();
+
+      // Reload profile data
+      await _loadProviderData();
+
+      setState(() {
+        _isEditing = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Profile updated successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to update profile: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -159,9 +293,12 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
         children: [
           _buildProfileHeader(isTablet),
           SizedBox(height: isTablet ? 32 : 24),
-          _buildStatsSection(isTablet),
+          if (_isEditing)
+            _buildEditProfileForm(isTablet)
+          else
+            _buildStatsSection(isTablet),
           SizedBox(height: isTablet ? 32 : 24),
-          _buildMenuItems(isTablet),
+          if (!_isEditing) _buildMenuItems(isTablet),
         ],
       ),
     );
@@ -259,7 +396,11 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
           CircleAvatar(
             radius: isTablet ? 50 : 40,
             backgroundColor: Color(0xFF7E57C2).withOpacity(0.1),
-            child: Icon(Icons.person, size: isTablet ? 40 : 32, color: Color(0xFF7E57C2)),
+            child: Icon(
+              Icons.person,
+              size: isTablet ? 40 : 32,
+              color: Color(0xFF7E57C2),
+            ),
           ),
           SizedBox(width: isTablet ? 20 : 16),
           Expanded(
@@ -285,7 +426,11 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
                 SizedBox(height: 8),
                 Row(
                   children: [
-                    Icon(Icons.local_shipping, size: 16, color: Color(0xFF7E57C2)),
+                    Icon(
+                      Icons.local_shipping,
+                      size: 16,
+                      color: Color(0xFF7E57C2),
+                    ),
                     SizedBox(width: 4),
                     Text(
                       'Truck #${_providerData['truckNumber'] ?? 'Not assigned'}',
@@ -306,11 +451,29 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
                     ),
                   ],
                 ),
+                if (_providerData['upiId'] != null &&
+                    (_providerData['upiId'] as String).isNotEmpty) ...[
+                  SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(Icons.payment, size: 16, color: Colors.green[700]),
+                      SizedBox(width: 4),
+                      Text(
+                        'UPI: ${_providerData['upiId']}',
+                        style: TextStyle(
+                          color: Colors.green[700],
+                          fontSize: isTablet ? 14 : 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 SizedBox(height: 8),
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
-                    color: _providerData['status'] == 'active' 
+                    color: _providerData['status'] == 'active'
                         ? Color(0xFF4CAF50).withOpacity(0.1)
                         : Colors.orange.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
@@ -319,15 +482,23 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        _providerData['status'] == 'active' ? Icons.verified : Icons.pending,
-                        color: _providerData['status'] == 'active' ? Color(0xFF4CAF50) : Colors.orange,
+                        _providerData['status'] == 'active'
+                            ? Icons.verified
+                            : Icons.pending,
+                        color: _providerData['status'] == 'active'
+                            ? Color(0xFF4CAF50)
+                            : Colors.orange,
                         size: 14,
                       ),
                       SizedBox(width: 4),
                       Text(
-                        _providerData['status'] == 'active' ? 'Verified Provider' : 'Pending Verification',
+                        _providerData['status'] == 'active'
+                            ? 'Verified Provider'
+                            : 'Pending Verification',
                         style: TextStyle(
-                          color: _providerData['status'] == 'active' ? Color(0xFF4CAF50) : Colors.orange,
+                          color: _providerData['status'] == 'active'
+                              ? Color(0xFF4CAF50)
+                              : Colors.orange,
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
                         ),
@@ -339,8 +510,13 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
             ),
           ),
           IconButton(
-            icon: Icon(Icons.edit, color: Color(0xFF7E57C2), size: isTablet ? 28 : 24),
+            icon: Icon(
+              _isEditing ? Icons.close : Icons.edit,
+              color: Color(0xFF7E57C2),
+              size: isTablet ? 28 : 24,
+            ),
             onPressed: _handleEditProfile,
+            tooltip: _isEditing ? 'Cancel' : 'Edit Profile',
           ),
         ],
       ),
@@ -365,35 +541,40 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           _buildStatItem(
-            _providerData['totalJobs']?.toString() ?? '0', 
-            'Total Jobs', 
-            Icons.work, 
-            isTablet
+            _providerData['totalJobs']?.toString() ?? '0',
+            'Total Jobs',
+            Icons.work,
+            isTablet,
           ),
           _buildStatItem(
-            _providerData['rating']?.toStringAsFixed(1) ?? '0.0', 
-            'Rating', 
-            Icons.star, 
-            isTablet
+            _providerData['rating']?.toStringAsFixed(1) ?? '0.0',
+            'Rating',
+            Icons.star,
+            isTablet,
           ),
           _buildStatItem(
-            '\$${_providerData['earnings']?.toStringAsFixed(0) ?? '0'}', 
-            'Earnings', 
-            Icons.attach_money, 
-            isTablet
+            '\$${_providerData['earnings']?.toStringAsFixed(0) ?? '0'}',
+            'Earnings',
+            Icons.attach_money,
+            isTablet,
           ),
           _buildStatItem(
-            '${_providerData['successRate']?.toStringAsFixed(0) ?? '0'}%', 
-            'Success', 
-            Icons.check_circle, 
-            isTablet
+            '${_providerData['successRate']?.toStringAsFixed(0) ?? '0'}%',
+            'Success',
+            Icons.check_circle,
+            isTablet,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildStatItem(String value, String label, IconData icon, bool isTablet) {
+  Widget _buildStatItem(
+    String value,
+    String label,
+    IconData icon,
+    bool isTablet,
+  ) {
     return Column(
       children: [
         Container(
@@ -424,18 +605,186 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
     );
   }
 
+  Widget _buildEditProfileForm(bool isTablet) {
+    return Container(
+      padding: EdgeInsets.all(isTablet ? 24 : 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(isTablet ? 24 : 20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 10,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Edit Profile',
+            style: TextStyle(
+              fontSize: isTablet ? 22 : 20,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF7E57C2),
+            ),
+          ),
+          SizedBox(height: isTablet ? 24 : 20),
+          TextField(
+            controller: _driverNameController,
+            decoration: InputDecoration(
+              labelText: 'Driver Name',
+              prefixIcon: Icon(Icons.person, color: Color(0xFF7E57C2)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+          SizedBox(height: 16),
+          TextField(
+            controller: _truckNumberController,
+            decoration: InputDecoration(
+              labelText: 'Truck Number',
+              prefixIcon: Icon(
+                Icons.confirmation_number,
+                color: Color(0xFF7E57C2),
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+          SizedBox(height: 16),
+          TextField(
+            controller: _truckTypeController,
+            decoration: InputDecoration(
+              labelText: 'Truck Type',
+              prefixIcon: Icon(Icons.local_shipping, color: Color(0xFF7E57C2)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+          SizedBox(height: 16),
+          TextField(
+            controller: _locationController,
+            decoration: InputDecoration(
+              labelText: 'Service Area / Location',
+              prefixIcon: Icon(Icons.location_on, color: Color(0xFF7E57C2)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+          SizedBox(height: 16),
+          TextField(
+            controller: _phoneController,
+            keyboardType: TextInputType.phone,
+            decoration: InputDecoration(
+              labelText: 'Phone Number',
+              prefixIcon: Icon(Icons.phone, color: Color(0xFF7E57C2)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+          SizedBox(height: 16),
+          TextField(
+            controller: _upiIdController,
+            decoration: InputDecoration(
+              labelText: 'UPI ID',
+              hintText: 'yourname@paytm',
+              prefixIcon: Icon(Icons.payment, color: Color(0xFF7E57C2)),
+              helperText: 'Used for receiving payments',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+          SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              onPressed: _isLoading ? null : _updateProfile,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFF7E57C2),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: _isLoading
+                  ? SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : Text(
+                      'UPDATE PROFILE',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildMenuItems(bool isTablet) {
     final menuItems = [
       _MenuItem(Icons.work, 'Job History', Icons.chevron_right, onTap: () {}),
-      _MenuItem(Icons.attach_money, 'Earnings & Reports', Icons.chevron_right, onTap: () {}),
-      _MenuItem(Icons.business, 'Service Areas', Icons.chevron_right, onTap: () {}),
-      _MenuItem(Icons.local_shipping, 'Vehicle Details', Icons.chevron_right, onTap: () {}),
-      _MenuItem(Icons.notifications, 'Notifications', Icons.chevron_right, onTap: () {}),
-      _MenuItem(Icons.help, 'Help & Support', Icons.chevron_right, onTap: () {}),
-      _MenuItem(Icons.security, 'Privacy & Security', Icons.chevron_right, onTap: () {}),
+      _MenuItem(
+        Icons.attach_money,
+        'Earnings & Reports',
+        Icons.chevron_right,
+        onTap: () {},
+      ),
+      _MenuItem(
+        Icons.business,
+        'Service Areas',
+        Icons.chevron_right,
+        onTap: () {},
+      ),
+      _MenuItem(
+        Icons.local_shipping,
+        'Vehicle Details',
+        Icons.chevron_right,
+        onTap: () {},
+      ),
+      _MenuItem(
+        Icons.notifications,
+        'Notifications',
+        Icons.chevron_right,
+        onTap: () {},
+      ),
+      _MenuItem(
+        Icons.help,
+        'Help & Support',
+        Icons.chevron_right,
+        onTap: () {},
+      ),
+      _MenuItem(
+        Icons.security,
+        'Privacy & Security',
+        Icons.chevron_right,
+        onTap: () {},
+      ),
       _MenuItem(Icons.settings, 'Settings', Icons.chevron_right, onTap: () {}),
-      _MenuItem(Icons.logout, 'Logout', Icons.chevron_right, 
-          isLogout: true, onTap: _handleLogout),
+      _MenuItem(
+        Icons.logout,
+        'Logout',
+        Icons.chevron_right,
+        isLogout: true,
+        onTap: _handleLogout,
+      ),
     ];
 
     return Container(
@@ -451,7 +800,9 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
         ],
       ),
       child: Column(
-        children: menuItems.map((item) => _buildMenuTile(item, isTablet)).toList(),
+        children: menuItems
+            .map((item) => _buildMenuTile(item, isTablet))
+            .toList(),
       ),
     );
   }
@@ -462,8 +813,9 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
         width: isTablet ? 48 : 40,
         height: isTablet ? 48 : 40,
         decoration: BoxDecoration(
-          color: item.isLogout ? Color(0xFFF44336).withOpacity(0.1) : 
-                 Color(0xFF7E57C2).withOpacity(0.1),
+          color: item.isLogout
+              ? Color(0xFFF44336).withOpacity(0.1)
+              : Color(0xFF7E57C2).withOpacity(0.1),
           borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
         ),
         child: Icon(
@@ -488,6 +840,17 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
       onTap: item.onTap,
     );
   }
+
+  @override
+  void dispose() {
+    _driverNameController.dispose();
+    _truckNumberController.dispose();
+    _truckTypeController.dispose();
+    _locationController.dispose();
+    _phoneController.dispose();
+    _upiIdController.dispose();
+    super.dispose();
+  }
 }
 
 class _MenuItem {
@@ -497,7 +860,10 @@ class _MenuItem {
   final bool isLogout;
   final VoidCallback onTap;
 
-  _MenuItem(this.icon, this.title, this.trailingIcon, {
+  _MenuItem(
+    this.icon,
+    this.title,
+    this.trailingIcon, {
     this.isLogout = false,
     required this.onTap,
   });

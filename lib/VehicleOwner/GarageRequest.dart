@@ -3854,7 +3854,6 @@ import 'dart:async';
 import 'dart:developer';
 import 'dart:math' hide log;
 
-import 'package:smart_road_app/controller/sharedprefrence.dart';
 import 'package:smart_road_app/VehicleOwner/notification.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -4669,14 +4668,16 @@ class _GarageServiceRequestScreenState
 
   void _stopLocationUpdates() {
     _positionStreamSubscription?.cancel();
-    setState(() {
-      _isLocationEnabled = false;
-      _isGettingLocation = false;
-    });
+    if (mounted) {
+      setState(() {
+        _isLocationEnabled = false;
+        _isGettingLocation = false;
+      });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Live location sharing stopped')),
-    );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Live location sharing stopped')),
+      );
+    }
   }
 
   Future<void> _updateLiveLocationInFirebase(Position position) async {
@@ -4805,13 +4806,23 @@ class _GarageServiceRequestScreenState
           .add(requestData);
 
       // 3. Save to Realtime Database for notifications
+      // Create a copy without FieldValue objects (Realtime DB doesn't support them)
+      final Map<String, dynamic> realtimeData = Map<String, dynamic>.from(requestData);
+      // Convert FieldValue.serverTimestamp() to milliseconds
+      realtimeData['createdAt'] = timestamp;
+      realtimeData['updatedAt'] = timestamp;
+      // Convert Timestamp to milliseconds for Realtime DB
+      if (realtimeData['preferredDate'] is Timestamp) {
+        realtimeData['preferredDate'] = (realtimeData['preferredDate'] as Timestamp).millisecondsSinceEpoch;
+      } else if (_preferredDate != null) {
+        realtimeData['preferredDate'] = _preferredDate!.millisecondsSinceEpoch;
+      }
+      
       final DatabaseReference dbRef = FirebaseDatabase.instance.ref();
       await dbRef.child('garage_requests').child(requestId).set({
-        ...requestData,
+        ...realtimeData,
         'notificationRead': false,
         'garageRead': false,
-        'preferredDate': _preferredDate
-            ?.millisecondsSinceEpoch, // Store as milliseconds for Realtime DB
       });
 
       // 4. Save initial live location if enabled
@@ -4830,9 +4841,13 @@ class _GarageServiceRequestScreenState
       }
 
       // 5. Create user notification
+      // Sanitize user ID for Realtime Database path (remove invalid characters)
+      final String sanitizedUserId = (_userId ?? 'unknown')
+          .replaceAll(RegExp(r'[\.#\$\[\]]'), '_');
+      
       final userNotificationRef = dbRef
           .child('notifications')
-          .child(_userId ?? 'unknown')
+          .child(sanitizedUserId)
           .push();
 
       await userNotificationRef.set({
@@ -4851,9 +4866,13 @@ class _GarageServiceRequestScreenState
       });
 
       // 6. Create garage notification
+      // Sanitize garage ID for Realtime Database path (remove invalid characters)
+      final String sanitizedGarageId = widget.selectedGarage.id
+          .replaceAll(RegExp(r'[\.#\$\[\]]'), '_');
+      
       final garageNotificationRef = dbRef
           .child('garage_notifications')
-          .child(widget.selectedGarage.id)
+          .child(sanitizedGarageId)
           .push();
 
       await garageNotificationRef.set({

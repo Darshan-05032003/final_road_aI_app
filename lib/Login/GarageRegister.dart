@@ -22,7 +22,7 @@
 //   Future<void> _saveCompanyProfile(User user) async {
 //     try {
 //       final userEmail = _emailController.text.trim();
-      
+
 //       final companyData = {
 //         'companyName': _companyNameController.text.trim(),
 //         'companyId': _companyIdController.text.trim(),
@@ -34,7 +34,7 @@
 //         'updatedAt': FieldValue.serverTimestamp(),
 //       };
 
-//       // Save to the correct Firebase structure: 
+//       // Save to the correct Firebase structure:
 //       // collection('garage').doc(_userEmail).collection("profile").doc()
 //       await FirebaseFirestore.instance
 //           .collection('garage')
@@ -57,7 +57,7 @@
 //   Future<void> _saveCompanyProfileWithAutoId(User user) async {
 //     try {
 //       final userEmail = _emailController.text.trim();
-      
+
 //       final companyData = {
 //         'companyName': _companyNameController.text.trim(),
 //         'companyId': _companyIdController.text.trim(),
@@ -130,12 +130,12 @@
 //       ScaffoldMessenger.of(context).showSnackBar(
 //         const SnackBar(content: Text("Registration successful!")),
 //       );
-      
+
 //       // Navigate after successful registration
 //       if (mounted) {
 //         Navigator.of(context).pop();
 //       }
-      
+
 //     } on FirebaseAuthException catch (e) {
 //       String errorMessage = "Registration failed: ";
 //       switch (e.code) {
@@ -157,7 +157,7 @@
 //         default:
 //           errorMessage = "An unexpected error occurred: ${e.message}";
 //       }
-      
+
 //       ScaffoldMessenger.of(context).showSnackBar(
 //         SnackBar(
 //           content: Text(errorMessage),
@@ -272,7 +272,7 @@
 //                   ),
 
 //                   const SizedBox(height: 20),
-                  
+
 //                   // Email Field
 //                   TextField(
 //                     controller: _emailController,
@@ -291,7 +291,7 @@
 //                   ),
 
 //                   const SizedBox(height: 20),
-                  
+
 //                   // Password Field
 //                   TextField(
 //                     controller: _passController,
@@ -451,7 +451,6 @@
 //   }
 // }
 
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -473,6 +472,7 @@ class _GarageRegistrationPageState extends State<GarageRegistrationPage> {
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _specialtiesController = TextEditingController();
+  final TextEditingController _upiIdController = TextEditingController();
 
   bool _isLoading = false;
   bool _locationLoading = false;
@@ -495,7 +495,7 @@ class _GarageRegistrationPageState extends State<GarageRegistrationPage> {
     'Denting & Painting',
     'Car Wash',
     'Wheel Alignment',
-    'Diagnostics'
+    'Diagnostics',
   ];
 
   // Method to get current location
@@ -510,9 +510,9 @@ class _GarageRegistrationPageState extends State<GarageRegistrationPage> {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Location permission denied')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Location permission denied')));
           setState(() {
             _locationLoading = false;
           });
@@ -542,7 +542,8 @@ class _GarageRegistrationPageState extends State<GarageRegistrationPage> {
       );
 
       Placemark place = placemarks[0];
-      String address = "${place.street}, ${place.locality}, ${place.administrativeArea}, ${place.postalCode}";
+      String address =
+          "${place.street}, ${place.locality}, ${place.administrativeArea}, ${place.postalCode}";
 
       setState(() {
         _shopLocation = position;
@@ -551,14 +552,15 @@ class _GarageRegistrationPageState extends State<GarageRegistrationPage> {
         _locationLoading = false;
       });
 
-      print('📍 Location captured: ${position.latitude}, ${position.longitude}');
+      print(
+        '📍 Location captured: ${position.latitude}, ${position.longitude}',
+      );
       print('🏠 Address: $address');
-
     } catch (e) {
       print('Error getting location: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to get location: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to get location: $e')));
       setState(() {
         _locationLoading = false;
       });
@@ -569,7 +571,7 @@ class _GarageRegistrationPageState extends State<GarageRegistrationPage> {
   Future<void> _saveGarageProfile(User user) async {
     try {
       final userEmail = _emailController.text.trim();
-      
+
       if (_shopLocation == null) {
         throw Exception("Please select shop location");
       }
@@ -579,6 +581,7 @@ class _GarageRegistrationPageState extends State<GarageRegistrationPage> {
         'ownerName': _ownerNameController.text.trim(),
         'email': userEmail,
         'phone': _phoneController.text.trim(),
+        'upiId': _upiIdController.text.trim(),
         'userId': user.uid,
         'userType': 'garage',
         'shopAddress': _addressController.text.trim(),
@@ -601,7 +604,6 @@ class _GarageRegistrationPageState extends State<GarageRegistrationPage> {
 
       print("✅ Garage profile saved successfully!");
       print("📊 Garage data: $garageData");
-
     } on FirebaseException catch (e) {
       print("❌ Firestore error: ${e.code} - ${e.message}");
       throw Exception("Failed to save garage profile: ${e.message}");
@@ -617,9 +619,12 @@ class _GarageRegistrationPageState extends State<GarageRegistrationPage> {
         _ownerNameController.text.isEmpty ||
         _emailController.text.isEmpty ||
         _passwordController.text.isEmpty ||
-        _phoneController.text.isEmpty) {
+        _phoneController.text.isEmpty ||
+        _upiIdController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please fill in all required fields")),
+        const SnackBar(
+          content: Text("Please fill in all required fields including UPI ID"),
+        ),
       );
       return;
     }
@@ -648,6 +653,22 @@ class _GarageRegistrationPageState extends State<GarageRegistrationPage> {
       return;
     }
 
+    // Validate UPI ID format if provided
+    final upiId = _upiIdController.text.trim();
+    if (upiId.isNotEmpty) {
+      final upiRegex = RegExp(r'^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$');
+      if (!upiRegex.hasMatch(upiId)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              "Please enter a valid UPI ID format (e.g., yourname@paytm)",
+            ),
+          ),
+        );
+        return;
+      }
+    }
+
     setState(() {
       _isLoading = true;
     });
@@ -664,36 +685,44 @@ class _GarageRegistrationPageState extends State<GarageRegistrationPage> {
       await _saveGarageProfile(userCredential.user!);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Registration successful! Your garage is now visible to customers.")),
+        const SnackBar(
+          content: Text(
+            "Registration successful! Your garage is now visible to customers.",
+          ),
+        ),
       );
-      
+
       // Navigate after successful registration
       if (mounted) {
         Navigator.of(context).pop();
       }
-      
     } on FirebaseAuthException catch (e) {
       String errorMessage = "Registration failed: ";
       switch (e.code) {
         case 'email-already-in-use':
-          errorMessage = "This email is already registered. Please use a different email or login.";
+          errorMessage =
+              "This email is already registered. Please use a different email or login.";
           break;
         case 'weak-password':
-          errorMessage = "Password is too weak. Please use a stronger password.";
+          errorMessage =
+              "Password is too weak. Please use a stronger password.";
           break;
         case 'invalid-email':
-          errorMessage = "Invalid email address. Please check your email format.";
+          errorMessage =
+              "Invalid email address. Please check your email format.";
           break;
         case 'operation-not-allowed':
-          errorMessage = "Email/password accounts are not enabled. Please contact support.";
+          errorMessage =
+              "Email/password accounts are not enabled. Please contact support.";
           break;
         case 'network-request-failed':
-          errorMessage = "Network error. Please check your internet connection.";
+          errorMessage =
+              "Network error. Please check your internet connection.";
           break;
         default:
           errorMessage = "An unexpected error occurred: ${e.message}";
       }
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(errorMessage),
@@ -733,6 +762,7 @@ class _GarageRegistrationPageState extends State<GarageRegistrationPage> {
     _phoneController.dispose();
     _addressController.dispose();
     _specialtiesController.dispose();
+    _upiIdController.dispose();
     super.dispose();
   }
 
@@ -778,10 +808,7 @@ class _GarageRegistrationPageState extends State<GarageRegistrationPage> {
                     const SizedBox(height: 8),
                     const Text(
                       'Join our mechanic network',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.white70,
-                      ),
+                      style: TextStyle(fontSize: 16, color: Colors.white70),
                     ),
                   ],
                 ),
@@ -798,7 +825,10 @@ class _GarageRegistrationPageState extends State<GarageRegistrationPage> {
                     controller: _garageNameController,
                     decoration: InputDecoration(
                       labelText: 'Garage Name *',
-                      prefixIcon: Icon(Icons.build_circle_rounded, color: Colors.blue),
+                      prefixIcon: Icon(
+                        Icons.build_circle_rounded,
+                        color: Colors.blue,
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
@@ -810,7 +840,7 @@ class _GarageRegistrationPageState extends State<GarageRegistrationPage> {
                   ),
 
                   const SizedBox(height: 20),
-                  
+
                   // Owner Name Field
                   TextField(
                     controller: _ownerNameController,
@@ -828,7 +858,7 @@ class _GarageRegistrationPageState extends State<GarageRegistrationPage> {
                   ),
 
                   const SizedBox(height: 20),
-                  
+
                   // Email Field
                   TextField(
                     controller: _emailController,
@@ -847,7 +877,7 @@ class _GarageRegistrationPageState extends State<GarageRegistrationPage> {
                   ),
 
                   const SizedBox(height: 20),
-                  
+
                   // Password Field
                   TextField(
                     controller: _passwordController,
@@ -915,7 +945,9 @@ class _GarageRegistrationPageState extends State<GarageRegistrationPage> {
                           Text(
                             _shopAddress,
                             style: TextStyle(
-                              color: _shopLocation != null ? Colors.green[700] : Colors.grey,
+                              color: _shopLocation != null
+                                  ? Colors.green[700]
+                                  : Colors.grey,
                               fontSize: 14,
                             ),
                           ),
@@ -923,12 +955,14 @@ class _GarageRegistrationPageState extends State<GarageRegistrationPage> {
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton.icon(
-                              onPressed: _locationLoading ? null : _getCurrentLocation,
+                              onPressed: _locationLoading
+                                  ? null
+                                  : _getCurrentLocation,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.blue,
                                 foregroundColor: Colors.white,
                               ),
-                              icon: _locationLoading 
+                              icon: _locationLoading
                                   ? SizedBox(
                                       width: 16,
                                       height: 16,
@@ -938,7 +972,11 @@ class _GarageRegistrationPageState extends State<GarageRegistrationPage> {
                                       ),
                                     )
                                   : Icon(Icons.my_location),
-                              label: Text(_locationLoading ? 'Getting Location...' : 'Use Current Location'),
+                              label: Text(
+                                _locationLoading
+                                    ? 'Getting Location...'
+                                    : 'Use Current Location',
+                              ),
                             ),
                           ),
                           if (_shopLocation != null) ...[
@@ -978,6 +1016,27 @@ class _GarageRegistrationPageState extends State<GarageRegistrationPage> {
 
                   const SizedBox(height: 20),
 
+                  // UPI ID Field
+                  TextField(
+                    controller: _upiIdController,
+                    decoration: InputDecoration(
+                      labelText: 'UPI ID *',
+                      hintText: 'yourname@paytm',
+                      prefixIcon: Icon(Icons.payment, color: Colors.blue),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Colors.blue),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      helperText:
+                          'Required for receiving payments (e.g., yourname@paytm, yourname@ybl)',
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
                   // Services Selection
                   Card(
                     elevation: 2,
@@ -1009,7 +1068,9 @@ class _GarageRegistrationPageState extends State<GarageRegistrationPage> {
                             spacing: 8,
                             runSpacing: 8,
                             children: _availableServices.map((service) {
-                              final isSelected = _selectedServices.contains(service);
+                              final isSelected = _selectedServices.contains(
+                                service,
+                              );
                               return FilterChip(
                                 label: Text(service),
                                 selected: isSelected,
@@ -1025,7 +1086,9 @@ class _GarageRegistrationPageState extends State<GarageRegistrationPage> {
                                 selectedColor: Colors.blue.withOpacity(0.2),
                                 checkmarkColor: Colors.blue,
                                 labelStyle: TextStyle(
-                                  color: isSelected ? Colors.blue : Colors.grey[700],
+                                  color: isSelected
+                                      ? Colors.blue
+                                      : Colors.grey[700],
                                 ),
                               );
                             }).toList(),
@@ -1115,9 +1178,11 @@ class _GarageRegistrationPageState extends State<GarageRegistrationPage> {
                     children: [
                       const Text("Already registered? "),
                       GestureDetector(
-                        onTap: _isLoading ? null : () {
-                          Navigator.pop(context);
-                        },
+                        onTap: _isLoading
+                            ? null
+                            : () {
+                                Navigator.pop(context);
+                              },
                         child: Text(
                           'Login here',
                           style: TextStyle(
@@ -1133,10 +1198,7 @@ class _GarageRegistrationPageState extends State<GarageRegistrationPage> {
                   const SizedBox(height: 10),
                   const Text(
                     '* Required fields',
-                    style: TextStyle(
-                      color: Colors.grey,
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: Colors.grey, fontSize: 12),
                   ),
                 ],
               ),

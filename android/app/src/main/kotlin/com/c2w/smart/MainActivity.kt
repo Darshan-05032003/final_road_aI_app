@@ -1,4 +1,4 @@
-package com.example.smart_road_app
+package com.c2w.smart
 
 import io.flutter.embedding.android.FlutterActivity
 

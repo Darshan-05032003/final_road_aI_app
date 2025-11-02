@@ -421,6 +421,7 @@ import 'package:smart_road_app/garage/garageDashboardd.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:smart_road_app/services/google_auth_service.dart';
 
 class GarageLoginPage extends StatefulWidget {
   const GarageLoginPage({super.key});
@@ -449,18 +450,47 @@ class _GarageLoginPageState extends State<GarageLoginPage> {
   // Check if user is already logged in
   Future<void> _checkLoginStatus() async {
     try {
+      // First check if user is authenticated with Firebase Auth
+      final currentUser = FirebaseAuth.instance.currentUser;
+      
+      if (currentUser == null) {
+        // Not authenticated, clear any stale SharedPreferences
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool(_isLoggedInKey, false);
+        await prefs.remove(_userEmailKey);
+        return;
+      }
+
+      // User is authenticated, verify SharedPreferences matches
       final prefs = await SharedPreferences.getInstance();
       final isLoggedIn = prefs.getBool(_isLoggedInKey) ?? false;
+      final savedEmail = prefs.getString(_userEmailKey) ?? '';
 
-      if (isLoggedIn && mounted) {
+      // Only auto-navigate if both Firebase Auth and SharedPreferences indicate login
+      if (isLoggedIn && currentUser.email != null && currentUser.email == savedEmail && mounted) {
         // Auto-navigate to garage dashboard if already logged in
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (context) => GarageDashboard()),
           (route) => false,
         );
+      } else {
+        // Mismatch detected - clear stale data
+        await prefs.setBool(_isLoggedInKey, false);
+        await prefs.remove(_userEmailKey);
+        // Sign out from Firebase to be safe
+        await FirebaseAuth.instance.signOut();
       }
     } catch (e) {
       print('Error checking garage login status: $e');
+      // On error, ensure we're signed out
+      try {
+        await FirebaseAuth.instance.signOut();
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool(_isLoggedInKey, false);
+        await prefs.remove(_userEmailKey);
+      } catch (signOutError) {
+        print('Error during cleanup: $signOutError');
+      }
     }
   }
 
@@ -472,18 +502,6 @@ class _GarageLoginPageState extends State<GarageLoginPage> {
       await prefs.setString(_userEmailKey, email);
     } catch (e) {
       print('Error saving garage login state: $e');
-    }
-  }
-
-  // Clear login state from SharedPreferences
-  static Future<void> logout() async {
-    try {
-      await FirebaseAuth.instance.signOut();
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(_isLoggedInKey, false);
-      await prefs.remove(_userEmailKey);
-    } catch (e) {
-      print('Error during garage logout: $e');
     }
   }
 
@@ -520,6 +538,61 @@ class _GarageLoginPageState extends State<GarageLoginPage> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text("Error: $e")));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  // Google Sign-In method
+  Future<void> _signInWithGoogle() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final UserCredential? userCredential = await GoogleAuthService.signInWithGoogle();
+
+      if (userCredential != null && userCredential.user != null) {
+        // Save login state to SharedPreferences
+        await _saveLoginState(userCredential.user!.email ?? '');
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Google Sign-In successful"),
+              backgroundColor: Colors.green,
+            ),
+          );
+
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => GarageDashboard()),
+            (route) => false,
+          );
+        }
+      } else {
+        // User cancelled the sign-in
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Sign-In was cancelled"),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Google Sign-In failed: ${e.toString()}"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -736,6 +809,59 @@ class _GarageLoginPageState extends State<GarageLoginPage> {
                                             color: Colors.white,
                                           ),
                                         ),
+                                ),
+                              ),
+
+                              SizedBox(height: 20),
+
+                              // Divider with "OR"
+                              Row(
+                                children: [
+                                  Expanded(child: Divider()),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                                    child: Text(
+                                      'OR',
+                                      style: TextStyle(
+                                        color: Colors.grey[600],
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(child: Divider()),
+                                ],
+                              ),
+
+                              SizedBox(height: 20),
+
+                              // Google Sign-In Button
+                              SizedBox(
+                                width: double.infinity,
+                                height: 50,
+                                child: OutlinedButton.icon(
+                                  onPressed: _isLoading ? null : _signInWithGoogle,
+                                  icon: Image.network(
+                                    'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg',
+                                    height: 24,
+                                    width: 24,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Icon(Icons.g_mobiledata, size: 24, color: Colors.red[600]);
+                                    },
+                                  ),
+                                  label: Text(
+                                    'Continue with Google',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.grey[800],
+                                    ),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    side: BorderSide(color: Colors.grey[300]!),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
                                 ),
                               ),
 

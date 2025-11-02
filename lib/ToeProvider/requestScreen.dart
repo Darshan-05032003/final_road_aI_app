@@ -2,9 +2,9 @@ import 'dart:developer';
 
 import 'package:smart_road_app/ToeProvider/notificatinservice.dart';
 import 'package:smart_road_app/ToeProvider/notification.dart';
-import 'package:smart_road_app/VehicleOwner/notification.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_database/firebase_database.dart' hide Query;
 import 'package:url_launcher/url_launcher.dart';
 
 class IncomingRequestsScreen extends StatefulWidget {
@@ -222,10 +222,12 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen>
   }
 
   Widget _buildRequestsByCategory(String category) {
-    Query query = FirebaseFirestore.instance
-        .collection('owner')
-        .doc(_userEmail)
-        .collection("towrequest");
+    var query =
+        FirebaseFirestore.instance
+                .collection('owner')
+                .doc(_userEmail)
+                .collection("towrequest")
+            as Query<Map<String, dynamic>>;
 
     if (category != 'All') {
       query = query.where('status', isEqualTo: category.toLowerCase());
@@ -706,7 +708,7 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen>
               child: SizedBox(
                 height: 44,
                 child: ElevatedButton(
-                  onPressed: () => _completeRequest(request),
+                  onPressed: () => _showCompleteServiceDialog(request),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
                     shape: RoundedRectangleBorder(
@@ -856,11 +858,174 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen>
     }
   }
 
-  void _completeRequest(TowRequest request) async {
-    _showLoadingDialog('Completing request...');
+  Future<void> _showCompleteServiceDialog(TowRequest request) async {
+    final amountController = TextEditingController();
+    final upiIdController = TextEditingController();
+    final notesController = TextEditingController();
+
+    // Calculate distance-based amount or let provider enter
+    // You can calculate based on request.distance if available
+    // For now, let provider enter manually
+
+    // Try to get saved UPI ID from provider profile
+    bool hasSavedUpiId = false;
+    try {
+      // Check tow profile collection first
+      final profileDoc = await FirebaseFirestore.instance
+          .collection('tow')
+          .doc(_userEmail)
+          .collection('profile')
+          .doc('provider_details')
+          .get();
+
+      String? savedUpiId;
+      if (profileDoc.exists && profileDoc.data()?['upiId'] != null) {
+        savedUpiId = profileDoc.data()!['upiId'] as String?;
+      }
+
+      // If not found, check tow_providers collection
+      if (savedUpiId == null || savedUpiId.isEmpty) {
+        final towProviderDoc = await FirebaseFirestore.instance
+            .collection('tow_providers')
+            .doc(_userEmail)
+            .get();
+        if (towProviderDoc.exists && towProviderDoc.data()?['upiId'] != null) {
+          savedUpiId = towProviderDoc.data()!['upiId'] as String?;
+        }
+      }
+
+      if (savedUpiId != null && savedUpiId.isNotEmpty) {
+        upiIdController.text = savedUpiId;
+        hasSavedUpiId = true;
+      }
+    } catch (e) {
+      print('Could not load saved UPI ID: $e');
+    }
+
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Complete Service'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: amountController,
+                decoration: const InputDecoration(
+                  labelText: 'Service Amount *',
+                  hintText: 'Enter amount in ₹',
+                  prefixIcon: Icon(Icons.currency_rupee),
+                ),
+                keyboardType: TextInputType.number,
+                autofocus: true,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: upiIdController,
+                enabled: true, // Allow editing even if saved
+                decoration: InputDecoration(
+                  labelText: 'Your UPI ID *',
+                  hintText: 'yourname@paytm',
+                  prefixIcon: const Icon(Icons.payment),
+                  helperText: hasSavedUpiId
+                      ? 'Pre-filled from your profile. You can edit if needed.'
+                      : 'This will be used to receive payment',
+                  suffixIcon: hasSavedUpiId
+                      ? const Icon(Icons.check_circle, color: Colors.green)
+                      : null,
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: notesController,
+                decoration: const InputDecoration(
+                  labelText: 'Service Notes (Optional)',
+                  hintText: 'Any additional notes...',
+                  prefixIcon: Icon(Icons.note),
+                ),
+                maxLines: 3,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (amountController.text.trim().isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please enter service amount')),
+                );
+                return;
+              }
+              if (double.tryParse(amountController.text.trim()) == null ||
+                  double.parse(amountController.text.trim()) <= 0) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please enter valid amount')),
+                );
+                return;
+              }
+              if (upiIdController.text.trim().isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please enter your UPI ID')),
+                );
+                return;
+              }
+              Navigator.pop(context, true);
+            },
+            child: const Text('Mark Complete'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      final amount = double.parse(amountController.text.trim());
+      final upiId = upiIdController.text.trim();
+      final notes = notesController.text.trim();
+
+      await _completeServiceWithPayment(request, amount, upiId, notes);
+    }
+  }
+
+  Future<void> _completeServiceWithPayment(
+    TowRequest request,
+    double amount,
+    String upiId,
+    String notes,
+  ) async {
+    _showLoadingDialog('Completing service...');
 
     try {
-      await _updateRequestStatus(request.id, 'completed');
+      // Save UPI ID to provider profile
+      try {
+        await FirebaseFirestore.instance
+            .collection('tow')
+            .doc(_userEmail)
+            .collection('profile')
+            .doc('provider_details')
+            .update({
+              'upiId': upiId,
+              'updatedAt': FieldValue.serverTimestamp(),
+            });
+      } catch (e) {
+        print('Could not save UPI ID to profile: $e');
+      }
+
+      // Update request with completion and payment info
+      await _updateRequestStatusWithPayment(
+        request.id,
+        'completed',
+        amount,
+        upiId,
+        notes,
+        request,
+      );
 
       await FirebaseMessagingHandler.createLocalNotification(
         userEmail: _userEmail,
@@ -871,10 +1036,89 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen>
       );
 
       Navigator.pop(context);
-      _showSuccess('Request completed!');
+      _showSuccess(
+        'Service completed. Customer will be notified to pay ₹$amount',
+      );
     } catch (e) {
       Navigator.pop(context);
       _showError('Failed: $e');
+    }
+  }
+
+  Future<void> _updateRequestStatusWithPayment(
+    String requestId,
+    String status,
+    double amount,
+    String upiId,
+    String notes,
+    TowRequest request,
+  ) async {
+    // Update in owner's collection
+    await FirebaseFirestore.instance
+        .collection('owner')
+        .doc(_userEmail)
+        .collection("towrequest")
+        .doc(requestId)
+        .update({
+          'status': status,
+          'serviceAmount': amount,
+          'providerUpiId': upiId,
+          'paymentStatus': 'pending',
+          'completedAt': FieldValue.serverTimestamp(),
+          'serviceNotes': notes,
+          '${status}At': FieldValue.serverTimestamp(),
+        });
+
+    // Update in tow_requests collection if exists
+    try {
+      await FirebaseFirestore.instance
+          .collection('tow_requests')
+          .doc(requestId)
+          .update({
+            'status': status,
+            'serviceAmount': amount,
+            'providerUpiId': upiId,
+            'paymentStatus': 'pending',
+            'completedAt': FieldValue.serverTimestamp(),
+          });
+    } catch (e) {
+      print('Could not update tow_requests collection: $e');
+    }
+
+    // Send notification to customer
+    try {
+      final DatabaseReference dbRef = FirebaseDatabase.instance.ref();
+      // Get user ID from request - use requestId as identifier or find from Firestore
+      final requestDoc = await FirebaseFirestore.instance
+          .collection('owner')
+          .doc(_userEmail)
+          .collection('towrequest')
+          .doc(requestId)
+          .get();
+
+      final ownerEmail = requestDoc.data()?['userEmail'] ?? _userEmail;
+
+      final userNotificationRef = dbRef
+          .child('notifications')
+          .child(ownerEmail.replaceAll(RegExp(r'[\.#\$\[\]]'), '_'))
+          .push();
+
+      await userNotificationRef.set({
+        'id': userNotificationRef.key,
+        'requestId': requestId,
+        'title': 'Service Completed - Payment Pending 💰',
+        'message': 'Your tow service is completed. Please pay ₹$amount',
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+        'read': false,
+        'type': 'service_completed_payment_pending',
+        'vehicleNumber': request.vehicleNumber,
+        'providerName': request.name,
+        'status': 'completed',
+        'amount': amount,
+        'paymentStatus': 'pending',
+      });
+    } catch (e) {
+      print('Could not send notification: $e');
     }
   }
 

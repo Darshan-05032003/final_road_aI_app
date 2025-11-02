@@ -9,17 +9,33 @@ import 'package:smart_road_app/core/language/app_localizations.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Firebase first (check if already initialized)
+  try {
+    // Check if Firebase apps already exist
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: const FirebaseOptions(
+          apiKey: "AIzaSyCOfjtsUEcqxB5Zr7d5BvnRKKiz3fLqUuE",
+          appId: "1:210471346742:android:e0432932179a38707f6e97",
+          messagingSenderId: "210471346742",
+          projectId: "smart-4ebfc",
+          storageBucket: "gs://smart-4ebfc.firebasestorage.app",
+          databaseURL: "https://smart-4ebfc-default-rtdb.firebaseio.com/",
+        ),
+      );
+      print('Firebase initialized successfully');
+    } else {
+      print('Firebase already initialized');
+    }
+  } catch (e) {
+    print('Firebase initialization error: $e');
+    // Continue even if there's an error (Firebase might be auto-initialized)
+  }
+
+  // Initialize Firebase Messaging after Firebase is ready
   await FirebaseMessagingHandler.initialize();
-  await Firebase.initializeApp(
-    options: const FirebaseOptions(
-      apiKey: "AIzaSyCOfjtsUEcqxB5Zr7d5BvnRKKiz3fLqUuE",
-      appId: "1:210471346742:android:e0432932179a38707f6e97",
-      messagingSenderId: "210471346742",
-      projectId: "smart-4ebfc",
-      storageBucket: "gs://smart-4ebfc.firebasestorage.app",
-      databaseURL: "https://smart-4ebfc-default-rtdb.firebaseio.com/"
-    ),
-  );
+
   runApp(VoiceAssistantApp());
 }
 
@@ -39,7 +55,7 @@ class VoiceAssistantApp extends StatelessWidget {
             home: SplashScreen(),
             debugShowCheckedModeBanner: false,
             locale: languageService.currentLocale,
-            localizationsDelegates: const [
+            localizationsDelegates: [
               AppLocalizationsDelegate(),
               GlobalMaterialLocalizations.delegate,
               GlobalWidgetsLocalizations.delegate,
@@ -54,7 +70,9 @@ class VoiceAssistantApp extends StatelessWidget {
             // ADD THIS FOR BETTER PERFORMANCE
             builder: (context, child) {
               return MediaQuery(
-                data: MediaQuery.of(context).copyWith(textScaleFactor: 1.0),
+                data: MediaQuery.of(
+                  context,
+                ).copyWith(textScaler: const TextScaler.linear(1.0)),
                 child: child!,
               );
             },
@@ -63,4 +81,4 @@ class VoiceAssistantApp extends StatelessWidget {
       ),
     );
   }
-} 
+}

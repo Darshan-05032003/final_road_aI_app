@@ -3772,9 +3772,14 @@ class _TowServiceRequestScreenState extends State<TowServiceRequestScreen> {
           .add(requestData);
 
       // 3. Save to Realtime Database for notifications
+      // Create a copy without FieldValue objects (Realtime DB doesn't support them)
+      final Map<String, dynamic> realtimeData = Map<String, dynamic>.from(requestData);
+      // Ensure timestamp is in milliseconds format for Realtime DB
+      realtimeData['timestamp'] = timestamp;
+      
       final DatabaseReference dbRef = FirebaseDatabase.instance.ref();
       await dbRef.child('tow_requests').child(requestId).set({
-        ...requestData,
+        ...realtimeData,
         'notificationRead': false,
         'providerRead': false,
       });
@@ -3800,9 +3805,17 @@ class _TowServiceRequestScreenState extends State<TowServiceRequestScreen> {
       });
 
       // 5. Create provider notification
+      // Sanitize provider ID/email for Realtime Database path (remove invalid characters)
+      // Use ID if not empty, otherwise fallback to email
+      final String providerIdentifier = widget.selectedProvider.id.isNotEmpty 
+          ? widget.selectedProvider.id 
+          : widget.selectedProvider.email;
+      final String sanitizedProviderId = providerIdentifier
+          .replaceAll(RegExp(r'[\.#\$\[\]]'), '_');
+      
       final providerNotificationRef = dbRef
           .child('tow_provider_notifications')
-          .child(widget.selectedProvider.id)
+          .child(sanitizedProviderId)
           .push();
 
       await providerNotificationRef.set({

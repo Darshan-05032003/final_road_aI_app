@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "210471346742",
+    "firebase_url": "https://smart-4ebfc-default-rtdb.firebaseio.com",
+    "project_id": "smart-4ebfc",
+    "storage_bucket": "smart-4ebfc.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:210471346742:android:e0432932179a38707f6e97",
+        "android_client_info": {
+          "package_name": "com.c2w.smart"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "210471346742-rqbsj55he1hnfn71vqfhib68dj6h5n2j.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCOfjtsUEcqxB5Zr7d5BvnRKKiz3fLqUuE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "210471346742-rqbsj55he1hnfn71vqfhib68dj6h5n2j.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
