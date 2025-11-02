@@ -1,0 +1,4957 @@
+// // import 'package:smart_road_app/Login/VehicleOwneLogin.dart';
+// // import 'package:smart_road_app/VehicleOwner/GarageRequest.dart';
+// // import 'package:smart_road_app/VehicleOwner/History.dart';
+// // import 'package:smart_road_app/VehicleOwner/InsuranceRequest.dart';
+// // import 'package:smart_road_app/VehicleOwner/ProfilePage.dart';
+// // import 'package:smart_road_app/VehicleOwner/SpareParts.dart';
+// // import 'package:smart_road_app/VehicleOwner/TowRequest.dart';
+// // import 'package:smart_road_app/VehicleOwner/ai.dart';
+// // import 'package:smart_road_app/controller/sharedprefrence.dart';
+// // import 'package:firebase_auth/firebase_auth.dart';
+// // import 'package:flutter/material.dart';
+// // import 'package:flutter/services.dart';
+
+// // // Insurance Module Classes
+// // class InsuranceModule {
+// //   static List<Map<String, dynamic>> getInsuranceRequests() {
+// //     return [
+// //       {
+// //         'id': 'INS001',
+// //         'policyType': 'Comprehensive',
+// //         'status': 'Active',
+// //         'expiryDate': '2024-12-31',
+// //         'vehicleNumber': 'MH12AB1234',
+// //         'provider': 'ABC Insurance Co.',
+// //         'premium': '\$450',
+// //         'startDate': '2024-01-01',
+// //       },
+// //       {
+// //         'id': 'INS002',
+// //         'policyType': 'Third Party',
+// //         'status': 'Pending',
+// //         'expiryDate': '2024-06-30',
+// //         'vehicleNumber': 'MH12CD5678',
+// //         'provider': 'XYZ Insurance',
+// //         'premium': '\$200',
+// //         'startDate': '2024-01-15',
+// //       },
+// //     ];
+// //   }
+// // }
+
+// // // Main Dashboard Class
+// // class EnhancedVehicleDashboard extends StatefulWidget {
+// //   const EnhancedVehicleDashboard({super.key});
+
+// //   @override
+// //   _EnhancedVehicleDashboardState createState() => _EnhancedVehicleDashboardState();
+// // }
+
+// // class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
+// //     with SingleTickerProviderStateMixin {
+// //   int _currentIndex = 0;
+// //   late AnimationController _animationController;
+// //   late Animation<double> _scaleAnimation;
+// //   late Animation<double> _fadeAnimation;
+// //   String? _userEmail;
+
+// //   @override
+// //   void initState() {
+// //     super.initState();
+// //     _animationController = AnimationController(
+// //       vsync: this,
+// //       duration: Duration(milliseconds: 800),
+// //     );
+// //     _scaleAnimation = Tween<double>(begin: 0.95, end: 1.0).animate(
+// //       CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic),
+// //     );
+// //     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+// //       CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
+// //     );
+// //     _animationController.forward();
+// //     _loadUserData();
+// //   }
+
+// //   Future<void> _loadUserData() async {
+// //     try {
+// //       String? userEmail = await AuthService.getUserEmail();
+// //       setState(() {
+// //         _userEmail = userEmail;
+// //       });
+// //       print('✅ Dashboard loaded for user: $_userEmail');
+// //     } catch (e) {
+// //       print('❌ Error loading user data in dashboard: $e');
+// //     }
+// //   }
+
+// //   Map<String, dynamic> get _userData {
+// //     return {
+// //       'name': _userEmail?.split('@').first ?? 'User',
+// //       'email': _userEmail ?? 'user@example.com',
+// //       'vehicle': 'Toyota Camry 2022',
+// //       'plan': 'Gold Plan',
+// //       'memberSince': '2023',
+// //       'points': 450,
+// //       'nextService': '2024-02-20',
+// //       'emergencyContacts': ['+1-234-567-8900', '+1-234-567-8901']
+// //     };
+// //   }
+
+// //   @override
+// //   void dispose() {
+// //     _animationController.dispose();
+// //     super.dispose();
+// //   }
+
+// //   @override
+// //   Widget build(BuildContext context) {
+// //     return Scaffold(
+// //       backgroundColor: Colors.grey[50],
+// //       appBar: _buildEnhancedAppBar(),
+// //       drawer: _buildEnhancedDrawer(),
+// //       body: FadeTransition(
+// //         opacity: _fadeAnimation,
+// //         child: ScaleTransition(
+// //           scale: _scaleAnimation,
+// //           child: _getCurrentScreen(),
+// //         ),
+// //       ),
+// //       bottomNavigationBar: _buildEnhancedBottomNavigationBar(),
+// //     );
+// //   }
+
+// //   AppBar _buildEnhancedAppBar() {
+// //     return AppBar(
+// //       title: Column(
+// //         crossAxisAlignment: CrossAxisAlignment.start,
+// //         children: [
+// //           Text(
+// //             'AutoConnect',
+// //             style: TextStyle(
+// //               fontWeight: FontWeight.w800,
+// //               fontSize: 22,
+// //               color: Colors.white,
+// //             ),
+// //           ),
+// //           Text(
+// //             'Always here to help',
+// //             style: TextStyle(
+// //               fontSize: 12,
+// //               color: Colors.white70,
+// //             ),
+// //           ),
+// //         ],
+// //       ),
+// //       backgroundColor: Color(0xFF6D28D9),
+// //       foregroundColor: Colors.white,
+// //       elevation: 0,
+// //       shape: RoundedRectangleBorder(
+// //         borderRadius: BorderRadius.only(
+// //           bottomLeft: Radius.circular(20),
+// //           bottomRight: Radius.circular(20),
+// //         ),
+// //       ),
+// //       actions: [
+// //         IconButton(
+// //           icon: Icon(Icons.auto_awesome),
+// //           onPressed: (){
+// //             Navigator.of(context).push(MaterialPageRoute(builder: (context)=>VehicleDamageAnalyzer()));
+// //           },
+// //           tooltip: 'AI Assistance',
+// //         ),
+// //       ],
+// //     );
+// //   }
+
+// //   Widget _buildEnhancedDrawer() {
+// //     return Drawer(
+// //       child: Container(
+// //         decoration: BoxDecoration(
+// //           gradient: LinearGradient(
+// //             begin: Alignment.topLeft,
+// //             end: Alignment.bottomRight,
+// //             colors: [Color(0xFF6D28D9), Color(0xFF8B5CF6)],
+// //           ),
+// //         ),
+// //         child: ListView(
+// //           padding: EdgeInsets.zero,
+// //           children: [
+// //             _buildDrawerHeader(),
+// //             _buildDrawerItem(
+// //               icon: Icons.dashboard_rounded,
+// //               title: 'Dashboard',
+// //               onTap: () => _navigateToIndex(0),
+// //             ),
+// //             _buildDrawerItem(
+// //               icon: Icons.security_rounded,
+// //               title: 'Insurance',
+// //               onTap: () => _navigateToIndex(3),
+// //             ),
+// //             _buildDrawerItem(
+// //               icon: Icons.build_circle_rounded,
+// //               title: 'Spare Parts',
+// //               onTap: _showSpareParts,
+// //             ),
+// //             _buildDrawerItem(
+// //               icon: Icons.history_rounded,
+// //               title: 'Service History',
+// //               onTap: () => _navigateToIndex(2),
+// //             ),
+// //             _buildDrawerItem(
+// //               icon: Icons.logout_rounded,
+// //               title: 'Logout',
+// //               onTap: _logout,
+// //               color: Colors.red[300],
+// //             ),
+// //           ],
+// //         ),
+// //       ),
+// //     );
+// //   }
+
+// //   Widget _buildDrawerHeader() {
+// //     return Container(
+// //       padding: EdgeInsets.only(top: 60, bottom: 20, left: 20, right: 20),
+// //       decoration: BoxDecoration(
+// //         color: Color(0xFF5B21B6).withOpacity(0.8),
+// //       ),
+// //       child: Column(
+// //         children: [
+// //           CircleAvatar(
+// //             radius: 40,
+// //             backgroundColor: Colors.white,
+// //             child: Icon(
+// //               Icons.person_rounded,
+// //               size: 50,
+// //               color: Color(0xFF6D28D9),
+// //             ),
+// //           ),
+// //           SizedBox(height: 16),
+// //           Text(
+// //             _userData['name'],
+// //             style: TextStyle(
+// //               color: Colors.white,
+// //               fontSize: 20,
+// //               fontWeight: FontWeight.bold,
+// //             ),
+// //           ),
+// //           SizedBox(height: 4),
+// //           Text(
+// //             _userData['email'],
+// //             style: TextStyle(
+// //               color: Colors.white70,
+// //               fontSize: 14,
+// //             ),
+// //           ),
+// //           SizedBox(height: 8),
+// //           Container(
+// //             padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+// //             decoration: BoxDecoration(
+// //               color: Colors.amber.withOpacity(0.2),
+// //               borderRadius: BorderRadius.circular(12),
+// //               border: Border.all(color: Colors.amber),
+// //             ),
+// //             child: Row(
+// //               mainAxisSize: MainAxisSize.min,
+// //               children: [
+// //                 Icon(Icons.auto_awesome, color: Colors.amber, size: 16),
+// //                 SizedBox(width: 4),
+// //                 Text(
+// //                   '${_userData['points']} Points',
+// //                   style: TextStyle(
+// //                     color: Colors.amber,
+// //                     fontWeight: FontWeight.bold,
+// //                     fontSize: 12,
+// //                   ),
+// //                 ),
+// //               ],
+// //             ),
+// //           ),
+// //         ],
+// //       ),
+// //     );
+// //   }
+
+// //   Widget _buildDrawerItem({
+// //     required IconData icon,
+// //     required String title,
+// //     required VoidCallback onTap,
+// //     Color? color,
+// //   }) {
+// //     return ListTile(
+// //       leading: Container(
+// //         width: 40,
+// //         height: 40,
+// //         decoration: BoxDecoration(
+// //           color: Colors.white.withOpacity(0.1),
+// //           borderRadius: BorderRadius.circular(10),
+// //         ),
+// //         child: Icon(icon, color: color ?? Colors.white70, size: 20),
+// //       ),
+// //       title: Text(
+// //         title,
+// //         style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+// //       ),
+// //       onTap: onTap,
+// //       hoverColor: Colors.white.withOpacity(0.1),
+// //     );
+// //   }
+
+// //   Widget _getCurrentScreen() {
+// //     switch (_currentIndex) {
+// //       case 0:
+// //         return EnhancedHomeScreenWithInsurance(
+// //           userData: _userData,
+// //           insuranceRequests: InsuranceModule.getInsuranceRequests(),
+// //         );
+// //       case 1:
+// //         return EnhancedServicesScreen();
+// //       case 2:
+// //         return EnhancedHistoryScreen(userEmail: _userEmail ?? 'avi@gmail.com', serviceHistory: []);
+// //       case 3:
+// //         return RequestInsuranceScreen();
+// //       case 4:
+// //         return EnhancedProfileScreen(userEmail: _userEmail ?? 'avi@gmail.com', serviceHistory: []);
+// //       default:
+// //         return EnhancedHomeScreenWithInsurance(
+// //           userData: _userData,
+// //           insuranceRequests: InsuranceModule.getInsuranceRequests(),
+// //         );
+// //     }
+// //   }
+
+// //   Widget _buildEnhancedBottomNavigationBar() {
+// //     return Container(
+// //       decoration: BoxDecoration(
+// //         borderRadius: BorderRadius.only(
+// //           topLeft: Radius.circular(20),
+// //           topRight: Radius.circular(20),
+// //         ),
+// //         boxShadow: [
+// //           BoxShadow(
+// //             color: Colors.purple.withOpacity(0.1),
+// //             blurRadius: 20,
+// //             offset: Offset(0, -5),
+// //           ),
+// //         ],
+// //       ),
+// //       child: ClipRRect(
+// //         borderRadius: BorderRadius.only(
+// //           topLeft: Radius.circular(20),
+// //           topRight: Radius.circular(20),
+// //         ),
+// //         child: BottomNavigationBar(
+// //           currentIndex: _currentIndex,
+// //           onTap: (index) {
+// //             setState(() {
+// //               _currentIndex = index;
+// //               _animationController.reset();
+// //               _animationController.forward();
+// //             });
+// //           },
+// //           type: BottomNavigationBarType.fixed,
+// //           backgroundColor: Colors.white,
+// //           selectedItemColor: Color(0xFF6D28D9),
+// //           unselectedItemColor: Colors.grey[600],
+// //           selectedLabelStyle: TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+// //           unselectedLabelStyle: TextStyle(fontSize: 12),
+// //           items: [
+// //             BottomNavigationBarItem(
+// //               icon: Icon(Icons.home_rounded),
+// //               activeIcon: Container(
+// //                 padding: EdgeInsets.all(8),
+// //                 decoration: BoxDecoration(
+// //                   color: Color(0xFF6D28D9).withOpacity(0.1),
+// //                   shape: BoxShape.circle,
+// //                 ),
+// //                 child: Icon(Icons.home_rounded, color: Color(0xFF6D28D9)),
+// //               ),
+// //               label: 'Home',
+// //             ),
+// //             BottomNavigationBarItem(
+// //               icon: Icon(Icons.handyman_rounded),
+// //               activeIcon: Container(
+// //                 padding: EdgeInsets.all(8),
+// //                 decoration: BoxDecoration(
+// //                   color: Color(0xFF6D28D9).withOpacity(0.1),
+// //                   shape: BoxShape.circle,
+// //                 ),
+// //                 child: Icon(Icons.handyman_rounded, color: Color(0xFF6D28D9)),
+// //               ),
+// //               label: 'Services',
+// //             ),
+// //             BottomNavigationBarItem(
+// //               icon: Icon(Icons.history_rounded),
+// //               activeIcon: Container(
+// //                 padding: EdgeInsets.all(8),
+// //                 decoration: BoxDecoration(
+// //                   color: Color(0xFF6D28D9).withOpacity(0.1),
+// //                   shape: BoxShape.circle,
+// //                 ),
+// //                 child: Icon(Icons.history_rounded, color: Color(0xFF6D28D9)),
+// //               ),
+// //               label: 'History',
+// //             ),
+// //             BottomNavigationBarItem(
+// //               icon: Icon(Icons.security_rounded),
+// //               activeIcon: Container(
+// //                 padding: EdgeInsets.all(8),
+// //                 decoration: BoxDecoration(
+// //                   color: Color(0xFF6D28D9).withOpacity(0.1),
+// //                   shape: BoxShape.circle,
+// //                 ),
+// //                 child: Icon(Icons.security_rounded, color: Color(0xFF6D28D9)),
+// //               ),
+// //               label: 'Insurance',
+// //             ),
+// //             BottomNavigationBarItem(
+// //               icon: Icon(Icons.person_rounded),
+// //               activeIcon: Container(
+// //                 padding: EdgeInsets.all(8),
+// //                 decoration: BoxDecoration(
+// //                   color: Color(0xFF6D28D9).withOpacity(0.1),
+// //                   shape: BoxShape.circle,
+// //                 ),
+// //                 child: Icon(Icons.person_rounded, color: Color(0xFF6D28D9)),
+// //               ),
+// //               label: 'Profile',
+// //             ),
+// //           ],
+// //         ),
+// //       ),
+// //     );
+// //   }
+
+// //   void _navigateToIndex(int index) {
+// //     setState(() {
+// //       _currentIndex = index;
+// //     });
+// //     Navigator.pop(context);
+// //   }
+
+// //   void _showSpareParts() {
+// //     Navigator.of(context).push(MaterialPageRoute(builder: (context)=>SparePartsStore()));
+// //     Navigator.pop(context);
+// //   }
+
+// //   // FIXED LOGOUT FUNCTION - 100% WORKING
+// //   void _logout() async {
+// //     print('🚪 Logout button pressed...');
+
+// //     // Close drawer first
+// //     Navigator.pop(context);
+
+// //     // Show confirmation dialog
+// //     showDialog(
+// //       context: context,
+// //       barrierDismissible: false,
+// //       builder: (BuildContext context) {
+// //         return AlertDialog(
+// //           title: Text('Logout Confirmation'),
+// //           content: Text('Are you sure you want to logout?'),
+// //           actions: [
+// //             TextButton(
+// //               onPressed: () {
+// //                 Navigator.of(context).pop(); // Close dialog
+// //                 print('❌ Logout cancelled by user');
+// //               },
+// //               child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
+// //             ),
+// //             TextButton(
+// //               onPressed: () async {
+// //                 Navigator.of(context).pop(); // Close dialog
+// //                 print('✅ User confirmed logout');
+
+// //                 try {
+// //                   // Show loading
+// //                   showDialog(
+// //                     context: context,
+// //                     barrierDismissible: false,
+// //                     builder: (BuildContext context) {
+// //                       return Dialog(
+// //                         child: Padding(
+// //                           padding: EdgeInsets.all(20),
+// //                           child: Row(
+// //                             mainAxisSize: MainAxisSize.min,
+// //                             children: [
+// //                               CircularProgressIndicator(),
+// //                               SizedBox(width: 20),
+// //                               Text("Logging out..."),
+// //                             ],
+// //                           ),
+// //                         ),
+// //                       );
+// //                     },
+// //                   );
+
+// //                   // 1. Clear shared preferences
+// //                   print('🗑️ Clearing shared preferences...');
+// //                   await AuthService.clearLoginData();
+
+// //                   // 2. Sign out from Firebase
+// //                   print('🔥 Signing out from Firebase...');
+// //                   await FirebaseAuth.instance.signOut();
+
+// //                   // 3. Close loading dialog
+// //                   Navigator.of(context).pop();
+
+// //                   // 4. Navigate to login page and remove all routes
+// //                   print('🔄 Navigating to login page...');
+// //                   Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+// //   MaterialPageRoute(builder: (context) => VehicleLoginPage()),
+// //   (Route<dynamic> route) => false,
+// // );
+
+// //                   print('🎉 Logout completed successfully!');
+
+// //                 } catch (e) {
+// //                   print('❌ Error during logout: $e');
+
+// //                   // Close loading dialog if still open
+// //                   if (Navigator.canPop(context)) {
+// //                     Navigator.of(context).pop();
+// //                   }
+
+// //                   ScaffoldMessenger.of(context).showSnackBar(
+// //                     SnackBar(
+// //                       content: Text('Logout failed. Please try again.'),
+// //                       backgroundColor: Colors.red,
+// //                     ),
+// //                   );
+// //                 }
+// //               },
+// //               child: Text('Logout', style: TextStyle(color: Colors.red)),
+// //             ),
+// //           ],
+// //         );
+// //       },
+// //     );
+// //   }
+// // }
+
+// // // Enhanced Home Screen with Insurance Integration
+// // class EnhancedHomeScreenWithInsurance extends StatelessWidget {
+// //   final Map<String, dynamic> userData;
+// //   final List<Map<String, dynamic>> insuranceRequests;
+
+// //   const EnhancedHomeScreenWithInsurance({
+// //     super.key,
+// //     required this.userData,
+// //     required this.insuranceRequests,
+// //   });
+
+// //   @override
+// //   Widget build(BuildContext context) {
+// //     return SingleChildScrollView(
+// //       padding: EdgeInsets.all(16),
+// //       child: Column(
+// //         children: [
+// //           _buildWelcomeCard(),
+// //           SizedBox(height: 20),
+// //           _buildQuickActions(context),
+// //           SizedBox(height: 20),
+// //           _buildInsuranceReminder(context),
+// //           SizedBox(height: 20),
+// //           _buildQuickStats(),
+// //         ],
+// //       ),
+// //     );
+// //   }
+
+// //   Widget _buildWelcomeCard() {
+// //     return Container(
+// //       width: double.infinity,
+// //       padding: EdgeInsets.all(20),
+// //       decoration: BoxDecoration(
+// //         gradient: LinearGradient(
+// //           begin: Alignment.topLeft,
+// //           end: Alignment.bottomRight,
+// //           colors: [Color(0xFF6D28D9), Color(0xFF8B5CF6)],
+// //         ),
+// //         borderRadius: BorderRadius.circular(20),
+// //         boxShadow: [
+// //           BoxShadow(
+// //             color: Color(0xFF6D28D9).withOpacity(0.3),
+// //             blurRadius: 20,
+// //             offset: Offset(0, 8),
+// //           ),
+// //         ],
+// //       ),
+// //       child: Column(
+// //         crossAxisAlignment: CrossAxisAlignment.start,
+// //         children: [
+// //           Row(
+// //             children: [
+// //               CircleAvatar(
+// //                 backgroundColor: Colors.white,
+// //                 child: Icon(Icons.person_rounded, color: Color(0xFF6D28D9)),
+// //               ),
+// //               SizedBox(width: 12),
+// //               Expanded(
+// //                 child: Column(
+// //                   crossAxisAlignment: CrossAxisAlignment.start,
+// //                   children: [
+// //                     Text(
+// //                       'Welcome back, ${userData['name'].split(' ')[0]}! 👋',
+// //                       style: TextStyle(
+// //                         color: Colors.white,
+// //                         fontSize: 18,
+// //                         fontWeight: FontWeight.bold,
+// //                       ),
+// //                     ),
+// //                     Text(
+// //                       'Your ${userData['plan']} is active',
+// //                       style: TextStyle(color: Colors.white70),
+// //                     ),
+// //                   ],
+// //                 ),
+// //               ),
+// //             ],
+// //           ),
+// //           SizedBox(height: 15),
+// //           Container(
+// //             padding: EdgeInsets.all(12),
+// //             decoration: BoxDecoration(
+// //               color: Colors.white.withOpacity(0.1),
+// //               borderRadius: BorderRadius.circular(12),
+// //             ),
+// //             child: Row(
+// //               children: [
+// //                 Icon(Icons.auto_awesome_rounded, color: Colors.amber, size: 16),
+// //                 SizedBox(width: 8),
+// //                 Text(
+// //                   '${userData['points']} Reward Points',
+// //                   style: TextStyle(color: Colors.white),
+// //                 ),
+// //                 Spacer(),
+// //                 Icon(Icons.calendar_today_rounded, color: Colors.white70, size: 14),
+// //                 SizedBox(width: 4),
+// //                 Text(
+// //                   'Next: ${userData['nextService']}',
+// //                   style: TextStyle(color: Colors.white70, fontSize: 12),
+// //                 ),
+// //               ],
+// //             ),
+// //           ),
+// //         ],
+// //       ),
+// //     );
+// //   }
+
+// //   Widget _buildQuickActions(BuildContext context) {
+// //     return Row(
+// //       children: [
+// //         Expanded(
+// //           child: _buildQuickActionItem(
+// //             icon: Icons.security_rounded,
+// //             title: 'Insurance',
+// //             color: Colors.purple,
+// //             onTap: () => Navigator.push(
+// //               context,
+// //               MaterialPageRoute(builder: (context) => RequestInsuranceScreen()),
+// //             ),
+// //           ),
+// //         ),
+// //         SizedBox(width: 12),
+// //         Expanded(
+// //           child: _buildQuickActionItem(
+// //             icon: Icons.location_on_rounded,
+// //             title: 'Track Service',
+// //             color: Colors.blue,
+// //             onTap: () => _showComingSoon(context, 'Track Service'),
+// //           ),
+// //         ),
+// //         SizedBox(width: 12),
+// //         Expanded(
+// //           child: _buildQuickActionItem(
+// //             icon: Icons.schedule_rounded,
+// //             title: 'Schedule',
+// //             color: Colors.green,
+// //             onTap: () => _showComingSoon(context, 'Schedule'),
+// //           ),
+// //         ),
+// //       ],
+// //     );
+// //   }
+
+// //   Widget _buildQuickActionItem({
+// //     required IconData icon,
+// //     required String title,
+// //     required Color color,
+// //     VoidCallback? onTap,
+// //   }) {
+// //     return GestureDetector(
+// //       onTap: onTap,
+// //       child: Container(
+// //         padding: EdgeInsets.all(16),
+// //         decoration: BoxDecoration(
+// //           color: Colors.white,
+// //           borderRadius: BorderRadius.circular(15),
+// //           boxShadow: [
+// //             BoxShadow(
+// //               color: Colors.grey.withOpacity(0.1),
+// //               blurRadius: 10,
+// //               offset: Offset(0, 3),
+// //             ),
+// //           ],
+// //         ),
+// //         child: Column(
+// //           children: [
+// //             Container(
+// //               padding: EdgeInsets.all(8),
+// //               decoration: BoxDecoration(
+// //                 color: color.withOpacity(0.1),
+// //                 borderRadius: BorderRadius.circular(10),
+// //               ),
+// //               child: Icon(icon, color: color, size: 20),
+// //             ),
+// //             SizedBox(height: 8),
+// //             Text(
+// //               title,
+// //               style: TextStyle(
+// //                 fontSize: 12,
+// //                 fontWeight: FontWeight.w600,
+// //                 color: Colors.grey[700],
+// //               ),
+// //             ),
+// //           ],
+// //         ),
+// //       ),
+// //     );
+// //   }
+
+// //   Widget _buildInsuranceReminder(BuildContext context) {
+// //     final activePolicy = insuranceRequests.firstWhere(
+// //       (policy) => policy['status'] == 'Active',
+// //       orElse: () => {},
+// //     );
+
+// //     if (activePolicy.isEmpty) {
+// //       return Container(
+// //         padding: EdgeInsets.all(16),
+// //         decoration: BoxDecoration(
+// //           color: Colors.orange[50],
+// //           borderRadius: BorderRadius.circular(15),
+// //           border: Border.all(color: Colors.orange),
+// //         ),
+// //         child: Row(
+// //           children: [
+// //             Icon(Icons.warning_amber_rounded, color: Colors.orange),
+// //             SizedBox(width: 12),
+// //             Expanded(
+// //               child: Column(
+// //                 crossAxisAlignment: CrossAxisAlignment.start,
+// //                 children: [
+// //                   Text(
+// //                     'No Active Insurance',
+// //                     style: TextStyle(
+// //                       fontWeight: FontWeight.bold,
+// //                       color: Colors.orange[800],
+// //                     ),
+// //                   ),
+// //                   Text(
+// //                     'Get your vehicle insured today',
+// //                     style: TextStyle(color: Colors.orange[700], fontSize: 12),
+// //                   ),
+// //                 ],
+// //               ),
+// //             ),
+// //             ElevatedButton(
+// //               onPressed: () => Navigator.push(
+// //                 context,
+// //                 MaterialPageRoute(builder: (context) => RequestInsuranceScreen()),
+// //               ),
+// //               style: ElevatedButton.styleFrom(
+// //                 backgroundColor: Colors.orange,
+// //                 foregroundColor: Colors.white,
+// //                 padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+// //               ),
+// //               child: Text('Get Insurance'),
+// //             ),
+// //           ],
+// //         ),
+// //       );
+// //     }
+
+// //     return Container();
+// //   }
+
+// //   Widget _buildQuickStats() {
+// //     return Row(
+// //       children: [
+// //         Expanded(
+// //           child: _buildStatCard(
+// //             title: 'Services Used',
+// //             value: '3',
+// //             subtitle: 'This month',
+// //             color: Color(0xFF6D28D9),
+// //           ),
+// //         ),
+// //         SizedBox(width: 12),
+// //         Expanded(
+// //           child: _buildStatCard(
+// //             title: 'Insurance',
+// //             value: 'Active',
+// //             subtitle: 'Comprehensive',
+// //             color: Colors.green,
+// //           ),
+// //         ),
+// //         SizedBox(width: 12),
+// //         Expanded(
+// //           child: _buildStatCard(
+// //             title: 'Savings',
+// //             value: '\$85',
+// //             subtitle: 'Total',
+// //             color: Colors.blue,
+// //           ),
+// //         ),
+// //       ],
+// //     );
+// //   }
+
+// //   Widget _buildStatCard({
+// //     required String title,
+// //     required String value,
+// //     required String subtitle,
+// //     required Color color,
+// //   }) {
+// //     return Container(
+// //       padding: EdgeInsets.all(16),
+// //       decoration: BoxDecoration(
+// //         color: Colors.white,
+// //         borderRadius: BorderRadius.circular(15),
+// //         boxShadow: [
+// //           BoxShadow(
+// //             color: Colors.grey.withOpacity(0.1),
+// //             blurRadius: 10,
+// //             offset: Offset(0, 3),
+// //           ),
+// //         ],
+// //       ),
+// //       child: Column(
+// //         crossAxisAlignment: CrossAxisAlignment.start,
+// //         children: [
+// //           Container(
+// //             padding: EdgeInsets.all(6),
+// //             decoration: BoxDecoration(
+// //               color: color.withOpacity(0.1),
+// //               borderRadius: BorderRadius.circular(8),
+// //             ),
+// //             child: Icon(Icons.trending_up_rounded, color: color, size: 16),
+// //           ),
+// //           SizedBox(height: 8),
+// //           Text(
+// //             value,
+// //             style: TextStyle(
+// //               fontSize: 18,
+// //               fontWeight: FontWeight.bold,
+// //               color: color,
+// //             ),
+// //           ),
+// //           Text(
+// //             title,
+// //             style: TextStyle(
+// //               fontSize: 12,
+// //               color: Colors.grey[600],
+// //             ),
+// //           ),
+// //         ],
+// //       ),
+// //     );
+// //   }
+
+// //   void _showComingSoon(BuildContext context, String feature) {
+// //     ScaffoldMessenger.of(context).showSnackBar(
+// //       SnackBar(
+// //         content: Text('$feature feature coming soon!'),
+// //         backgroundColor: Color(0xFF6D28D9),
+// //       ),
+// //     );
+// //   }
+// // }
+
+// // // Enhanced Services Screen
+// // class EnhancedServicesScreen extends StatelessWidget {
+// //   const EnhancedServicesScreen({super.key});
+
+// //   @override
+// //   Widget build(BuildContext context) {
+// //     return Scaffold(
+// //       body: CustomScrollView(
+// //         slivers: [
+// //           SliverList(
+// //             delegate: SliverChildListDelegate([
+// //               Padding(
+// //                 padding: EdgeInsets.all(16),
+// //                 child: Column(
+// //                   children: [
+// //                     _buildEmergencyServices(context),
+// //                     SizedBox(height: 20),
+// //                     Text(
+// //                       'All Services',
+// //                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+// //                     ),
+// //                   ],
+// //                 ),
+// //               ),
+// //             ]),
+// //           ),
+// //         ],
+// //       ),
+// //     );
+// //   }
+
+// //   Widget _buildEmergencyServices(BuildContext context) {
+// //     return Card(
+// //       elevation: 4,
+// //       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+// //       child: Padding(
+// //         padding: EdgeInsets.all(16),
+// //         child: Column(
+// //           crossAxisAlignment: CrossAxisAlignment.start,
+// //           children: [
+// //             Text(
+// //               'Emergency Services',
+// //               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF6D28D9)),
+// //             ),
+// //             SizedBox(height: 12),
+// //             Row(
+// //               children: [
+// //                 Expanded(
+// //                   child: _buildEmergencyServiceCard(
+// //                     icon: Icons.local_shipping_rounded,
+// //                     title: 'Tow Service',
+// //                     subtitle: 'Vehicle towing',
+// //                     color: Color(0xFF6D28D9),
+// //                     onTap: () => Navigator.push(
+// //                       context,
+// //                       MaterialPageRoute(builder: (context) => TowServiceRequestScreen()),
+// //                     ),
+// //                   ),
+// //                 ),
+// //                 SizedBox(width: 12),
+// //                 Expanded(
+// //                   child: _buildEmergencyServiceCard(
+// //                     icon: Icons.handyman_rounded,
+// //                     title: 'Garage Service',
+// //                     subtitle: 'Mechanic & repair',
+// //                     color: Color(0xFFF59E0B),
+// //                     onTap: () => Navigator.push(
+// //                       context,
+// //                       MaterialPageRoute(builder: (context) => GarageServiceRequestScreen()),
+// //                     ),
+// //                   ),
+// //                 ),
+// //               ],
+// //             ),
+// //           ],
+// //         ),
+// //       ),
+// //     );
+// //   }
+
+// //   Widget _buildEmergencyServiceCard({
+// //     required IconData icon,
+// //     required String title,
+// //     required String subtitle,
+// //     required Color color,
+// //     required VoidCallback onTap,
+// //   }) {
+// //     return GestureDetector(
+// //       onTap: onTap,
+// //       child: Container(
+// //         padding: EdgeInsets.all(16),
+// //         decoration: BoxDecoration(
+// //           color: color.withOpacity(0.1),
+// //           borderRadius: BorderRadius.circular(12),
+// //           border: Border.all(color: color.withOpacity(0.3)),
+// //         ),
+// //         child: Column(
+// //           children: [
+// //             Container(
+// //               padding: EdgeInsets.all(12),
+// //               decoration: BoxDecoration(
+// //                 color: color,
+// //                 borderRadius: BorderRadius.circular(10),
+// //               ),
+// //               child: Icon(icon, color: Colors.white, size: 24),
+// //             ),
+// //             SizedBox(height: 8),
+// //             Text(
+// //               title,
+// //               style: TextStyle(
+// //                 fontSize: 12,
+// //                 fontWeight: FontWeight.bold,
+// //                 color: color,
+// //               ),
+// //               textAlign: TextAlign.center,
+// //             ),
+// //             Text(
+// //               subtitle,
+// //               style: TextStyle(
+// //                 fontSize: 10,
+// //                 color: Colors.grey[600],
+// //               ),
+// //               textAlign: TextAlign.center,
+// //             ),
+// //           ],
+// //         ),
+// //       ),
+// //     );
+// //   }
+// // }
+
+// // import 'package:smart_road_app/Login/VehicleOwneLogin.dart';
+// // import 'package:smart_road_app/VehicleOwner/GarageRequest.dart';
+// // import 'package:smart_road_app/VehicleOwner/History.dart';
+// // import 'package:smart_road_app/VehicleOwner/InsuranceRequest.dart';
+// // import 'package:smart_road_app/VehicleOwner/ProfilePage.dart';
+// // import 'package:smart_road_app/VehicleOwner/SpareParts.dart';
+// // import 'package:smart_road_app/VehicleOwner/TowRequest.dart';
+// // import 'package:smart_road_app/VehicleOwner/ai.dart';
+// // import 'package:smart_road_app/controller/sharedprefrence.dart';
+// // import 'package:firebase_auth/firebase_auth.dart';
+// // import 'package:flutter/material.dart';
+// // import 'package:geolocator/geolocator.dart';
+
+// // // Insurance Module Classes
+// // class InsuranceModule {
+// //   static List<Map<String, dynamic>> getInsuranceRequests() {
+// //     return [
+// //       {
+// //         'id': 'INS001',
+// //         'policyType': 'Comprehensive',
+// //         'status': 'Active',
+// //         'expiryDate': '2024-12-31',
+// //         'vehicleNumber': 'MH12AB1234',
+// //         'provider': 'ABC Insurance Co.',
+// //         'premium': '\$450',
+// //         'startDate': '2024-01-01',
+// //       },
+// //       {
+// //         'id': 'INS002',
+// //         'policyType': 'Third Party',
+// //         'status': 'Pending',
+// //         'expiryDate': '2024-06-30',
+// //         'vehicleNumber': 'MH12CD5678',
+// //         'provider': 'XYZ Insurance',
+// //         'premium': '\$200',
+// //         'startDate': '2024-01-15',
+// //       },
+// //     ];
+// //   }
+// // }
+
+// // // Main Dashboard Class
+// // class EnhancedVehicleDashboard extends StatefulWidget {
+// //   const EnhancedVehicleDashboard({super.key});
+
+// //   @override
+// //   _EnhancedVehicleDashboardState createState() => _EnhancedVehicleDashboardState();
+// // }
+
+// // class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
+// //     with SingleTickerProviderStateMixin {
+// //   int _currentIndex = 0;
+// //   late AnimationController _animationController;
+// //   late Animation<double> _scaleAnimation;
+// //   late Animation<double> _fadeAnimation;
+// //   String? _userEmail;
+// //   Position? _currentPosition;
+// //   String _currentLocation = 'Fetching location...';
+// //   bool _locationLoading = false;
+
+// //   @override
+// //   void initState() {
+// //     super.initState();
+// //     _animationController = AnimationController(
+// //       vsync: this,
+// //       duration: Duration(milliseconds: 800),
+// //     );
+// //     _scaleAnimation = Tween<double>(begin: 0.95, end: 1.0).animate(
+// //       CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic),
+// //     );
+// //     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+// //       CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
+// //     );
+// //     _animationController.forward();
+// //     _loadUserData();
+// //     _getCurrentLocation();
+// //   }
+
+// //   Future<void> _loadUserData() async {
+// //     try {
+// //       String? userEmail = await AuthService.getUserEmail();
+// //       setState(() {
+// //         _userEmail = userEmail;
+// //       });
+// //       print('✅ Dashboard loaded for user: $_userEmail');
+// //     } catch (e) {
+// //       print('❌ Error loading user data in dashboard: $e');
+// //     }
+// //   }
+
+// //   Future<void> _getCurrentLocation() async {
+// //     setState(() {
+// //       _locationLoading = true;
+// //     });
+
+// //     try {
+// //       // Check permission
+// //       LocationPermission permission = await Geolocator.checkPermission();
+// //       if (permission == LocationPermission.denied) {
+// //         permission = await Geolocator.requestPermission();
+// //         if (permission == LocationPermission.denied) {
+// //           setState(() {
+// //             _currentLocation = 'Location permission denied';
+// //             _locationLoading = false;
+// //           });
+// //           return;
+// //         }
+// //       }
+
+// //       if (permission == LocationPermission.deniedForever) {
+// //         setState(() {
+// //           _currentLocation = 'Location permission permanently denied';
+// //           _locationLoading = false;
+// //         });
+// //         return;
+// //       }
+
+// //       // Get current position
+// //       Position position = await Geolocator.getCurrentPosition(
+// //         desiredAccuracy: LocationAccuracy.high,
+// //       );
+
+// //       setState(() {
+// //         _currentPosition = position;
+// //         _currentLocation = '${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
+// //         _locationLoading = false;
+// //       });
+
+// //     } catch (e) {
+// //       print('Error getting location: $e');
+// //       setState(() {
+// //         _currentLocation = 'Unable to fetch location';
+// //         _locationLoading = false;
+// //       });
+// //     }
+// //   }
+
+// //   Map<String, dynamic> get _userData {
+// //     return {
+// //       'name': _userEmail?.split('@').first ?? 'User',
+// //       'email': _userEmail ?? 'user@example.com',
+// //       'vehicle': 'Toyota Camry 2022',
+// //       'plan': 'Gold Plan',
+// //       'memberSince': '2023',
+// //       'points': 450,
+// //       'nextService': '2024-02-20',
+// //       'emergencyContacts': ['+1-234-567-8900', '+1-234-567-8901']
+// //     };
+// //   }
+
+// //   @override
+// //   void dispose() {
+// //     _animationController.dispose();
+// //     super.dispose();
+// //   }
+
+// //   @override
+// //   Widget build(BuildContext context) {
+// //     return Scaffold(
+// //       backgroundColor: Colors.grey[50],
+// //       appBar: _buildEnhancedAppBar(),
+// //       drawer: _buildEnhancedDrawer(),
+// //       body: FadeTransition(
+// //         opacity: _fadeAnimation,
+// //         child: ScaleTransition(
+// //           scale: _scaleAnimation,
+// //           child: _getCurrentScreen(),
+// //         ),
+// //       ),
+// //       bottomNavigationBar: _buildEnhancedBottomNavigationBar(),
+// //     );
+// //   }
+
+// //   AppBar _buildEnhancedAppBar() {
+// //     return AppBar(
+// //       title: Column(
+// //         crossAxisAlignment: CrossAxisAlignment.start,
+// //         children: [
+// //           Text(
+// //             'AutoConnect',
+// //             style: TextStyle(
+// //               fontWeight: FontWeight.w800,
+// //               fontSize: 22,
+// //               color: Colors.white,
+// //             ),
+// //           ),
+// //           Text(
+// //             'Always here to help',
+// //             style: TextStyle(
+// //               fontSize: 12,
+// //               color: Colors.white70,
+// //             ),
+// //           ),
+// //         ],
+// //       ),
+// //       backgroundColor: Color(0xFF6D28D9),
+// //       foregroundColor: Colors.white,
+// //       elevation: 0,
+// //       shape: RoundedRectangleBorder(
+// //         borderRadius: BorderRadius.only(
+// //           bottomLeft: Radius.circular(20),
+// //           bottomRight: Radius.circular(20),
+// //         ),
+// //       ),
+// //       actions: [
+// //         IconButton(
+// //           icon: Icon(Icons.location_on),
+// //           onPressed: _getCurrentLocation,
+// //           tooltip: 'Refresh Location',
+// //         ),
+// //         IconButton(
+// //           icon: Icon(Icons.auto_awesome),
+// //           onPressed: (){
+// //             Navigator.of(context).push(MaterialPageRoute(builder: (context)=>VehicleDamageAnalyzer()));
+// //           },
+// //           tooltip: 'AI Assistance',
+// //         ),
+// //       ],
+// //     );
+// //   }
+
+// //   Widget _buildEnhancedDrawer() {
+// //     return Drawer(
+// //       child: Container(
+// //         decoration: BoxDecoration(
+// //           gradient: LinearGradient(
+// //             begin: Alignment.topLeft,
+// //             end: Alignment.bottomRight,
+// //             colors: [Color(0xFF6D28D9), Color(0xFF8B5CF6)],
+// //           ),
+// //         ),
+// //         child: ListView(
+// //           padding: EdgeInsets.zero,
+// //           children: [
+// //             _buildDrawerHeader(),
+// //             _buildDrawerItem(
+// //               icon: Icons.dashboard_rounded,
+// //               title: 'Dashboard',
+// //               onTap: () => _navigateToIndex(0),
+// //             ),
+// //             _buildDrawerItem(
+// //               icon: Icons.security_rounded,
+// //               title: 'Insurance',
+// //               onTap: () => _navigateToIndex(3),
+// //             ),
+// //             _buildDrawerItem(
+// //               icon: Icons.build_circle_rounded,
+// //               title: 'Spare Parts',
+// //               onTap: (){
+// //                 Navigator.of(context).push(MaterialPageRoute(builder: (context)=>SparePartsStore()));
+// //               }
+// //             ),
+// //             _buildDrawerItem(
+// //               icon: Icons.history_rounded,
+// //               title: 'Service History',
+// //               onTap: () => _navigateToIndex(2),
+// //             ),
+// //             _buildDrawerItem(
+// //               icon: Icons.logout_rounded,
+// //               title: 'Logout',
+// //               onTap: _logout,
+// //               color: Colors.red[300],
+// //             ),
+// //           ],
+// //         ),
+// //       ),
+// //     );
+// //   }
+
+// //   Widget _buildDrawerHeader() {
+// //     return Container(
+// //       padding: EdgeInsets.only(top: 60, bottom: 20, left: 20, right: 20),
+// //       decoration: BoxDecoration(
+// //         color: Color(0xFF5B21B6).withOpacity(0.8),
+// //       ),
+// //       child: Column(
+// //         children: [
+// //           CircleAvatar(
+// //             radius: 40,
+// //             backgroundColor: Colors.white,
+// //             child: Icon(
+// //               Icons.person_rounded,
+// //               size: 50,
+// //               color: Color(0xFF6D28D9),
+// //             ),
+// //           ),
+// //           SizedBox(height: 16),
+// //           Text(
+// //             _userData['name'],
+// //             style: TextStyle(
+// //               color: Colors.white,
+// //               fontSize: 20,
+// //               fontWeight: FontWeight.bold,
+// //             ),
+// //           ),
+// //           SizedBox(height: 4),
+// //           Text(
+// //             _userData['email'],
+// //             style: TextStyle(
+// //               color: Colors.white70,
+// //               fontSize: 14,
+// //             ),
+// //           ),
+// //           SizedBox(height: 8),
+// //           Container(
+// //             padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+// //             decoration: BoxDecoration(
+// //               color: Colors.amber.withOpacity(0.2),
+// //               borderRadius: BorderRadius.circular(12),
+// //               border: Border.all(color: Colors.amber),
+// //             ),
+// //             child: Row(
+// //               mainAxisSize: MainAxisSize.min,
+// //               children: [
+// //                 Icon(Icons.auto_awesome, color: Colors.amber, size: 16),
+// //                 SizedBox(width: 4),
+// //                 Text(
+// //                   '${_userData['points']} Points',
+// //                   style: TextStyle(
+// //                     color: Colors.amber,
+// //                     fontWeight: FontWeight.bold,
+// //                     fontSize: 12,
+// //                   ),
+// //                 ),
+// //               ],
+// //             ),
+// //           ),
+// //         ],
+// //       ),
+// //     );
+// //   }
+
+// //   Widget _buildDrawerItem({
+// //     required IconData icon,
+// //     required String title,
+// //     required VoidCallback onTap,
+// //     Color? color,
+// //   }) {
+// //     return ListTile(
+// //       leading: Container(
+// //         width: 40,
+// //         height: 40,
+// //         decoration: BoxDecoration(
+// //           color: Colors.white.withOpacity(0.1),
+// //           borderRadius: BorderRadius.circular(10),
+// //         ),
+// //         child: Icon(icon, color: color ?? Colors.white70, size: 20),
+// //       ),
+// //       title: Text(
+// //         title,
+// //         style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+// //       ),
+// //       onTap: onTap,
+// //       hoverColor: Colors.white.withOpacity(0.1),
+// //     );
+// //   }
+
+// //   Widget _getCurrentScreen() {
+// //     switch (_currentIndex) {
+// //       case 0:
+// //         return EnhancedHomeScreenWithInsurance(
+// //           userData: _userData,
+// //           insuranceRequests: InsuranceModule.getInsuranceRequests(),
+// //           currentPosition: _currentPosition,
+// //           currentLocation: _currentLocation,
+// //           locationLoading: _locationLoading,
+// //           onGarageServiceTap: _navigateToNearbyGarages,
+// //         );
+// //       case 1:
+// //         return EnhancedServicesScreen(
+// //           currentPosition: _currentPosition,
+// //           currentLocation: _currentLocation,
+// //           locationLoading: _locationLoading,
+// //           userEmail: _userEmail,
+// //         );
+// //       case 2:
+// //         return EnhancedHistoryScreen(userEmail: _userEmail ?? 'avi@gmail.com', serviceHistory: []);
+// //       case 3:
+// //         return RequestInsuranceScreen();
+// //       case 4:
+// //         return EnhancedProfileScreen(userEmail: _userEmail ?? 'avi@gmail.com', serviceHistory: []);
+// //       default:
+// //         return EnhancedHomeScreenWithInsurance(
+// //           userData: _userData,
+// //           insuranceRequests: InsuranceModule.getInsuranceRequests(),
+// //           currentPosition: _currentPosition,
+// //           currentLocation: _currentLocation,
+// //           locationLoading: _locationLoading,
+// //           onGarageServiceTap: _navigateToNearbyGarages,
+// //         );
+// //     }
+// //   }
+
+// //   void _navigateToNearbyGarages() {
+// //     if (_currentPosition == null) {
+// //       ScaffoldMessenger.of(context).showSnackBar(
+// //         SnackBar(
+// //           content: Text('Please wait for location to load'),
+// //           backgroundColor: Colors.orange,
+// //         ),
+// //       );
+// //       return;
+// //     }
+
+// //     Navigator.push(
+// //       context,
+// //       MaterialPageRoute(
+// //         builder: (context) => NearbyGaragesScreen(
+// //           userLocation: _currentPosition!,
+// //           userEmail: _userEmail,
+// //         ),
+// //       ),
+// //     );
+// //   }
+
+// //   Widget _buildEnhancedBottomNavigationBar() {
+// //     return Container(
+// //       decoration: BoxDecoration(
+// //         borderRadius: BorderRadius.only(
+// //           topLeft: Radius.circular(20),
+// //           topRight: Radius.circular(20),
+// //         ),
+// //         boxShadow: [
+// //           BoxShadow(
+// //             color: Colors.purple.withOpacity(0.1),
+// //             blurRadius: 20,
+// //             offset: Offset(0, -5),
+// //           ),
+// //         ],
+// //       ),
+// //       child: ClipRRect(
+// //         borderRadius: BorderRadius.only(
+// //           topLeft: Radius.circular(20),
+// //           topRight: Radius.circular(20),
+// //         ),
+// //         child: BottomNavigationBar(
+// //           currentIndex: _currentIndex,
+// //           onTap: (index) {
+// //             setState(() {
+// //               _currentIndex = index;
+// //               _animationController.reset();
+// //               _animationController.forward();
+// //             });
+// //           },
+// //           type: BottomNavigationBarType.fixed,
+// //           backgroundColor: Colors.white,
+// //           selectedItemColor: Color(0xFF6D28D9),
+// //           unselectedItemColor: Colors.grey[600],
+// //           selectedLabelStyle: TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+// //           unselectedLabelStyle: TextStyle(fontSize: 12),
+// //           items: [
+// //             BottomNavigationBarItem(
+// //               icon: Icon(Icons.home_rounded),
+// //               activeIcon: Container(
+// //                 padding: EdgeInsets.all(8),
+// //                 decoration: BoxDecoration(
+// //                   color: Color(0xFF6D28D9).withOpacity(0.1),
+// //                   shape: BoxShape.circle,
+// //                 ),
+// //                 child: Icon(Icons.home_rounded, color: Color(0xFF6D28D9)),
+// //               ),
+// //               label: 'Home',
+// //             ),
+// //             BottomNavigationBarItem(
+// //               icon: Icon(Icons.handyman_rounded),
+// //               activeIcon: Container(
+// //                 padding: EdgeInsets.all(8),
+// //                 decoration: BoxDecoration(
+// //                   color: Color(0xFF6D28D9).withOpacity(0.1),
+// //                   shape: BoxShape.circle,
+// //                 ),
+// //                 child: Icon(Icons.handyman_rounded, color: Color(0xFF6D28D9)),
+// //               ),
+// //               label: 'Services',
+// //             ),
+// //             BottomNavigationBarItem(
+// //               icon: Icon(Icons.history_rounded),
+// //               activeIcon: Container(
+// //                 padding: EdgeInsets.all(8),
+// //                 decoration: BoxDecoration(
+// //                   color: Color(0xFF6D28D9).withOpacity(0.1),
+// //                   shape: BoxShape.circle,
+// //                 ),
+// //                 child: Icon(Icons.history_rounded, color: Color(0xFF6D28D9)),
+// //               ),
+// //               label: 'History',
+// //             ),
+// //             BottomNavigationBarItem(
+// //               icon: Icon(Icons.security_rounded),
+// //               activeIcon: Container(
+// //                 padding: EdgeInsets.all(8),
+// //                 decoration: BoxDecoration(
+// //                   color: Color(0xFF6D28D9).withOpacity(0.1),
+// //                   shape: BoxShape.circle,
+// //                 ),
+// //                 child: Icon(Icons.security_rounded, color: Color(0xFF6D28D9)),
+// //               ),
+// //               label: 'Insurance',
+// //             ),
+// //             BottomNavigationBarItem(
+// //               icon: Icon(Icons.person_rounded),
+// //               activeIcon: Container(
+// //                 padding: EdgeInsets.all(8),
+// //                 decoration: BoxDecoration(
+// //                   color: Color(0xFF6D28D9).withOpacity(0.1),
+// //                   shape: BoxShape.circle,
+// //                 ),
+// //                 child: Icon(Icons.person_rounded, color: Color(0xFF6D28D9)),
+// //               ),
+// //               label: 'Profile',
+// //             ),
+// //           ],
+// //         ),
+// //       ),
+// //     );
+// //   }
+
+// //   void _navigateToIndex(int index) {
+// //     setState(() {
+// //       _currentIndex = index;
+// //     });
+// //     Navigator.pop(context);
+// //   }
+
+// //   void _showSpareParts() {
+// //     Navigator.of(context).push(MaterialPageRoute(builder: (context)=>SparePartsStore()));
+// //     Navigator.pop(context);
+// //   }
+
+// //   // FIXED LOGOUT FUNCTION - 100% WORKING
+// //   void _logout() async {
+// //     print('🚪 Logout button pressed...');
+
+// //     // Close drawer first
+// //     Navigator.pop(context);
+
+// //     // Show confirmation dialog
+// //     showDialog(
+// //       context: context,
+// //       barrierDismissible: false,
+// //       builder: (BuildContext context) {
+// //         return AlertDialog(
+// //           title: Text('Logout Confirmation'),
+// //           content: Text('Are you sure you want to logout?'),
+// //           actions: [
+// //             TextButton(
+// //               onPressed: () {
+// //                 Navigator.of(context).pop(); // Close dialog
+// //                 print('❌ Logout cancelled by user');
+// //               },
+// //               child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
+// //             ),
+// //             TextButton(
+// //               onPressed: () async {
+// //                 Navigator.of(context).pop(); // Close dialog
+// //                 print('✅ User confirmed logout');
+
+// //                 try {
+// //                   // Show loading
+// //                   showDialog(
+// //                     context: context,
+// //                     barrierDismissible: false,
+// //                     builder: (BuildContext context) {
+// //                       return Dialog(
+// //                         child: Padding(
+// //                           padding: EdgeInsets.all(20),
+// //                           child: Row(
+// //                             mainAxisSize: MainAxisSize.min,
+// //                             children: [
+// //                               CircularProgressIndicator(),
+// //                               SizedBox(width: 20),
+// //                               Text("Logging out..."),
+// //                             ],
+// //                           ),
+// //                         ),
+// //                       );
+// //                     },
+// //                   );
+
+// //                   // 1. Clear shared preferences
+// //                   print('🗑️ Clearing shared preferences...');
+// //                   await AuthService.clearLoginData();
+
+// //                   // 2. Sign out from Firebase
+// //                   print('🔥 Signing out from Firebase...');
+// //                   await FirebaseAuth.instance.signOut();
+
+// //                   // 3. Close loading dialog
+// //                   Navigator.of(context).pop();
+
+// //                   // 4. Navigate to login page and remove all routes
+// //                   print('🔄 Navigating to login page...');
+// //                   Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+// //                     MaterialPageRoute(builder: (context) => VehicleLoginPage()),
+// //                     (Route<dynamic> route) => false,
+// //                   );
+
+// //                   print('🎉 Logout completed successfully!');
+
+// //                 } catch (e) {
+// //                   print('❌ Error during logout: $e');
+
+// //                   // Close loading dialog if still open
+// //                   if (Navigator.canPop(context)) {
+// //                     Navigator.of(context).pop();
+// //                   }
+
+// //                   ScaffoldMessenger.of(context).showSnackBar(
+// //                     SnackBar(
+// //                       content: Text('Logout failed. Please try again.'),
+// //                       backgroundColor: Colors.red,
+// //                     ),
+// //                   );
+// //                 }
+// //               },
+// //               child: Text('Logout', style: TextStyle(color: Colors.red)),
+// //             ),
+// //           ],
+// //         );
+// //       },
+// //     );
+// //   }
+// // }
+
+// // // Enhanced Home Screen with Insurance Integration
+// // class EnhancedHomeScreenWithInsurance extends StatelessWidget {
+// //   final Map<String, dynamic> userData;
+// //   final List<Map<String, dynamic>> insuranceRequests;
+// //   final Position? currentPosition;
+// //   final String currentLocation;
+// //   final bool locationLoading;
+// //   final VoidCallback onGarageServiceTap;
+
+// //   const EnhancedHomeScreenWithInsurance({
+// //     super.key,
+// //     required this.userData,
+// //     required this.insuranceRequests,
+// //     required this.currentPosition,
+// //     required this.currentLocation,
+// //     required this.locationLoading,
+// //     required this.onGarageServiceTap,
+// //   });
+
+// //   @override
+// //   Widget build(BuildContext context) {
+// //     return SingleChildScrollView(
+// //       padding: EdgeInsets.all(16),
+// //       child: Column(
+// //         children: [
+// //           _buildWelcomeCard(),
+// //           SizedBox(height: 20),
+// //           _buildLocationCard(),
+// //           SizedBox(height: 20),
+// //           _buildQuickActions(context),
+// //           SizedBox(height: 20),
+// //           _buildInsuranceReminder(context),
+// //           SizedBox(height: 20),
+// //           _buildQuickStats(),
+// //         ],
+// //       ),
+// //     );
+// //   }
+
+// //   Widget _buildWelcomeCard() {
+// //     return Container(
+// //       width: double.infinity,
+// //       padding: EdgeInsets.all(20),
+// //       decoration: BoxDecoration(
+// //         gradient: LinearGradient(
+// //           begin: Alignment.topLeft,
+// //           end: Alignment.bottomRight,
+// //           colors: [Color(0xFF6D28D9), Color(0xFF8B5CF6)],
+// //         ),
+// //         borderRadius: BorderRadius.circular(20),
+// //         boxShadow: [
+// //           BoxShadow(
+// //             color: Color(0xFF6D28D9).withOpacity(0.3),
+// //             blurRadius: 20,
+// //             offset: Offset(0, 8),
+// //           ),
+// //         ],
+// //       ),
+// //       child: Column(
+// //         crossAxisAlignment: CrossAxisAlignment.start,
+// //         children: [
+// //           Row(
+// //             children: [
+// //               CircleAvatar(
+// //                 backgroundColor: Colors.white,
+// //                 child: Icon(Icons.person_rounded, color: Color(0xFF6D28D9)),
+// //               ),
+// //               SizedBox(width: 12),
+// //               Expanded(
+// //                 child: Column(
+// //                   crossAxisAlignment: CrossAxisAlignment.start,
+// //                   children: [
+// //                     Text(
+// //                       'Welcome back, ${userData['name'].split(' ')[0]}! 👋',
+// //                       style: TextStyle(
+// //                         color: Colors.white,
+// //                         fontSize: 18,
+// //                         fontWeight: FontWeight.bold,
+// //                       ),
+// //                     ),
+// //                     Text(
+// //                       'Your ${userData['plan']} is active',
+// //                       style: TextStyle(color: Colors.white70),
+// //                     ),
+// //                   ],
+// //                 ),
+// //               ),
+// //             ],
+// //           ),
+// //           SizedBox(height: 15),
+// //           Container(
+// //             padding: EdgeInsets.all(12),
+// //             decoration: BoxDecoration(
+// //               color: Colors.white.withOpacity(0.1),
+// //               borderRadius: BorderRadius.circular(12),
+// //             ),
+// //             child: Row(
+// //               children: [
+// //                 Icon(Icons.auto_awesome_rounded, color: Colors.amber, size: 16),
+// //                 SizedBox(width: 8),
+// //                 Text(
+// //                   '${userData['points']} Reward Points',
+// //                   style: TextStyle(color: Colors.white),
+// //                 ),
+// //                 Spacer(),
+// //                 Icon(Icons.calendar_today_rounded, color: Colors.white70, size: 14),
+// //                 SizedBox(width: 4),
+// //                 Text(
+// //                   'Next: ${userData['nextService']}',
+// //                   style: TextStyle(color: Colors.white70, fontSize: 12),
+// //                 ),
+// //               ],
+// //             ),
+// //           ),
+// //         ],
+// //       ),
+// //     );
+// //   }
+
+// //   Widget _buildLocationCard() {
+// //     return Card(
+// //       elevation: 3,
+// //       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+// //       child: Padding(
+// //         padding: EdgeInsets.all(16),
+// //         child: Row(
+// //           children: [
+// //             Icon(
+// //               Icons.location_on,
+// //               color: Color(0xFF6D28D9),
+// //               size: 24,
+// //             ),
+// //             SizedBox(width: 12),
+// //             Expanded(
+// //               child: Column(
+// //                 crossAxisAlignment: CrossAxisAlignment.start,
+// //                 children: [
+// //                   Text(
+// //                     'Current Location',
+// //                     style: TextStyle(
+// //                       fontSize: 14,
+// //                       fontWeight: FontWeight.w500,
+// //                       color: Colors.grey[700],
+// //                     ),
+// //                   ),
+// //                   SizedBox(height: 4),
+// //                   locationLoading
+// //                       ? Row(
+// //                           children: [
+// //                             SizedBox(
+// //                               width: 16,
+// //                               height: 16,
+// //                               child: CircularProgressIndicator(strokeWidth: 2),
+// //                             ),
+// //                             SizedBox(width: 8),
+// //                             Text(
+// //                               'Fetching location...',
+// //                               style: TextStyle(
+// //                                 fontSize: 12,
+// //                                 color: Colors.grey[500],
+// //                               ),
+// //                             ),
+// //                           ],
+// //                         )
+// //                       : Text(
+// //                           currentLocation,
+// //                           style: TextStyle(
+// //                             fontSize: 12,
+// //                             color: Colors.grey[600],
+// //                           ),
+// //                         ),
+// //                 ],
+// //               ),
+// //             ),
+// //             if (currentPosition != null)
+// //               Icon(
+// //                 Icons.check_circle,
+// //                 color: Colors.green,
+// //                 size: 20,
+// //               ),
+// //           ],
+// //         ),
+// //       ),
+// //     );
+// //   }
+
+// //   Widget _buildQuickActions(BuildContext context) {
+// //     return Row(
+// //       children: [
+// //         Expanded(
+// //           child: _buildQuickActionItem(
+// //             icon: Icons.handyman_rounded,
+// //             title: 'Garage Service',
+// //             color: Color(0xFF6D28D9),
+// //             onTap: onGarageServiceTap,
+// //           ),
+// //         ),
+// //         SizedBox(width: 12),
+// //         Expanded(
+// //           child: _buildQuickActionItem(
+// //             icon: Icons.security_rounded,
+// //             title: 'Insurance',
+// //             color: Colors.purple,
+// //             onTap: () => Navigator.push(
+// //               context,
+// //               MaterialPageRoute(builder: (context) => RequestInsuranceScreen()),
+// //             ),
+// //           ),
+// //         ),
+// //         SizedBox(width: 12),
+// //         Expanded(
+// //           child: _buildQuickActionItem(
+// //             icon: Icons.local_shipping_rounded,
+// //             title: 'Tow Service',
+// //             color: Colors.blue,
+// //             onTap: () => Navigator.push(
+// //               context,
+// //               MaterialPageRoute(builder: (context) => TowServiceRequestScreen()),
+// //             ),
+// //           ),
+// //         ),
+// //       ],
+// //     );
+// //   }
+
+// //   Widget _buildQuickActionItem({
+// //     required IconData icon,
+// //     required String title,
+// //     required Color color,
+// //     VoidCallback? onTap,
+// //   }) {
+// //     return GestureDetector(
+// //       onTap: onTap,
+// //       child: Container(
+// //         padding: EdgeInsets.all(16),
+// //         decoration: BoxDecoration(
+// //           color: Colors.white,
+// //           borderRadius: BorderRadius.circular(15),
+// //           boxShadow: [
+// //             BoxShadow(
+// //               color: Colors.grey.withOpacity(0.1),
+// //               blurRadius: 10,
+// //               offset: Offset(0, 3),
+// //             ),
+// //           ],
+// //         ),
+// //         child: Column(
+// //           children: [
+// //             Container(
+// //               padding: EdgeInsets.all(8),
+// //               decoration: BoxDecoration(
+// //                 color: color.withOpacity(0.1),
+// //                 borderRadius: BorderRadius.circular(10),
+// //               ),
+// //               child: Icon(icon, color: color, size: 20),
+// //             ),
+// //             SizedBox(height: 8),
+// //             Text(
+// //               title,
+// //               style: TextStyle(
+// //                 fontSize: 12,
+// //                 fontWeight: FontWeight.w600,
+// //                 color: Colors.grey[700],
+// //               ),
+// //             ),
+// //           ],
+// //         ),
+// //       ),
+// //     );
+// //   }
+
+// //   Widget _buildInsuranceReminder(BuildContext context) {
+// //     final activePolicy = insuranceRequests.firstWhere(
+// //       (policy) => policy['status'] == 'Active',
+// //       orElse: () => {},
+// //     );
+
+// //     if (activePolicy.isEmpty) {
+// //       return Container(
+// //         padding: EdgeInsets.all(16),
+// //         decoration: BoxDecoration(
+// //           color: Colors.orange[50],
+// //           borderRadius: BorderRadius.circular(15),
+// //           border: Border.all(color: Colors.orange),
+// //         ),
+// //         child: Row(
+// //           children: [
+// //             Icon(Icons.warning_amber_rounded, color: Colors.orange),
+// //             SizedBox(width: 12),
+// //             Expanded(
+// //               child: Column(
+// //                 crossAxisAlignment: CrossAxisAlignment.start,
+// //                 children: [
+// //                   Text(
+// //                     'No Active Insurance',
+// //                     style: TextStyle(
+// //                       fontWeight: FontWeight.bold,
+// //                       color: Colors.orange[800],
+// //                     ),
+// //                   ),
+// //                   Text(
+// //                     'Get your vehicle insured today',
+// //                     style: TextStyle(color: Colors.orange[700], fontSize: 12),
+// //                   ),
+// //                 ],
+// //               ),
+// //             ),
+// //             ElevatedButton(
+// //               onPressed: () => Navigator.push(
+// //                 context,
+// //                 MaterialPageRoute(builder: (context) => RequestInsuranceScreen()),
+// //               ),
+// //               style: ElevatedButton.styleFrom(
+// //                 backgroundColor: Colors.orange,
+// //                 foregroundColor: Colors.white,
+// //                 padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+// //               ),
+// //               child: Text('Get Insurance'),
+// //             ),
+// //           ],
+// //         ),
+// //       );
+// //     }
+
+// //     return Container();
+// //   }
+
+// //   Widget _buildQuickStats() {
+// //     return Row(
+// //       children: [
+// //         Expanded(
+// //           child: _buildStatCard(
+// //             title: 'Services Used',
+// //             value: '3',
+// //             subtitle: 'This month',
+// //             color: Color(0xFF6D28D9),
+// //           ),
+// //         ),
+// //         SizedBox(width: 12),
+// //         Expanded(
+// //           child: _buildStatCard(
+// //             title: 'Insurance',
+// //             value: 'Active',
+// //             subtitle: 'Comprehensive',
+// //             color: Colors.green,
+// //           ),
+// //         ),
+// //         SizedBox(width: 12),
+// //         Expanded(
+// //           child: _buildStatCard(
+// //             title: 'Savings',
+// //             value: '\$85',
+// //             subtitle: 'Total',
+// //             color: Colors.blue,
+// //           ),
+// //         ),
+// //       ],
+// //     );
+// //   }
+
+// //   Widget _buildStatCard({
+// //     required String title,
+// //     required String value,
+// //     required String subtitle,
+// //     required Color color,
+// //   }) {
+// //     return Container(
+// //       padding: EdgeInsets.all(16),
+// //       decoration: BoxDecoration(
+// //         color: Colors.white,
+// //         borderRadius: BorderRadius.circular(15),
+// //         boxShadow: [
+// //           BoxShadow(
+// //             color: Colors.grey.withOpacity(0.1),
+// //             blurRadius: 10,
+// //             offset: Offset(0, 3),
+// //           ),
+// //         ],
+// //       ),
+// //       child: Column(
+// //         crossAxisAlignment: CrossAxisAlignment.start,
+// //         children: [
+// //           Container(
+// //             padding: EdgeInsets.all(6),
+// //             decoration: BoxDecoration(
+// //               color: color.withOpacity(0.1),
+// //               borderRadius: BorderRadius.circular(8),
+// //             ),
+// //             child: Icon(Icons.trending_up_rounded, color: color, size: 16),
+// //           ),
+// //           SizedBox(height: 8),
+// //           Text(
+// //             value,
+// //             style: TextStyle(
+// //               fontSize: 18,
+// //               fontWeight: FontWeight.bold,
+// //               color: color,
+// //             ),
+// //           ),
+// //           Text(
+// //             title,
+// //             style: TextStyle(
+// //               fontSize: 12,
+// //               color: Colors.grey[600],
+// //             ),
+// //           ),
+// //         ],
+// //       ),
+// //     );
+// //   }
+
+// //   void _showComingSoon(BuildContext context, String feature) {
+// //     ScaffoldMessenger.of(context).showSnackBar(
+// //       SnackBar(
+// //         content: Text('$feature feature coming soon!'),
+// //         backgroundColor: Color(0xFF6D28D9),
+// //       ),
+// //     );
+// //   }
+// // }
+
+// // // Enhanced Services Screen
+// // class EnhancedServicesScreen extends StatelessWidget {
+// //   final Position? currentPosition;
+// //   final String currentLocation;
+// //   final bool locationLoading;
+// //   final String? userEmail;
+
+// //   const EnhancedServicesScreen({
+// //     super.key,
+// //     required this.currentPosition,
+// //     required this.currentLocation,
+// //     required this.locationLoading,
+// //     required this.userEmail,
+// //   });
+
+// //   @override
+// //   Widget build(BuildContext context) {
+// //     return Scaffold(
+// //       body: CustomScrollView(
+// //         slivers: [
+// //           SliverList(
+// //             delegate: SliverChildListDelegate([
+// //               Padding(
+// //                 padding: EdgeInsets.all(16),
+// //                 child: Column(
+// //                   children: [
+// //                     _buildLocationCard(),
+// //                     SizedBox(height: 20),
+// //                     _buildEmergencyServices(context),
+// //                     SizedBox(height: 20),
+// //                     Text(
+// //                       'All Services',
+// //                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+// //                     ),
+// //                   ],
+// //                 ),
+// //               ),
+// //             ]),
+// //           ),
+// //         ],
+// //       ),
+// //     );
+// //   }
+
+// //   Widget _buildLocationCard() {
+// //     return Card(
+// //       elevation: 3,
+// //       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+// //       child: Padding(
+// //         padding: EdgeInsets.all(16),
+// //         child: Row(
+// //           children: [
+// //             Icon(
+// //               Icons.location_on,
+// //               color: Color(0xFF6D28D9),
+// //               size: 24,
+// //             ),
+// //             SizedBox(width: 12),
+// //             Expanded(
+// //               child: Column(
+// //                 crossAxisAlignment: CrossAxisAlignment.start,
+// //                 children: [
+// //                   Text(
+// //                     'Current Location',
+// //                     style: TextStyle(
+// //                       fontSize: 14,
+// //                       fontWeight: FontWeight.w500,
+// //                       color: Colors.grey[700],
+// //                     ),
+// //                   ),
+// //                   SizedBox(height: 4),
+// //                   locationLoading
+// //                       ? Row(
+// //                           children: [
+// //                             SizedBox(
+// //                               width: 16,
+// //                               height: 16,
+// //                               child: CircularProgressIndicator(strokeWidth: 2),
+// //                             ),
+// //                             SizedBox(width: 8),
+// //                             Text(
+// //                               'Fetching location...',
+// //                               style: TextStyle(
+// //                                 fontSize: 12,
+// //                                 color: Colors.grey[500],
+// //                               ),
+// //                             ),
+// //                           ],
+// //                         )
+// //                       : Text(
+// //                           currentLocation,
+// //                           style: TextStyle(
+// //                             fontSize: 12,
+// //                             color: Colors.grey[600],
+// //                           ),
+// //                         ),
+// //                 ],
+// //               ),
+// //             ),
+// //             if (currentPosition != null)
+// //               Icon(
+// //                 Icons.check_circle,
+// //                 color: Colors.green,
+// //                 size: 20,
+// //               ),
+// //           ],
+// //         ),
+// //       ),
+// //     );
+// //   }
+
+// //   Widget _buildEmergencyServices(BuildContext context) {
+// //     return Card(
+// //       elevation: 4,
+// //       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+// //       child: Padding(
+// //         padding: EdgeInsets.all(16),
+// //         child: Column(
+// //           crossAxisAlignment: CrossAxisAlignment.start,
+// //           children: [
+// //             Text(
+// //               'Emergency Services',
+// //               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF6D28D9)),
+// //             ),
+// //             SizedBox(height: 12),
+// //             Row(
+// //               children: [
+// //                 Expanded(
+// //                   child: _buildEmergencyServiceCard(
+// //                     icon: Icons.local_shipping_rounded,
+// //                     title: 'Tow Service',
+// //                     subtitle: 'Vehicle towing',
+// //                     color: Color(0xFF6D28D9),
+// //                     onTap: () => Navigator.push(
+// //                       context,
+// //                       MaterialPageRoute(builder: (context) => TowServiceRequestScreen()),
+// //                     ),
+// //                   ),
+// //                 ),
+// //                 SizedBox(width: 12),
+// //                 Expanded(
+// //                   child: _buildEmergencyServiceCard(
+// //                     icon: Icons.handyman_rounded,
+// //                     title: 'Garage Service',
+// //                     subtitle: 'Mechanic & repair',
+// //                     color: Color(0xFFF59E0B),
+// //                     onTap: () {
+// //                       if (currentPosition == null) {
+// //                         ScaffoldMessenger.of(context).showSnackBar(
+// //                           SnackBar(
+// //                             content: Text('Please wait for location to load'),
+// //                             backgroundColor: Colors.orange,
+// //                           ),
+// //                         );
+// //                         return;
+// //                       }
+// //                       Navigator.push(
+// //                         context,
+// //                         MaterialPageRoute(
+// //                           builder: (context) => NearbyGaragesScreen(
+// //                             userLocation: currentPosition!,
+// //                             userEmail: userEmail,
+// //                           ),
+// //                         ),
+// //                       );
+// //                     },
+// //                   ),
+// //                 ),
+// //               ],
+// //             ),
+// //           ],
+// //         ),
+// //       ),
+// //     );
+// //   }
+
+// //   Widget _buildEmergencyServiceCard({
+// //     required IconData icon,
+// //     required String title,
+// //     required String subtitle,
+// //     required Color color,
+// //     required VoidCallback onTap,
+// //   }) {
+// //     return GestureDetector(
+// //       onTap: onTap,
+// //       child: Container(
+// //         padding: EdgeInsets.all(16),
+// //         decoration: BoxDecoration(
+// //           color: color.withOpacity(0.1),
+// //           borderRadius: BorderRadius.circular(12),
+// //           border: Border.all(color: color.withOpacity(0.3)),
+// //         ),
+// //         child: Column(
+// //           children: [
+// //             Container(
+// //               padding: EdgeInsets.all(12),
+// //               decoration: BoxDecoration(
+// //                 color: color,
+// //                 borderRadius: BorderRadius.circular(10),
+// //               ),
+// //               child: Icon(icon, color: Colors.white, size: 24),
+// //             ),
+// //             SizedBox(height: 8),
+// //             Text(
+// //               title,
+// //               style: TextStyle(
+// //                 fontSize: 12,
+// //                 fontWeight: FontWeight.bold,
+// //                 color: color,
+// //               ),
+// //               textAlign: TextAlign.center,
+// //             ),
+// //             Text(
+// //               subtitle,
+// //               style: TextStyle(
+// //                 fontSize: 10,
+// //                 color: Colors.grey[600],
+// //               ),
+// //               textAlign: TextAlign.center,
+// //             ),
+// //           ],
+// //         ),
+// //       ),
+// //     );
+// //   }
+// // }
+
+// import 'package:smart_road_app/Login/VehicleOwneLogin.dart';
+// import 'package:smart_road_app/VehicleOwner/GarageRequest.dart';
+// import 'package:smart_road_app/VehicleOwner/History.dart';
+// import 'package:smart_road_app/VehicleOwner/InsuranceRequest.dart';
+// import 'package:smart_road_app/VehicleOwner/ProfilePage.dart';
+// import 'package:smart_road_app/VehicleOwner/SpareParts.dart';
+// import 'package:smart_road_app/VehicleOwner/ai.dart';
+// import 'package:smart_road_app/controller/sharedprefrence.dart';
+// import 'package:firebase_auth/firebase_auth.dart';
+// import 'package:flutter/material.dart';
+// import 'package:geolocator/geolocator.dart';
+
+// // Import the tow service screens
+
+// import "package:smart_road_app/VehicleOwner/TowRequest.dart";
+// import 'package:smart_road_app/VehicleOwner/nearby_tow_provider_screen.dart';
+
+// // Insurance Module Classes
+// class InsuranceModule {
+//   static List<Map<String, dynamic>> getInsuranceRequests() {
+//     return [
+//       {
+//         'id': 'INS001',
+//         'policyType': 'Comprehensive',
+//         'status': 'Active',
+//         'expiryDate': '2024-12-31',
+//         'vehicleNumber': 'MH12AB1234',
+//         'provider': 'ABC Insurance Co.',
+//         'premium': '\$450',
+//         'startDate': '2024-01-01',
+//       },
+//       {
+//         'id': 'INS002',
+//         'policyType': 'Third Party',
+//         'status': 'Pending',
+//         'expiryDate': '2024-06-30',
+//         'vehicleNumber': 'MH12CD5678',
+//         'provider': 'XYZ Insurance',
+//         'premium': '\$200',
+//         'startDate': '2024-01-15',
+//       },
+//     ];
+//   }
+// }
+
+// // Main Dashboard Class
+// class EnhancedVehicleDashboard extends StatefulWidget {
+//   const EnhancedVehicleDashboard({super.key});
+
+//   @override
+//   _EnhancedVehicleDashboardState createState() => _EnhancedVehicleDashboardState();
+// }
+
+// class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
+//     with SingleTickerProviderStateMixin {
+//   int _currentIndex = 0;
+//   late AnimationController _animationController;
+//   late Animation<double> _scaleAnimation;
+//   late Animation<double> _fadeAnimation;
+//   String? _userEmail;
+//   Position? _currentPosition;
+//   String _currentLocation = 'Fetching location...';
+//   bool _locationLoading = false;
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     _animationController = AnimationController(
+//       vsync: this,
+//       duration: Duration(milliseconds: 800),
+//     );
+//     _scaleAnimation = Tween<double>(begin: 0.95, end: 1.0).animate(
+//       CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic),
+//     );
+//     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+//       CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
+//     );
+//     _animationController.forward();
+//     _loadUserData();
+//     _getCurrentLocation();
+//   }
+
+//   Future<void> _loadUserData() async {
+//     try {
+//       String? userEmail = await AuthService.getUserEmail();
+//       setState(() {
+//         _userEmail = userEmail;
+//       });
+//       print('✅ Dashboard loaded for user: $_userEmail');
+//     } catch (e) {
+//       print('❌ Error loading user data in dashboard: $e');
+//     }
+//   }
+
+//   Future<void> _getCurrentLocation() async {
+//     setState(() {
+//       _locationLoading = true;
+//     });
+
+//     try {
+//       // Check permission
+//       LocationPermission permission = await Geolocator.checkPermission();
+//       if (permission == LocationPermission.denied) {
+//         permission = await Geolocator.requestPermission();
+//         if (permission == LocationPermission.denied) {
+//           setState(() {
+//             _currentLocation = 'Location permission denied';
+//             _locationLoading = false;
+//           });
+//           return;
+//         }
+//       }
+
+//       if (permission == LocationPermission.deniedForever) {
+//         setState(() {
+//           _currentLocation = 'Location permission permanently denied';
+//           _locationLoading = false;
+//         });
+//         return;
+//       }
+
+//       // Get current position
+//       Position position = await Geolocator.getCurrentPosition(
+//         desiredAccuracy: LocationAccuracy.high,
+//       );
+
+//       setState(() {
+//         _currentPosition = position;
+//         _currentLocation = '${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
+//         _locationLoading = false;
+//       });
+
+//     } catch (e) {
+//       print('Error getting location: $e');
+//       setState(() {
+//         _currentLocation = 'Unable to fetch location';
+//         _locationLoading = false;
+//       });
+//     }
+//   }
+
+//   Map<String, dynamic> get _userData {
+//     return {
+//       'name': _userEmail?.split('@').first ?? 'User',
+//       'email': _userEmail ?? 'user@example.com',
+//       'vehicle': 'Toyota Camry 2022',
+//       'plan': 'Gold Plan',
+//       'memberSince': '2023',
+//       'points': 450,
+//       'nextService': '2024-02-20',
+//       'emergencyContacts': ['+1-234-567-8900', '+1-234-567-8901']
+//     };
+//   }
+
+//   @override
+//   void dispose() {
+//     _animationController.dispose();
+//     super.dispose();
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       backgroundColor: Colors.grey[50],
+//       appBar: _buildEnhancedAppBar(),
+//       drawer: _buildEnhancedDrawer(),
+//       body: FadeTransition(
+//         opacity: _fadeAnimation,
+//         child: ScaleTransition(
+//           scale: _scaleAnimation,
+//           child: _getCurrentScreen(),
+//         ),
+//       ),
+//       bottomNavigationBar: _buildEnhancedBottomNavigationBar(),
+//     );
+//   }
+
+//   AppBar _buildEnhancedAppBar() {
+//     return AppBar(
+//       title: Column(
+//         crossAxisAlignment: CrossAxisAlignment.start,
+//         children: [
+//           Text(
+//             'AutoConnect',
+//             style: TextStyle(
+//               fontWeight: FontWeight.w800,
+//               fontSize: 22,
+//               color: Colors.white,
+//             ),
+//           ),
+//           Text(
+//             'Always here to help',
+//             style: TextStyle(
+//               fontSize: 12,
+//               color: Colors.white70,
+//             ),
+//           ),
+//         ],
+//       ),
+//       backgroundColor: Color(0xFF6D28D9),
+//       foregroundColor: Colors.white,
+//       elevation: 0,
+//       shape: RoundedRectangleBorder(
+//         borderRadius: BorderRadius.only(
+//           bottomLeft: Radius.circular(20),
+//           bottomRight: Radius.circular(20),
+//         ),
+//       ),
+//       actions: [
+//         IconButton(
+//           icon: Icon(Icons.location_on),
+//           onPressed: _getCurrentLocation,
+//           tooltip: 'Refresh Location',
+//         ),
+//         IconButton(
+//           icon: Icon(Icons.auto_awesome),
+//           onPressed: (){
+//             Navigator.of(context).push(MaterialPageRoute(builder: (context)=>VehicleDamageAnalyzer()));
+//           },
+//           tooltip: 'AI Assistance',
+//         ),
+//       ],
+//     );
+//   }
+
+//   Widget _buildEnhancedDrawer() {
+//     return Drawer(
+//       child: Container(
+//         decoration: BoxDecoration(
+//           gradient: LinearGradient(
+//             begin: Alignment.topLeft,
+//             end: Alignment.bottomRight,
+//             colors: [Color(0xFF6D28D9), Color(0xFF8B5CF6)],
+//           ),
+//         ),
+//         child: ListView(
+//           padding: EdgeInsets.zero,
+//           children: [
+//             _buildDrawerHeader(),
+//             _buildDrawerItem(
+//               icon: Icons.dashboard_rounded,
+//               title: 'Dashboard',
+//               onTap: () => _navigateToIndex(0),
+//             ),
+//             _buildDrawerItem(
+//               icon: Icons.security_rounded,
+//               title: 'Insurance',
+//               onTap: () => _navigateToIndex(3),
+//             ),
+//             _buildDrawerItem(
+//               icon: Icons.build_circle_rounded,
+//               title: 'Spare Parts',
+//               onTap: _showSpareParts,
+//             ),
+//             _buildDrawerItem(
+//               icon: Icons.history_rounded,
+//               title: 'Service History',
+//               onTap: () => _navigateToIndex(2),
+//             ),
+//             _buildDrawerItem(
+//               icon: Icons.logout_rounded,
+//               title: 'Logout',
+//               onTap: _logout,
+//               color: Colors.red[300],
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+
+//   Widget _buildDrawerHeader() {
+//     return Container(
+//       padding: EdgeInsets.only(top: 60, bottom: 20, left: 20, right: 20),
+//       decoration: BoxDecoration(
+//         color: Color(0xFF5B21B6).withOpacity(0.8),
+//       ),
+//       child: Column(
+//         children: [
+//           CircleAvatar(
+//             radius: 40,
+//             backgroundColor: Colors.white,
+//             child: Icon(
+//               Icons.person_rounded,
+//               size: 50,
+//               color: Color(0xFF6D28D9),
+//             ),
+//           ),
+//           SizedBox(height: 16),
+//           Text(
+//             _userData['name'],
+//             style: TextStyle(
+//               color: Colors.white,
+//               fontSize: 20,
+//               fontWeight: FontWeight.bold,
+//             ),
+//           ),
+//           SizedBox(height: 4),
+//           Text(
+//             _userData['email'],
+//             style: TextStyle(
+//               color: Colors.white70,
+//               fontSize: 14,
+//             ),
+//           ),
+//           SizedBox(height: 8),
+//           Container(
+//             padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+//             decoration: BoxDecoration(
+//               color: Colors.amber.withOpacity(0.2),
+//               borderRadius: BorderRadius.circular(12),
+//               border: Border.all(color: Colors.amber),
+//             ),
+//             child: Row(
+//               mainAxisSize: MainAxisSize.min,
+//               children: [
+//                 Icon(Icons.auto_awesome, color: Colors.amber, size: 16),
+//                 SizedBox(width: 4),
+//                 Text(
+//                   '${_userData['points']} Points',
+//                   style: TextStyle(
+//                     color: Colors.amber,
+//                     fontWeight: FontWeight.bold,
+//                     fontSize: 12,
+//                   ),
+//                 ),
+//               ],
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+
+//   Widget _buildDrawerItem({
+//     required IconData icon,
+//     required String title,
+//     required VoidCallback onTap,
+//     Color? color,
+//   }) {
+//     return ListTile(
+//       leading: Container(
+//         width: 40,
+//         height: 40,
+//         decoration: BoxDecoration(
+//           color: Colors.white.withOpacity(0.1),
+//           borderRadius: BorderRadius.circular(10),
+//         ),
+//         child: Icon(icon, color: color ?? Colors.white70, size: 20),
+//       ),
+//       title: Text(
+//         title,
+//         style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+//       ),
+//       onTap: onTap,
+//       hoverColor: Colors.white.withOpacity(0.1),
+//     );
+//   }
+
+//   Widget _getCurrentScreen() {
+//     switch (_currentIndex) {
+//       case 0:
+//         return EnhancedHomeScreenWithInsurance(
+//           userData: _userData,
+//           insuranceRequests: InsuranceModule.getInsuranceRequests(),
+//           currentPosition: _currentPosition,
+//           currentLocation: _currentLocation,
+//           locationLoading: _locationLoading,
+//           onGarageServiceTap: _navigateToNearbyGarages,
+//           onTowServiceTap: _navigateToNearbyTowProviders,
+//         );
+//       case 1:
+//         return EnhancedServicesScreen(
+//           currentPosition: _currentPosition,
+//           currentLocation: _currentLocation,
+//           locationLoading: _locationLoading,
+//           userEmail: _userEmail,
+//           onTowServiceTap: _navigateToNearbyTowProviders,
+//           onGarageServiceTap: _navigateToNearbyGarages,
+//         );
+//       case 2:
+//         return EnhancedHistoryScreen(userEmail: _userEmail ?? 'avi@gmail.com', serviceHistory: []);
+//       case 3:
+//         return RequestInsuranceScreen();
+//       case 4:
+//         return EnhancedProfileScreen(userEmail: _userEmail ?? 'avi@gmail.com', serviceHistory: []);
+//       default:
+//         return EnhancedHomeScreenWithInsurance(
+//           userData: _userData,
+//           insuranceRequests: InsuranceModule.getInsuranceRequests(),
+//           currentPosition: _currentPosition,
+//           currentLocation: _currentLocation,
+//           locationLoading: _locationLoading,
+//           onGarageServiceTap: _navigateToNearbyGarages,
+//           onTowServiceTap: _navigateToNearbyTowProviders,
+//         );
+//     }
+//   }
+
+//   void _navigateToNearbyGarages() {
+//     if (_currentPosition == null) {
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         SnackBar(
+//           content: Text('Please wait for location to load'),
+//           backgroundColor: Colors.orange,
+//         ),
+//       );
+//       return;
+//     }
+
+//     Navigator.push(
+//       context,
+//       MaterialPageRoute(
+//         builder: (context) => NearbyGaragesScreen(
+//           userLocation: _currentPosition!,
+//           userEmail: _userEmail,
+//         ),
+//       ),
+//     );
+//   }
+
+//   void _navigateToNearbyTowProviders() {
+//     if (_currentPosition == null) {
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         SnackBar(
+//           content: Text('Please wait for location to load'),
+//           backgroundColor: Colors.orange,
+//         ),
+//       );
+//       return;
+//     }
+
+//     Navigator.push(
+//       context,
+//       MaterialPageRoute(
+//         builder: (context) => NearbyTowProvidersScreen(
+//           userLocation: _currentPosition!,
+//           userEmail: _userEmail,
+//         ),
+//       ),
+//     );
+//   }
+
+//   Widget _buildEnhancedBottomNavigationBar() {
+//     return Container(
+//       decoration: BoxDecoration(
+//         borderRadius: BorderRadius.only(
+//           topLeft: Radius.circular(20),
+//           topRight: Radius.circular(20),
+//         ),
+//         boxShadow: [
+//           BoxShadow(
+//             color: Colors.purple.withOpacity(0.1),
+//             blurRadius: 20,
+//             offset: Offset(0, -5),
+//           ),
+//         ],
+//       ),
+//       child: ClipRRect(
+//         borderRadius: BorderRadius.only(
+//           topLeft: Radius.circular(20),
+//           topRight: Radius.circular(20),
+//         ),
+//         child: BottomNavigationBar(
+//           currentIndex: _currentIndex,
+//           onTap: (index) {
+//             setState(() {
+//               _currentIndex = index;
+//               _animationController.reset();
+//               _animationController.forward();
+//             });
+//           },
+//           type: BottomNavigationBarType.fixed,
+//           backgroundColor: Colors.white,
+//           selectedItemColor: Color(0xFF6D28D9),
+//           unselectedItemColor: Colors.grey[600],
+//           selectedLabelStyle: TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+//           unselectedLabelStyle: TextStyle(fontSize: 12),
+//           items: [
+//             BottomNavigationBarItem(
+//               icon: Icon(Icons.home_rounded),
+//               activeIcon: Container(
+//                 padding: EdgeInsets.all(8),
+//                 decoration: BoxDecoration(
+//                   color: Color(0xFF6D28D9).withOpacity(0.1),
+//                   shape: BoxShape.circle,
+//                 ),
+//                 child: Icon(Icons.home_rounded, color: Color(0xFF6D28D9)),
+//               ),
+//               label: 'Home',
+//             ),
+//             BottomNavigationBarItem(
+//               icon: Icon(Icons.handyman_rounded),
+//               activeIcon: Container(
+//                 padding: EdgeInsets.all(8),
+//                 decoration: BoxDecoration(
+//                   color: Color(0xFF6D28D9).withOpacity(0.1),
+//                   shape: BoxShape.circle,
+//                 ),
+//                 child: Icon(Icons.handyman_rounded, color: Color(0xFF6D28D9)),
+//               ),
+//               label: 'Services',
+//             ),
+//             BottomNavigationBarItem(
+//               icon: Icon(Icons.history_rounded),
+//               activeIcon: Container(
+//                 padding: EdgeInsets.all(8),
+//                 decoration: BoxDecoration(
+//                   color: Color(0xFF6D28D9).withOpacity(0.1),
+//                   shape: BoxShape.circle,
+//                 ),
+//                 child: Icon(Icons.history_rounded, color: Color(0xFF6D28D9)),
+//               ),
+//               label: 'History',
+//             ),
+//             BottomNavigationBarItem(
+//               icon: Icon(Icons.security_rounded),
+//               activeIcon: Container(
+//                 padding: EdgeInsets.all(8),
+//                 decoration: BoxDecoration(
+//                   color: Color(0xFF6D28D9).withOpacity(0.1),
+//                   shape: BoxShape.circle,
+//                 ),
+//                 child: Icon(Icons.security_rounded, color: Color(0xFF6D28D9)),
+//               ),
+//               label: 'Insurance',
+//             ),
+//             BottomNavigationBarItem(
+//               icon: Icon(Icons.person_rounded),
+//               activeIcon: Container(
+//                 padding: EdgeInsets.all(8),
+//                 decoration: BoxDecoration(
+//                   color: Color(0xFF6D28D9).withOpacity(0.1),
+//                   shape: BoxShape.circle,
+//                 ),
+//                 child: Icon(Icons.person_rounded, color: Color(0xFF6D28D9)),
+//               ),
+//               label: 'Profile',
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+
+//   void _navigateToIndex(int index) {
+//     setState(() {
+//       _currentIndex = index;
+//     });
+//     Navigator.pop(context);
+//   }
+
+//   void _showSpareParts() {
+//     Navigator.of(context).push(MaterialPageRoute(builder: (context)=>SparePartsStore()));
+//     Navigator.pop(context);
+//   }
+
+//   // FIXED LOGOUT FUNCTION - 100% WORKING
+//   void _logout() async {
+//     print('🚪 Logout button pressed...');
+
+//     // Close drawer first
+//     Navigator.pop(context);
+
+//     // Show confirmation dialog
+//     showDialog(
+//       context: context,
+//       barrierDismissible: false,
+//       builder: (BuildContext context) {
+//         return AlertDialog(
+//           title: Text('Logout Confirmation'),
+//           content: Text('Are you sure you want to logout?'),
+//           actions: [
+//             TextButton(
+//               onPressed: () {
+//                 Navigator.of(context).pop(); // Close dialog
+//                 print('❌ Logout cancelled by user');
+//               },
+//               child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
+//             ),
+//             TextButton(
+//               onPressed: () async {
+//                 Navigator.of(context).pop(); // Close dialog
+//                 print('✅ User confirmed logout');
+
+//                 try {
+//                   // Show loading
+//                   showDialog(
+//                     context: context,
+//                     barrierDismissible: false,
+//                     builder: (BuildContext context) {
+//                       return Dialog(
+//                         child: Padding(
+//                           padding: EdgeInsets.all(20),
+//                           child: Row(
+//                             mainAxisSize: MainAxisSize.min,
+//                             children: [
+//                               CircularProgressIndicator(),
+//                               SizedBox(width: 20),
+//                               Text("Logging out..."),
+//                             ],
+//                           ),
+//                         ),
+//                       );
+//                     },
+//                   );
+
+//                   // 1. Clear shared preferences
+//                   print('🗑️ Clearing shared preferences...');
+//                   await AuthService.clearLoginData();
+
+//                   // 2. Sign out from Firebase
+//                   print('🔥 Signing out from Firebase...');
+//                   await FirebaseAuth.instance.signOut();
+
+//                   // 3. Close loading dialog
+//                   Navigator.of(context).pop();
+
+//                   // 4. Navigate to login page and remove all routes
+//                   print('🔄 Navigating to login page...');
+//                   Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+//                     MaterialPageRoute(builder: (context) => VehicleLoginPage()),
+//                     (Route<dynamic> route) => false,
+//                   );
+
+//                   print('🎉 Logout completed successfully!');
+
+//                 } catch (e) {
+//                   print('❌ Error during logout: $e');
+
+//                   // Close loading dialog if still open
+//                   if (Navigator.canPop(context)) {
+//                     Navigator.of(context).pop();
+//                   }
+
+//                   ScaffoldMessenger.of(context).showSnackBar(
+//                     SnackBar(
+//                       content: Text('Logout failed. Please try again.'),
+//                       backgroundColor: Colors.red,
+//                     ),
+//                   );
+//                 }
+//               },
+//               child: Text('Logout', style: TextStyle(color: Colors.red)),
+//             ),
+//           ],
+//         );
+//       },
+//     );
+//   }
+// }
+
+// // Enhanced Home Screen with Insurance Integration
+// class EnhancedHomeScreenWithInsurance extends StatelessWidget {
+//   final Map<String, dynamic> userData;
+//   final List<Map<String, dynamic>> insuranceRequests;
+//   final Position? currentPosition;
+//   final String currentLocation;
+//   final bool locationLoading;
+//   final VoidCallback onGarageServiceTap;
+//   final VoidCallback onTowServiceTap;
+
+//   const EnhancedHomeScreenWithInsurance({
+//     super.key,
+//     required this.userData,
+//     required this.insuranceRequests,
+//     required this.currentPosition,
+//     required this.currentLocation,
+//     required this.locationLoading,
+//     required this.onGarageServiceTap,
+//     required this.onTowServiceTap,
+//   });
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return SingleChildScrollView(
+//       padding: EdgeInsets.all(16),
+//       child: Column(
+//         children: [
+//           _buildWelcomeCard(),
+//           SizedBox(height: 20),
+//           _buildLocationCard(),
+//           SizedBox(height: 20),
+//           _buildQuickActions(context),
+//           SizedBox(height: 20),
+//           _buildInsuranceReminder(context),
+//           SizedBox(height: 20),
+//           _buildQuickStats(),
+//         ],
+//       ),
+//     );
+//   }
+
+//   Widget _buildWelcomeCard() {
+//     return Container(
+//       width: double.infinity,
+//       padding: EdgeInsets.all(20),
+//       decoration: BoxDecoration(
+//         gradient: LinearGradient(
+//           begin: Alignment.topLeft,
+//           end: Alignment.bottomRight,
+//           colors: [Color(0xFF6D28D9), Color(0xFF8B5CF6)],
+//         ),
+//         borderRadius: BorderRadius.circular(20),
+//         boxShadow: [
+//           BoxShadow(
+//             color: Color(0xFF6D28D9).withOpacity(0.3),
+//             blurRadius: 20,
+//             offset: Offset(0, 8),
+//           ),
+//         ],
+//       ),
+//       child: Column(
+//         crossAxisAlignment: CrossAxisAlignment.start,
+//         children: [
+//           Row(
+//             children: [
+//               CircleAvatar(
+//                 backgroundColor: Colors.white,
+//                 child: Icon(Icons.person_rounded, color: Color(0xFF6D28D9)),
+//               ),
+//               SizedBox(width: 12),
+//               Expanded(
+//                 child: Column(
+//                   crossAxisAlignment: CrossAxisAlignment.start,
+//                   children: [
+//                     Text(
+//                       'Welcome back, ${userData['name'].split(' ')[0]}! 👋',
+//                       style: TextStyle(
+//                         color: Colors.white,
+//                         fontSize: 18,
+//                         fontWeight: FontWeight.bold,
+//                       ),
+//                     ),
+//                     Text(
+//                       'Your ${userData['plan']} is active',
+//                       style: TextStyle(color: Colors.white70),
+//                     ),
+//                   ],
+//                 ),
+//               ),
+//             ],
+//           ),
+//           SizedBox(height: 15),
+//           Container(
+//             padding: EdgeInsets.all(12),
+//             decoration: BoxDecoration(
+//               color: Colors.white.withOpacity(0.1),
+//               borderRadius: BorderRadius.circular(12),
+//             ),
+//             child: Row(
+//               children: [
+//                 Icon(Icons.auto_awesome_rounded, color: Colors.amber, size: 16),
+//                 SizedBox(width: 8),
+//                 Text(
+//                   '${userData['points']} Reward Points',
+//                   style: TextStyle(color: Colors.white),
+//                 ),
+//                 Spacer(),
+//                 Icon(Icons.calendar_today_rounded, color: Colors.white70, size: 14),
+//                 SizedBox(width: 4),
+//                 Text(
+//                   'Next: ${userData['nextService']}',
+//                   style: TextStyle(color: Colors.white70, fontSize: 12),
+//                 ),
+//               ],
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+
+//   Widget _buildLocationCard() {
+//     return Card(
+//       elevation: 3,
+//       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+//       child: Padding(
+//         padding: EdgeInsets.all(16),
+//         child: Row(
+//           children: [
+//             Icon(
+//               Icons.location_on,
+//               color: Color(0xFF6D28D9),
+//               size: 24,
+//             ),
+//             SizedBox(width: 12),
+//             Expanded(
+//               child: Column(
+//                 crossAxisAlignment: CrossAxisAlignment.start,
+//                 children: [
+//                   Text(
+//                     'Current Location',
+//                     style: TextStyle(
+//                       fontSize: 14,
+//                       fontWeight: FontWeight.w500,
+//                       color: Colors.grey[700],
+//                     ),
+//                   ),
+//                   SizedBox(height: 4),
+//                   locationLoading
+//                       ? Row(
+//                           children: [
+//                             SizedBox(
+//                               width: 16,
+//                               height: 16,
+//                               child: CircularProgressIndicator(strokeWidth: 2),
+//                             ),
+//                             SizedBox(width: 8),
+//                             Text(
+//                               'Fetching location...',
+//                               style: TextStyle(
+//                                 fontSize: 12,
+//                                 color: Colors.grey[500],
+//                               ),
+//                             ),
+//                           ],
+//                         )
+//                       : Text(
+//                           currentLocation,
+//                           style: TextStyle(
+//                             fontSize: 12,
+//                             color: Colors.grey[600],
+//                           ),
+//                         ),
+//                 ],
+//               ),
+//             ),
+//             if (currentPosition != null)
+//               Icon(
+//                 Icons.check_circle,
+//                 color: Colors.green,
+//                 size: 20,
+//               ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+
+//   Widget _buildQuickActions(BuildContext context) {
+//     return Row(
+//       children: [
+//         Expanded(
+//           child: _buildQuickActionItem(
+//             icon: Icons.handyman_rounded,
+//             title: 'Garage Service',
+//             color: Color(0xFF6D28D9),
+//             onTap: onGarageServiceTap,
+//           ),
+//         ),
+//         SizedBox(width: 12),
+//         Expanded(
+//           child: _buildQuickActionItem(
+//             icon: Icons.security_rounded,
+//             title: 'Insurance',
+//             color: Colors.purple,
+//             onTap: () => Navigator.push(
+//               context,
+//               MaterialPageRoute(builder: (context) => RequestInsuranceScreen()),
+//             ),
+//           ),
+//         ),
+//         SizedBox(width: 12),
+//         Expanded(
+//           child: _buildQuickActionItem(
+//             icon: Icons.local_shipping_rounded,
+//             title: 'Tow Service',
+//             color: Colors.blue,
+//             onTap: onTowServiceTap,
+//           ),
+//         ),
+//       ],
+//     );
+//   }
+
+//   Widget _buildQuickActionItem({
+//     required IconData icon,
+//     required String title,
+//     required Color color,
+//     VoidCallback? onTap,
+//   }) {
+//     return GestureDetector(
+//       onTap: onTap,
+//       child: Container(
+//         padding: EdgeInsets.all(16),
+//         decoration: BoxDecoration(
+//           color: Colors.white,
+//           borderRadius: BorderRadius.circular(15),
+//           boxShadow: [
+//             BoxShadow(
+//               color: Colors.grey.withOpacity(0.1),
+//               blurRadius: 10,
+//               offset: Offset(0, 3),
+//             ),
+//           ],
+//         ),
+//         child: Column(
+//           children: [
+//             Container(
+//               padding: EdgeInsets.all(8),
+//               decoration: BoxDecoration(
+//                 color: color.withOpacity(0.1),
+//                 borderRadius: BorderRadius.circular(10),
+//               ),
+//               child: Icon(icon, color: color, size: 20),
+//             ),
+//             SizedBox(height: 8),
+//             Text(
+//               title,
+//               style: TextStyle(
+//                 fontSize: 12,
+//                 fontWeight: FontWeight.w600,
+//                 color: Colors.grey[700],
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+
+//   Widget _buildInsuranceReminder(BuildContext context) {
+//     final activePolicy = insuranceRequests.firstWhere(
+//       (policy) => policy['status'] == 'Active',
+//       orElse: () => {},
+//     );
+
+//     if (activePolicy.isEmpty) {
+//       return Container(
+//         padding: EdgeInsets.all(16),
+//         decoration: BoxDecoration(
+//           color: Colors.orange[50],
+//           borderRadius: BorderRadius.circular(15),
+//           border: Border.all(color: Colors.orange),
+//         ),
+//         child: Row(
+//           children: [
+//             Icon(Icons.warning_amber_rounded, color: Colors.orange),
+//             SizedBox(width: 12),
+//             Expanded(
+//               child: Column(
+//                 crossAxisAlignment: CrossAxisAlignment.start,
+//                 children: [
+//                   Text(
+//                     'No Active Insurance',
+//                     style: TextStyle(
+//                       fontWeight: FontWeight.bold,
+//                       color: Colors.orange[800],
+//                     ),
+//                   ),
+//                   Text(
+//                     'Get your vehicle insured today',
+//                     style: TextStyle(color: Colors.orange[700], fontSize: 12),
+//                   ),
+//                 ],
+//               ),
+//             ),
+//             ElevatedButton(
+//               onPressed: () => Navigator.push(
+//                 context,
+//                 MaterialPageRoute(builder: (context) => RequestInsuranceScreen()),
+//               ),
+//               style: ElevatedButton.styleFrom(
+//                 backgroundColor: Colors.orange,
+//                 foregroundColor: Colors.white,
+//                 padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+//               ),
+//               child: Text('Get Insurance'),
+//             ),
+//           ],
+//         ),
+//       );
+//     }
+
+//     return Container();
+//   }
+
+//   Widget _buildQuickStats() {
+//     return Row(
+//       children: [
+//         Expanded(
+//           child: _buildStatCard(
+//             title: 'Services Used',
+//             value: '3',
+//             subtitle: 'This month',
+//             color: Color(0xFF6D28D9),
+//           ),
+//         ),
+//         SizedBox(width: 12),
+//         Expanded(
+//           child: _buildStatCard(
+//             title: 'Insurance',
+//             value: 'Active',
+//             subtitle: 'Comprehensive',
+//             color: Colors.green,
+//           ),
+//         ),
+//         SizedBox(width: 12),
+//         Expanded(
+//           child: _buildStatCard(
+//             title: 'Savings',
+//             value: '\$85',
+//             subtitle: 'Total',
+//             color: Colors.blue,
+//           ),
+//         ),
+//       ],
+//     );
+//   }
+
+//   Widget _buildStatCard({
+//     required String title,
+//     required String value,
+//     required String subtitle,
+//     required Color color,
+//   }) {
+//     return Container(
+//       padding: EdgeInsets.all(16),
+//       decoration: BoxDecoration(
+//         color: Colors.white,
+//         borderRadius: BorderRadius.circular(15),
+//         boxShadow: [
+//           BoxShadow(
+//             color: Colors.grey.withOpacity(0.1),
+//             blurRadius: 10,
+//             offset: Offset(0, 3),
+//           ),
+//         ],
+//       ),
+//       child: Column(
+//         crossAxisAlignment: CrossAxisAlignment.start,
+//         children: [
+//           Container(
+//             padding: EdgeInsets.all(6),
+//             decoration: BoxDecoration(
+//               color: color.withOpacity(0.1),
+//               borderRadius: BorderRadius.circular(8),
+//             ),
+//             child: Icon(Icons.trending_up_rounded, color: color, size: 16),
+//           ),
+//           SizedBox(height: 8),
+//           Text(
+//             value,
+//             style: TextStyle(
+//               fontSize: 18,
+//               fontWeight: FontWeight.bold,
+//               color: color,
+//             ),
+//           ),
+//           Text(
+//             title,
+//             style: TextStyle(
+//               fontSize: 12,
+//               color: Colors.grey[600],
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+
+//   void _showComingSoon(BuildContext context, String feature) {
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       SnackBar(
+//         content: Text('$feature feature coming soon!'),
+//         backgroundColor: Color(0xFF6D28D9),
+//       ),
+//     );
+//   }
+// }
+
+// // Enhanced Services Screen
+// class EnhancedServicesScreen extends StatelessWidget {
+//   final Position? currentPosition;
+//   final String currentLocation;
+//   final bool locationLoading;
+//   final String? userEmail;
+//   final VoidCallback onTowServiceTap;
+//   final VoidCallback onGarageServiceTap;
+
+//   const EnhancedServicesScreen({
+//     super.key,
+//     required this.currentPosition,
+//     required this.currentLocation,
+//     required this.locationLoading,
+//     required this.userEmail,
+//     required this.onTowServiceTap,
+//     required this.onGarageServiceTap,
+//   });
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return CustomScrollView(
+//       slivers: [
+//         SliverToBoxAdapter(
+//           child: Padding(
+//             padding: EdgeInsets.all(16),
+//             child: Column(
+//               children: [
+//                 _buildLocationCard(),
+//                 SizedBox(height: 20),
+//                 _buildEmergencyServices(context),
+//                 SizedBox(height: 20),
+//                 Text(
+//                   'All Services',
+//                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+//                 ),
+//               ],
+//             ),
+//           ),
+//         ),
+//       ],
+//     );
+//   }
+
+//   Widget _buildLocationCard() {
+//     return Card(
+//       elevation: 3,
+//       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+//       child: Padding(
+//         padding: EdgeInsets.all(16),
+//         child: Row(
+//           children: [
+//             Icon(
+//               Icons.location_on,
+//               color: Color(0xFF6D28D9),
+//               size: 24,
+//             ),
+//             SizedBox(width: 12),
+//             Expanded(
+//               child: Column(
+//                 crossAxisAlignment: CrossAxisAlignment.start,
+//                 children: [
+//                   Text(
+//                     'Current Location',
+//                     style: TextStyle(
+//                       fontSize: 14,
+//                       fontWeight: FontWeight.w500,
+//                       color: Colors.grey[700],
+//                     ),
+//                   ),
+//                   SizedBox(height: 4),
+//                   locationLoading
+//                       ? Row(
+//                           children: [
+//                             SizedBox(
+//                               width: 16,
+//                               height: 16,
+//                               child: CircularProgressIndicator(strokeWidth: 2),
+//                             ),
+//                             SizedBox(width: 8),
+//                             Text(
+//                               'Fetching location...',
+//                               style: TextStyle(
+//                                 fontSize: 12,
+//                                 color: Colors.grey[500],
+//                               ),
+//                             ),
+//                           ],
+//                         )
+//                       : Text(
+//                           currentLocation,
+//                           style: TextStyle(
+//                             fontSize: 12,
+//                             color: Colors.grey[600],
+//                           ),
+//                         ),
+//                 ],
+//               ),
+//             ),
+//             if (currentPosition != null)
+//               Icon(
+//                 Icons.check_circle,
+//                 color: Colors.green,
+//                 size: 20,
+//               ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+
+//   Widget _buildEmergencyServices(BuildContext context) {
+//     return Card(
+//       elevation: 4,
+//       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+//       child: Padding(
+//         padding: EdgeInsets.all(16),
+//         child: Column(
+//           crossAxisAlignment: CrossAxisAlignment.start,
+//           children: [
+//             Text(
+//               'Emergency Services',
+//               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF6D28D9)),
+//             ),
+//             SizedBox(height: 12),
+//             Row(
+//               children: [
+//                 Expanded(
+//                   child: _buildEmergencyServiceCard(
+//                     icon: Icons.local_shipping_rounded,
+//                     title: 'Tow Service',
+//                     subtitle: 'Vehicle towing',
+//                     color: Color(0xFF6D28D9),
+//                     onTap: onTowServiceTap,
+//                   ),
+//                 ),
+//                 SizedBox(width: 12),
+//                 Expanded(
+//                   child: _buildEmergencyServiceCard(
+//                     icon: Icons.handyman_rounded,
+//                     title: 'Garage Service',
+//                     subtitle: 'Mechanic & repair',
+//                     color: Color(0xFFF59E0B),
+//                     onTap: onGarageServiceTap,
+//                   ),
+//                 ),
+//               ],
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+
+//   Widget _buildEmergencyServiceCard({
+//     required IconData icon,
+//     required String title,
+//     required String subtitle,
+//     required Color color,
+//     required VoidCallback onTap,
+//   }) {
+//     return GestureDetector(
+//       onTap: onTap,
+//       child: Container(
+//         padding: EdgeInsets.all(16),
+//         decoration: BoxDecoration(
+//           color: color.withOpacity(0.1),
+//           borderRadius: BorderRadius.circular(12),
+//           border: Border.all(color: color.withOpacity(0.3)),
+//         ),
+//         child: Column(
+//           children: [
+//             Container(
+//               padding: EdgeInsets.all(12),
+//               decoration: BoxDecoration(
+//                 color: color,
+//                 borderRadius: BorderRadius.circular(10),
+//               ),
+//               child: Icon(icon, color: Colors.white, size: 24),
+//             ),
+//             SizedBox(height: 8),
+//             Text(
+//               title,
+//               style: TextStyle(
+//                 fontSize: 12,
+//                 fontWeight: FontWeight.bold,
+//                 color: color,
+//               ),
+//               textAlign: TextAlign.center,
+//             ),
+//             Text(
+//               subtitle,
+//               style: TextStyle(
+//                 fontSize: 10,
+//                 color: Colors.grey[600],
+//               ),
+//               textAlign: TextAlign.center,
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
+
+import 'dart:async';
+
+import 'package:smart_road_app/Login/VehicleOwneLogin.dart';
+import 'package:smart_road_app/VehicleOwner/GarageRequest.dart';
+import 'package:smart_road_app/VehicleOwner/History.dart';
+import 'package:smart_road_app/VehicleOwner/InsuranceRequest.dart';
+import 'package:smart_road_app/VehicleOwner/ProfilePage.dart';
+import 'package:smart_road_app/VehicleOwner/SpareParts.dart';
+import 'package:smart_road_app/VehicleOwner/ai.dart';
+import 'package:smart_road_app/controller/sharedprefrence.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
+
+// Import the tow service screens
+import "package:smart_road_app/VehicleOwner/TowRequest.dart";
+import 'package:smart_road_app/VehicleOwner/nearby_tow_provider_screen.dart';
+
+// Insurance Module Classes
+class InsuranceModule {
+  static List<Map<String, dynamic>> getInsuranceRequests() {
+    return [
+      {
+        'id': 'INS001',
+        'policyType': 'Comprehensive',
+        'status': 'Active',
+        'expiryDate': '2024-12-31',
+        'vehicleNumber': 'MH12AB1234',
+        'provider': 'ABC Insurance Co.',
+        'premium': '\$450',
+        'startDate': '2024-01-01',
+      },
+      {
+        'id': 'INS002',
+        'policyType': 'Third Party',
+        'status': 'Pending',
+        'expiryDate': '2024-06-30',
+        'vehicleNumber': 'MH12CD5678',
+        'provider': 'XYZ Insurance',
+        'premium': '\$200',
+        'startDate': '2024-01-15',
+      },
+    ];
+  }
+}
+
+// Main Dashboard Class
+class EnhancedVehicleDashboard extends StatefulWidget {
+  const EnhancedVehicleDashboard({super.key});
+
+  @override
+  _EnhancedVehicleDashboardState createState() =>
+      _EnhancedVehicleDashboardState();
+}
+
+class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
+    with SingleTickerProviderStateMixin {
+  int _currentIndex = 0;
+  late AnimationController _animationController;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _fadeAnimation;
+  String? _userEmail;
+  Position? _currentPosition;
+  String _currentLocation = 'Fetching location...';
+  bool _locationLoading = false;
+  String _locationAddress = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 800),
+    );
+    _scaleAnimation = Tween<double>(begin: 0.95, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic),
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
+    );
+    _animationController.forward();
+    _loadUserData();
+    _initializeLocation();
+  }
+
+  Future<void> _loadUserData() async {
+    try {
+      String? userEmail = await AuthService.getUserEmail();
+      setState(() {
+        _userEmail = userEmail;
+      });
+      print('✅ Dashboard loaded for user: $_userEmail');
+    } catch (e) {
+      print('❌ Error loading user data in dashboard: $e');
+    }
+  }
+
+  Future<void> _initializeLocation() async {
+    // Check if location service is enabled
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      setState(() {
+        _currentLocation = 'Location services are disabled';
+        _locationLoading = false;
+      });
+      return;
+    }
+
+    await _getCurrentLocation();
+  }
+
+  Future<void> _getCurrentLocation() async {
+    setState(() {
+      _locationLoading = true;
+    });
+
+    try {
+      // Check and request location permissions
+      LocationPermission permission = await Geolocator.checkPermission();
+
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          setState(() {
+            _currentLocation = 'Location permission denied';
+            _locationLoading = false;
+          });
+          _showLocationPermissionDialog();
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        setState(() {
+          _currentLocation = 'Location permission permanently denied';
+          _locationLoading = false;
+        });
+        _showLocationPermissionDialog();
+        return;
+      }
+
+      // Get current position with better accuracy and timeout
+      Position position =
+          await Geolocator.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.best,
+            timeLimit: Duration(seconds: 15),
+          ).timeout(
+            Duration(seconds: 20),
+            onTimeout: () {
+              throw TimeoutException('Location request timed out');
+            },
+          );
+
+      // Get address from coordinates
+      String address = await _getAddressFromLatLng(position);
+
+      setState(() {
+        _currentPosition = position;
+        _currentLocation =
+            '${position.latitude.toStringAsFixed(6)}, ${position.longitude.toStringAsFixed(6)}';
+        _locationAddress = address;
+        _locationLoading = false;
+      });
+
+      print('📍 Location fetched: $_currentLocation');
+      print('🏠 Address: $address');
+    } on TimeoutException catch (e) {
+      print('⏰ Location timeout: $e');
+      setState(() {
+        _currentLocation = 'Location timeout. Please try again.';
+        _locationLoading = false;
+      });
+    } catch (e) {
+      print('❌ Error getting location: $e');
+      setState(() {
+        _currentLocation = 'Unable to fetch location: ${e.toString()}';
+        _locationLoading = false;
+      });
+    }
+  }
+
+  Future<String> _getAddressFromLatLng(Position position) async {
+    try {
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+
+      if (placemarks.isNotEmpty) {
+        Placemark place = placemarks.first;
+        return '${place.street ?? ''}, ${place.locality ?? ''}, ${place.administrativeArea ?? ''}';
+      }
+      return 'Address not available';
+    } catch (e) {
+      print('Error getting address: $e');
+      return 'Address not available';
+    }
+  }
+
+  void _showLocationPermissionDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Location Permission Required'),
+          content: Text(
+            'This app needs location permission to show nearby services. Please enable location permissions in app settings.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                Geolocator.openAppSettings();
+              },
+              child: Text('Open Settings'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Map<String, dynamic> get _userData {
+    return {
+      'name': _userEmail?.split('@').first ?? 'User',
+      'email': _userEmail ?? 'user@example.com',
+      'vehicle': 'Toyota Camry 2022',
+      'plan': 'Gold Plan',
+      'memberSince': '2023',
+      'points': 450,
+      'nextService': '2024-02-20',
+      'emergencyContacts': ['+1-234-567-8900', '+1-234-567-8901'],
+    };
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.grey[50],
+      appBar: _buildEnhancedAppBar(),
+      drawer: _buildEnhancedDrawer(),
+      body: FadeTransition(
+        opacity: _fadeAnimation,
+        child: ScaleTransition(
+          scale: _scaleAnimation,
+          child: _getCurrentScreen(),
+        ),
+      ),
+      bottomNavigationBar: _buildEnhancedBottomNavigationBar(),
+    );
+  }
+
+  AppBar _buildEnhancedAppBar() {
+    return AppBar(
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'AutoConnect',
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 22,
+              color: Colors.white,
+            ),
+          ),
+          Text(
+            'Always here to help',
+            style: TextStyle(fontSize: 12, color: Colors.white70),
+          ),
+        ],
+      ),
+      backgroundColor: Color(0xFF6D28D9),
+      foregroundColor: Colors.white,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(20),
+          bottomRight: Radius.circular(20),
+        ),
+      ),
+      actions: [
+        IconButton(
+          icon: Icon(Icons.location_on),
+          onPressed: _getCurrentLocation,
+          tooltip: 'Refresh Location',
+        ),
+        IconButton(
+          icon: Icon(Icons.auto_awesome),
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => VehicleDamageAnalyzer()),
+            );
+          },
+          tooltip: 'AI Assistance',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEnhancedDrawer() {
+    return Drawer(
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF6D28D9), Color(0xFF8B5CF6)],
+          ),
+        ),
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            _buildDrawerHeader(),
+            _buildDrawerItem(
+              icon: Icons.dashboard_rounded,
+              title: 'Dashboard',
+              onTap: () => _navigateToIndex(0),
+            ),
+            _buildDrawerItem(
+              icon: Icons.security_rounded,
+              title: 'Insurance',
+              onTap: () => _navigateToIndex(3),
+            ),
+            _buildDrawerItem(
+              icon: Icons.build_circle_rounded,
+              title: 'Spare Parts',
+              onTap: _showSpareParts,
+            ),
+            _buildDrawerItem(
+              icon: Icons.history_rounded,
+              title: 'Service History',
+              onTap: () => _navigateToIndex(2),
+            ),
+            _buildDrawerItem(
+              icon: Icons.logout_rounded,
+              title: 'Logout',
+              onTap: _logout,
+              color: Colors.red[300],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDrawerHeader() {
+    return Container(
+      padding: EdgeInsets.only(top: 60, bottom: 20, left: 20, right: 20),
+      decoration: BoxDecoration(color: Color(0xFF5B21B6).withOpacity(0.8)),
+      child: Column(
+        children: [
+          CircleAvatar(
+            radius: 40,
+            backgroundColor: Colors.white,
+            child: Icon(
+              Icons.person_rounded,
+              size: 50,
+              color: Color(0xFF6D28D9),
+            ),
+          ),
+          SizedBox(height: 16),
+          Text(
+            _userData['name'],
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: 4),
+          Text(
+            _userData['email'],
+            style: TextStyle(color: Colors.white70, fontSize: 14),
+          ),
+          SizedBox(height: 8),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.amber.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.amber),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.auto_awesome, color: Colors.amber, size: 16),
+                SizedBox(width: 4),
+                Text(
+                  '${_userData['points']} Points',
+                  style: TextStyle(
+                    color: Colors.amber,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDrawerItem({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+    Color? color,
+  }) {
+    return ListTile(
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: color ?? Colors.white70, size: 20),
+      ),
+      title: Text(
+        title,
+        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+      ),
+      onTap: onTap,
+      hoverColor: Colors.white.withOpacity(0.1),
+    );
+  }
+
+  Widget _getCurrentScreen() {
+    switch (_currentIndex) {
+      case 0:
+        return EnhancedHomeScreenWithInsurance(
+          userData: _userData,
+          insuranceRequests: InsuranceModule.getInsuranceRequests(),
+          currentPosition: _currentPosition,
+          currentLocation: _currentLocation,
+          locationAddress: _locationAddress,
+          locationLoading: _locationLoading,
+          onGarageServiceTap: _navigateToNearbyGarages,
+          onTowServiceTap: _navigateToNearbyTowProviders,
+          onRefreshLocation: _getCurrentLocation,
+        );
+      case 1:
+        return EnhancedServicesScreen(
+          currentPosition: _currentPosition,
+          currentLocation: _currentLocation,
+          locationAddress: _locationAddress,
+          locationLoading: _locationLoading,
+          userEmail: _userEmail,
+          onTowServiceTap: _navigateToNearbyTowProviders,
+          onGarageServiceTap: _navigateToNearbyGarages,
+          onRefreshLocation: _getCurrentLocation,
+        );
+      case 2:
+        return EnhancedHistoryScreen(
+          userEmail: _userEmail ?? 'avi@gmail.com',
+          serviceHistory: [],
+        );
+      case 3:
+        return RequestInsuranceScreen();
+      case 4:
+        return EnhancedProfileScreen(
+          userEmail: _userEmail ?? 'avi@gmail.com',
+          serviceHistory: [],
+        );
+      default:
+        return EnhancedHomeScreenWithInsurance(
+          userData: _userData,
+          insuranceRequests: InsuranceModule.getInsuranceRequests(),
+          currentPosition: _currentPosition,
+          currentLocation: _currentLocation,
+          locationAddress: _locationAddress,
+          locationLoading: _locationLoading,
+          onGarageServiceTap: _navigateToNearbyGarages,
+          onTowServiceTap: _navigateToNearbyTowProviders,
+          onRefreshLocation: _getCurrentLocation,
+        );
+    }
+  }
+
+  void _navigateToNearbyGarages() {
+    if (_currentPosition == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please wait for location to load'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => NearbyGaragesScreen(
+          userLocation: _currentPosition!,
+          userEmail: _userEmail,
+        ),
+      ),
+    );
+  }
+
+  void _navigateToNearbyTowProviders() {
+    if (_currentPosition == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please wait for location to load'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => NearbyTowProvidersScreen(
+          userLocation: _currentPosition!,
+          userEmail: _userEmail,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEnhancedBottomNavigationBar() {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.purple.withOpacity(0.1),
+            blurRadius: 20,
+            offset: Offset(0, -5),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _currentIndex,
+          onTap: (index) {
+            setState(() {
+              _currentIndex = index;
+              _animationController.reset();
+              _animationController.forward();
+            });
+          },
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: Colors.white,
+          selectedItemColor: Color(0xFF6D28D9),
+          unselectedItemColor: Colors.grey[600],
+          selectedLabelStyle: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 12,
+          ),
+          unselectedLabelStyle: TextStyle(fontSize: 12),
+          items: [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home_rounded),
+              activeIcon: Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Color(0xFF6D28D9).withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.home_rounded, color: Color(0xFF6D28D9)),
+              ),
+              label: 'Home',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.handyman_rounded),
+              activeIcon: Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Color(0xFF6D28D9).withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.handyman_rounded, color: Color(0xFF6D28D9)),
+              ),
+              label: 'Services',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.history_rounded),
+              activeIcon: Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Color(0xFF6D28D9).withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.history_rounded, color: Color(0xFF6D28D9)),
+              ),
+              label: 'History',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.security_rounded),
+              activeIcon: Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Color(0xFF6D28D9).withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.security_rounded, color: Color(0xFF6D28D9)),
+              ),
+              label: 'Insurance',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person_rounded),
+              activeIcon: Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Color(0xFF6D28D9).withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.person_rounded, color: Color(0xFF6D28D9)),
+              ),
+              label: 'Profile',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _navigateToIndex(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+    Navigator.pop(context);
+  }
+
+  void _showSpareParts() {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (context) => SparePartsStore()));
+    Navigator.pop(context);
+  }
+
+  void _logout() async {
+    print('🚪 Logout button pressed...');
+
+    Navigator.pop(context);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Logout Confirmation'),
+          content: Text('Are you sure you want to logout?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                print('❌ Logout cancelled by user');
+              },
+              child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                print('✅ User confirmed logout');
+
+                try {
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (BuildContext context) {
+                      return Dialog(
+                        child: Padding(
+                          padding: EdgeInsets.all(20),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              CircularProgressIndicator(),
+                              SizedBox(width: 20),
+                              Text("Logging out..."),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  );
+
+                  print('🗑️ Clearing shared preferences...');
+                  await AuthService.clearLoginData();
+
+                  print('🔥 Signing out from Firebase...');
+                  await FirebaseAuth.instance.signOut();
+
+                  Navigator.of(context).pop();
+
+                  print('🔄 Navigating to login page...');
+                  Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (context) => VehicleLoginPage()),
+                    (Route<dynamic> route) => false,
+                  );
+
+                  print('🎉 Logout completed successfully!');
+                } catch (e) {
+                  print('❌ Error during logout: $e');
+
+                  if (Navigator.canPop(context)) {
+                    Navigator.of(context).pop();
+                  }
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Logout failed. Please try again.'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              child: Text('Logout', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+// Enhanced Home Screen with Insurance Integration
+class EnhancedHomeScreenWithInsurance extends StatelessWidget {
+  final Map<String, dynamic> userData;
+  final List<Map<String, dynamic>> insuranceRequests;
+  final Position? currentPosition;
+  final String currentLocation;
+  final String locationAddress;
+  final bool locationLoading;
+  final VoidCallback onGarageServiceTap;
+  final VoidCallback onTowServiceTap;
+  final VoidCallback onRefreshLocation;
+
+  const EnhancedHomeScreenWithInsurance({
+    super.key,
+    required this.userData,
+    required this.insuranceRequests,
+    required this.currentPosition,
+    required this.currentLocation,
+    required this.locationAddress,
+    required this.locationLoading,
+    required this.onGarageServiceTap,
+    required this.onTowServiceTap,
+    required this.onRefreshLocation,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: EdgeInsets.all(16),
+      child: Column(
+        children: [
+          _buildWelcomeCard(),
+          SizedBox(height: 20),
+          _buildLocationCard(),
+          SizedBox(height: 20),
+          _buildQuickActions(context),
+          SizedBox(height: 20),
+          _buildInsuranceReminder(context),
+          SizedBox(height: 20),
+          _buildQuickStats(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWelcomeCard() {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF6D28D9), Color(0xFF8B5CF6)],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0xFF6D28D9).withOpacity(0.3),
+            blurRadius: 20,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: Colors.white,
+                child: Icon(Icons.person_rounded, color: Color(0xFF6D28D9)),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Welcome back, ${userData['name'].split(' ')[0]}! 👋',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'Your ${userData['plan']} is active',
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 15),
+          Container(
+            padding: EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.auto_awesome_rounded, color: Colors.amber, size: 16),
+                SizedBox(width: 8),
+                Text(
+                  '${userData['points']} Reward Points',
+                  style: TextStyle(color: Colors.white),
+                ),
+                Spacer(),
+                Icon(
+                  Icons.calendar_today_rounded,
+                  color: Colors.white70,
+                  size: 14,
+                ),
+                SizedBox(width: 4),
+                Text(
+                  'Next: ${userData['nextService']}',
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLocationCard() {
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.location_on, color: Color(0xFF6D28D9), size: 24),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Current Location',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                ),
+                if (currentPosition != null)
+                  Icon(Icons.check_circle, color: Colors.green, size: 20),
+              ],
+            ),
+            SizedBox(height: 8),
+            locationLoading
+                ? Row(
+                    children: [
+                      SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Fetching location...',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                      ),
+                    ],
+                  )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        currentLocation,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                          fontFamily: 'Monospace',
+                        ),
+                      ),
+                      if (locationAddress.isNotEmpty)
+                        Padding(
+                          padding: EdgeInsets.only(top: 4),
+                          child: Text(
+                            locationAddress,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[700],
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                    ],
+                  ),
+            SizedBox(height: 8),
+            ElevatedButton.icon(
+              onPressed: onRefreshLocation,
+              icon: Icon(Icons.refresh, size: 16),
+              label: Text('Refresh Location'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFF6D28D9),
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                textStyle: TextStyle(fontSize: 12),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickActions(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _buildQuickActionItem(
+            icon: Icons.handyman_rounded,
+            title: 'Garage Service',
+            color: Color(0xFF6D28D9),
+            onTap: onGarageServiceTap,
+          ),
+        ),
+        SizedBox(width: 12),
+        Expanded(
+          child: _buildQuickActionItem(
+            icon: Icons.security_rounded,
+            title: 'Insurance',
+            color: Colors.purple,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => RequestInsuranceScreen()),
+            ),
+          ),
+        ),
+        SizedBox(width: 12),
+        Expanded(
+          child: _buildQuickActionItem(
+            icon: Icons.local_shipping_rounded,
+            title: 'Tow Service',
+            color: Colors.blue,
+            onTap: onTowServiceTap,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQuickActionItem({
+    required IconData icon,
+    required String title,
+    required Color color,
+    VoidCallback? onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              blurRadius: 10,
+              offset: Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            SizedBox(height: 8),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[700],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInsuranceReminder(BuildContext context) {
+    final activePolicy = insuranceRequests.firstWhere(
+      (policy) => policy['status'] == 'Active',
+      orElse: () => {},
+    );
+
+    if (activePolicy.isEmpty) {
+      return Container(
+        padding: EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.orange[50],
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: Colors.orange),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orange),
+            SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'No Active Insurance',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.orange[800],
+                    ),
+                  ),
+                  Text(
+                    'Get your vehicle insured today',
+                    style: TextStyle(color: Colors.orange[700], fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => RequestInsuranceScreen(),
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              ),
+              child: Text('Get Insurance'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container();
+  }
+
+  Widget _buildQuickStats() {
+    return Row(
+      children: [
+        Expanded(
+          child: _buildStatCard(
+            title: 'Services Used',
+            value: '3',
+            subtitle: 'This month',
+            color: Color(0xFF6D28D9),
+          ),
+        ),
+        SizedBox(width: 12),
+        Expanded(
+          child: _buildStatCard(
+            title: 'Insurance',
+            value: 'Active',
+            subtitle: 'Comprehensive',
+            color: Colors.green,
+          ),
+        ),
+        SizedBox(width: 12),
+        Expanded(
+          child: _buildStatCard(
+            title: 'Savings',
+            value: '\$85',
+            subtitle: 'Total',
+            color: Colors.blue,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatCard({
+    required String title,
+    required String value,
+    required String subtitle,
+    required Color color,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 10,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(Icons.trending_up_rounded, color: color, size: 16),
+          ),
+          SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          Text(title, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+        ],
+      ),
+    );
+  }
+}
+
+// Enhanced Services Screen
+class EnhancedServicesScreen extends StatelessWidget {
+  final Position? currentPosition;
+  final String currentLocation;
+  final String locationAddress;
+  final bool locationLoading;
+  final String? userEmail;
+  final VoidCallback onTowServiceTap;
+  final VoidCallback onGarageServiceTap;
+  final VoidCallback onRefreshLocation;
+
+  const EnhancedServicesScreen({
+    super.key,
+    required this.currentPosition,
+    required this.currentLocation,
+    required this.locationAddress,
+    required this.locationLoading,
+    required this.userEmail,
+    required this.onTowServiceTap,
+    required this.onGarageServiceTap,
+    required this.onRefreshLocation,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomScrollView(
+      slivers: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: Column(
+              children: [
+                _buildLocationCard(),
+                SizedBox(height: 20),
+                _buildEmergencyServices(context),
+                SizedBox(height: 20),
+                Text(
+                  'All Services',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLocationCard() {
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.location_on, color: Color(0xFF6D28D9), size: 24),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Current Location',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                ),
+                if (currentPosition != null)
+                  Icon(Icons.check_circle, color: Colors.green, size: 20),
+              ],
+            ),
+            SizedBox(height: 8),
+            locationLoading
+                ? Row(
+                    children: [
+                      SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Fetching location...',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                      ),
+                    ],
+                  )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        currentLocation,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                          fontFamily: 'Monospace',
+                        ),
+                      ),
+                      if (locationAddress.isNotEmpty)
+                        Padding(
+                          padding: EdgeInsets.only(top: 4),
+                          child: Text(
+                            locationAddress,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[700],
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                    ],
+                  ),
+            SizedBox(height: 8),
+            ElevatedButton.icon(
+              onPressed: onRefreshLocation,
+              icon: Icon(Icons.refresh, size: 16),
+              label: Text('Refresh Location'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFF6D28D9),
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                textStyle: TextStyle(fontSize: 12),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmergencyServices(BuildContext context) {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Emergency Services',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF6D28D9),
+              ),
+            ),
+            SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildEmergencyServiceCard(
+                    icon: Icons.local_shipping_rounded,
+                    title: 'Tow Service',
+                    subtitle: 'Vehicle towing',
+                    color: Color(0xFF6D28D9),
+                    onTap: onTowServiceTap,
+                  ),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: _buildEmergencyServiceCard(
+                    icon: Icons.handyman_rounded,
+                    title: 'Garage Service',
+                    subtitle: 'Mechanic & repair',
+                    color: Color(0xFFF59E0B),
+                    onTap: onGarageServiceTap,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmergencyServiceCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: Colors.white, size: 24),
+            ),
+            SizedBox(height: 8),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            Text(
+              subtitle,
+              style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
