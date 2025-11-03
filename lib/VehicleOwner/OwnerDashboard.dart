@@ -4959,7 +4959,6 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:smart_road_app/core/language/app_localizations.dart';
 import 'package:smart_road_app/core/language/language_selector.dart';
 import 'package:smart_road_app/Login/VehicleOwneLogin.dart';
@@ -4971,10 +4970,11 @@ import 'package:smart_road_app/VehicleOwner/SpareParts.dart';
 import 'package:smart_road_app/VehicleOwner/ai.dart';
 import 'package:smart_road_app/controller/sharedprefrence.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
-import "package:smart_road_app/VehicleOwner/TowRequest.dart";
 import 'package:smart_road_app/VehicleOwner/nearby_tow_provider_screen.dart';
+import 'package:smart_road_app/VehicleOwner/notification.dart';
 
 // Insurance Module Classes
 class InsuranceModule {
@@ -5004,6 +5004,35 @@ class InsuranceModule {
   }
 }
 
+// Notification Service for Owner
+class OwnerNotificationService {
+  static final DatabaseReference _dbRef = FirebaseDatabase.instance.ref();
+
+  // Get unread notification count for user
+  static Stream<int> getUnreadNotificationCount(String userId) {
+    return _dbRef
+        .child('notifications')
+        .child(userId.replaceAll(RegExp(r'[\.#\$\[\]]'), '_'))
+        .orderByChild('read')
+        .equalTo(false)
+        .onValue
+        .map((event) {
+      if (event.snapshot.value == null) return 0;
+      final Map<dynamic, dynamic> notifications = event.snapshot.value as Map<dynamic, dynamic>;
+      return notifications.length;
+    });
+  }
+
+  // Mark notification as read
+  static Future<void> markAsRead(String userId, String notificationId) async {
+    await _dbRef
+        .child('notifications')
+        .child(userId.replaceAll(RegExp(r'[\.#\$\[\]]'), '_'))
+        .child(notificationId)
+        .update({'read': true});
+  }
+}
+
 // Main Dashboard Class
 class EnhancedVehicleDashboard extends StatefulWidget {
   const EnhancedVehicleDashboard({super.key});
@@ -5019,10 +5048,13 @@ class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
   String? _userEmail;
+  String? _userId;
   Position? _currentPosition;
   String _currentLocation = 'Fetching location...';
   bool _locationLoading = false;
   String _locationAddress = '';
+  int _unreadNotifications = 0;
+  StreamSubscription<int>? _notificationSubscription;
 
   @override
   void initState() {
@@ -5045,13 +5077,35 @@ class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
   Future<void> _loadUserData() async {
     try {
       String? userEmail = await AuthService.getUserEmail();
+      final user = FirebaseAuth.instance.currentUser;
+      
       setState(() {
         _userEmail = userEmail;
+        _userId = user?.uid;
       });
+      
       print('✅ Dashboard loaded for user: $_userEmail');
+      
+      // Start listening to notifications
+      if (_userId != null) {
+        _startNotificationListener();
+      }
     } catch (e) {
       print('❌ Error loading user data in dashboard: $e');
     }
+  }
+
+  void _startNotificationListener() {
+    _notificationSubscription?.cancel();
+    _notificationSubscription = OwnerNotificationService
+        .getUnreadNotificationCount(_userId!)
+        .listen((count) {
+      if (mounted) {
+        setState(() {
+          _unreadNotifications = count;
+        });
+      }
+    });
   }
 
   Future<void> _initializeLocation() async {
@@ -5170,6 +5224,13 @@ class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
     );
   }
 
+  void _navigateToNotifications() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => NotificationsPage()),
+    );
+  }
+
   Map<String, dynamic> get _userData {
     return {
       'name': _userEmail?.split('@').first ?? 'User',
@@ -5186,6 +5247,7 @@ class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
   @override
   void dispose() {
     _animationController.dispose();
+    _notificationSubscription?.cancel();
     super.dispose();
   }
 
@@ -5240,6 +5302,41 @@ class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
         ),
       ),
       actions: [
+        // NOTIFICATION ICON WITH BADGE
+        Stack(
+          children: [
+            IconButton(
+              icon: Icon(Icons.notifications_outlined),
+              onPressed: _navigateToNotifications,
+              tooltip: localizations?.translate('notifications') ?? 'Notifications',
+            ),
+            if (_unreadNotifications > 0)
+              Positioned(
+                right: 8,
+                top: 8,
+                child: Container(
+                  padding: EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  constraints: BoxConstraints(
+                    minWidth: 16,
+                    minHeight: 16,
+                  ),
+                  child: Text(
+                    _unreadNotifications > 9 ? '9+' : '$_unreadNotifications',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+          ],
+        ),
         IconButton(
           icon: Icon(Icons.location_on),
           onPressed: _getCurrentLocation,
@@ -5275,6 +5372,11 @@ class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
               icon: Icons.dashboard_rounded,
               title: localizations?.dashboard ?? 'Dashboard',
               onTap: () => _navigateToIndex(0),
+            ),
+            _buildDrawerItem(
+              icon: Icons.notifications_rounded,
+              title: '${localizations?.translate('notifications') ?? 'Notifications'} ${_unreadNotifications > 0 ? '($_unreadNotifications)' : ''}',
+              onTap: _navigateToNotifications,
             ),
             _buildDrawerItem(
               icon: Icons.security_rounded,
@@ -5361,6 +5463,33 @@ class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
               ],
             ),
           ),
+          // Notification badge in drawer header
+          if (_unreadNotifications > 0) ...[
+            SizedBox(height: 8),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.red),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.notifications_active, color: Colors.red, size: 16),
+                  SizedBox(width: 4),
+                  Text(
+                    '$_unreadNotifications ${localizations?.translate('unread_notifications') ?? 'unread'}',
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -5404,6 +5533,8 @@ class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
           onGarageServiceTap: _navigateToNearbyGarages,
           onTowServiceTap: _navigateToNearbyTowProviders,
           onRefreshLocation: _getCurrentLocation,
+          unreadNotifications: _unreadNotifications,
+          onNotificationTap: _navigateToNotifications,
         );
       case 1:
         return EnhancedServicesScreen(
@@ -5415,6 +5546,8 @@ class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
           onTowServiceTap: _navigateToNearbyTowProviders,
           onGarageServiceTap: _navigateToNearbyGarages,
           onRefreshLocation: _getCurrentLocation,
+          unreadNotifications: _unreadNotifications,
+          onNotificationTap: _navigateToNotifications,
         );
       case 2:
         return EnhancedHistoryScreen(userEmail: _userEmail ?? 'avi@gmail.com', serviceHistory: []);
@@ -5433,6 +5566,8 @@ class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
           onGarageServiceTap: _navigateToNearbyGarages,
           onTowServiceTap: _navigateToNearbyTowProviders,
           onRefreshLocation: _getCurrentLocation,
+          unreadNotifications: _unreadNotifications,
+          onNotificationTap: _navigateToNotifications,
         );
     }
   }
@@ -5696,6 +5831,8 @@ class EnhancedHomeScreenWithInsurance extends StatelessWidget {
   final VoidCallback onGarageServiceTap;
   final VoidCallback onTowServiceTap;
   final VoidCallback onRefreshLocation;
+  final int unreadNotifications;
+  final VoidCallback onNotificationTap;
 
   const EnhancedHomeScreenWithInsurance({
     super.key,
@@ -5708,6 +5845,8 @@ class EnhancedHomeScreenWithInsurance extends StatelessWidget {
     required this.onGarageServiceTap,
     required this.onTowServiceTap,
     required this.onRefreshLocation,
+    required this.unreadNotifications,
+    required this.onNotificationTap,
   });
 
   @override
@@ -5774,12 +5913,32 @@ class EnhancedHomeScreenWithInsurance extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '${localizations?.translate('your_plan_active') ?? 'Your plan is active'}',
+                      localizations?.translate('your_plan_active') ?? 'Your plan is active',
                       style: TextStyle(color: Colors.white70),
                     ),
                   ],
                 ),
               ),
+              // Notification indicator on welcome card
+              if (unreadNotifications > 0)
+                GestureDetector(
+                  onTap: onNotificationTap,
+                  child: Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      unreadNotifications > 9 ? '9+' : '$unreadNotifications',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
           SizedBox(height: 15),
@@ -6144,6 +6303,8 @@ class EnhancedServicesScreen extends StatelessWidget {
   final VoidCallback onTowServiceTap;
   final VoidCallback onGarageServiceTap;
   final VoidCallback onRefreshLocation;
+  final int unreadNotifications;
+  final VoidCallback onNotificationTap;
 
   const EnhancedServicesScreen({
     super.key,
@@ -6155,6 +6316,8 @@ class EnhancedServicesScreen extends StatelessWidget {
     required this.onTowServiceTap,
     required this.onGarageServiceTap,
     required this.onRefreshLocation,
+    required this.unreadNotifications,
+    required this.onNotificationTap,
   });
 
   @override

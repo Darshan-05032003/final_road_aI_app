@@ -5,6 +5,28 @@ class GoogleAuthService {
   static final GoogleSignIn _googleSignIn = GoogleSignIn();
   static final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  /// Get current user email
+  static Future<String?> getUserEmail() async {
+    try {
+      // Check Firebase Auth first
+      final User? firebaseUser = _auth.currentUser;
+      if (firebaseUser != null) {
+        return firebaseUser.email;
+      }
+
+      // Check Google Sign In
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signInSilently();
+      if (googleUser != null) {
+        return googleUser.email;
+      }
+
+      return null;
+    } catch (e) {
+      print('Error getting user email: $e');
+      return null;
+    }
+  }
+
   /// Sign in with Google
   static Future<UserCredential?> signInWithGoogle() async {
     try {
@@ -56,4 +78,3 @@ class GoogleAuthService {
     return _auth.currentUser != null;
   }
 }
-

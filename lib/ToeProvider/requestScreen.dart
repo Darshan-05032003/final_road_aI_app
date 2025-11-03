@@ -1,1699 +1,137 @@
-import 'dart:developer';
+import 'dart:async';
 
-import 'package:smart_road_app/ToeProvider/notificatinservice.dart';
-import 'package:smart_road_app/ToeProvider/notification.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart' hide Query;
 import 'package:url_launcher/url_launcher.dart';
 
-class IncomingRequestsScreen extends StatefulWidget {
-  const IncomingRequestsScreen({super.key});
-
-  @override
-  _IncomingRequestsScreenState createState() => _IncomingRequestsScreenState();
+class AuthService {
+  static Future<String?> getUserEmail() async {
+    try {
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        print('✅ AuthService: Found user email: ${user.email}');
+        return user.email;
+      }
+      print('❌ AuthService: No user found');
+      return null;
+    } catch (e) {
+      print('❌ AuthService Error: $e');
+      return null;
+    }
+  }
 }
 
-class _IncomingRequestsScreenState extends State<IncomingRequestsScreen>
-    with SingleTickerProviderStateMixin {
-  final String _userEmail = "avi@gmail.com";
-  late TabController _tabController;
-  int _currentTabIndex = 0;
-  bool _isFcmInitialized = false;
+class TowServiceRequestsScreen extends StatefulWidget {
+  const TowServiceRequestsScreen({super.key});
 
-  final List<String> _categories = [
-    'All',
-    'Pending',
-    'Accepted',
-    'Rejected',
-    'Completed',
-  ];
+  @override
+  _TowServiceRequestsScreenState createState() => _TowServiceRequestsScreenState();
+}
+
+class _TowServiceRequestsScreenState extends State<TowServiceRequestsScreen>
+    with SingleTickerProviderStateMixin {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final DatabaseReference _dbRef = FirebaseDatabase.instance.ref();
+  String? _userEmail;
+  String? _towProviderId;
+  String? _providerName;
+  bool _isLoading = true;
+  bool _hasError = false;
+  String _errorMessage = '';
+  late TabController _tabController;
+  int _unreadNotifications = 0;
+  StreamSubscription? _notificationSubscription;
+
+  List<TowServiceRequest> _allRequests = [];
+  List<TowServiceRequest> _pendingRequests = [];
+  List<TowServiceRequest> _acceptedRequests = [];
+  List<TowServiceRequest> _completedRequests = [];
+  List<TowServiceRequest> _rejectedRequests = [];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: _categories.length, vsync: this);
-    _tabController.addListener(_handleTabSelection);
-
-    // Initialize FCM without waiting for it
-    _initializeFCMAsync();
-  }
-
-  void _initializeFCMAsync() async {
-    try {
-      await FirebaseMessagingHandler.initialize();
-      if (mounted) {
-        setState(() {
-          _isFcmInitialized = true;
-        });
-      }
-    } catch (e) {
-      print('FCM init error: $e');
-    }
-  }
-
-  void _handleTabSelection() {
-    if (_tabController.indexIsChanging && mounted) {
-      setState(() {
-        _currentTabIndex = _tabController.index;
-      });
-    }
+    _tabController = TabController(length: 4, vsync: this);
+    print('🚀 TowServiceRequestsScreen initialized');
+    _initializeData();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _notificationSubscription?.cancel();
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey[50],
-      appBar: AppBar(
-        title: Text(
-          'Incoming Requests',
-          style: TextStyle(
-            fontWeight: FontWeight.w700,
-            fontSize: 20,
-            letterSpacing: -0.5,
-          ),
-        ),
-        backgroundColor: Color(0xFF7E57C2),
-        foregroundColor: Colors.white,
-        elevation: 8,
-        shadowColor: Colors.purple.withOpacity(0.3),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
-        ),
-        actions: [
-          Container(
-            margin: EdgeInsets.only(right: 16),
-            child: IconButton(
-              icon: Stack(
-                children: [
-                  Container(
-                    padding: EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(Icons.notifications_outlined, size: 22),
-                  ),
-                  Positioned(
-                    right: 4,
-                    top: 4,
-                    child: _buildNotificationBadge(),
-                  ),
-                ],
-              ),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => NotificationPage()),
-                );
-              },
-            ),
-          ),
-        ],
-        bottom: _buildCategoryTabs(),
-      ),
-      body: _buildMainContent(),
-    );
-  }
-
-  Widget _buildNotificationBadge() {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('owners')
-          .doc(_userEmail)
-          .collection('notifications')
-          .where('isRead', isEqualTo: false)
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return SizedBox();
-        }
-        final unreadCount = snapshot.data!.docs.length;
-        return Container(
-          padding: EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: Colors.red,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.white, width: 1.5),
-          ),
-          constraints: BoxConstraints(minWidth: 18, minHeight: 18),
-          child: Text(
-            unreadCount > 9 ? '9+' : '$unreadCount',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 9,
-              fontWeight: FontWeight.w900,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        );
-      },
-    );
-  }
-
-  PreferredSizeWidget _buildCategoryTabs() {
-    return PreferredSize(
-      preferredSize: Size.fromHeight(60),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 8,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        child: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          labelColor: Color(0xFF7E57C2),
-          unselectedLabelColor: Colors.grey[600],
-          indicatorColor: Color(0xFF7E57C2),
-          indicatorWeight: 3,
-          indicatorSize: TabBarIndicatorSize.label,
-          indicatorPadding: EdgeInsets.symmetric(horizontal: 10),
-          labelStyle: TextStyle(
-            fontWeight: FontWeight.w700,
-            fontSize: 13,
-            letterSpacing: -0.2,
-          ),
-          unselectedLabelStyle: TextStyle(
-            fontWeight: FontWeight.w500,
-            fontSize: 13,
-          ),
-          tabs: _categories.map((category) {
-            return Tab(
-              child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Text(category),
-              ),
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMainContent() {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Colors.grey[50]!, Colors.grey[100]!],
-        ),
-      ),
-      child: TabBarView(
-        controller: _tabController,
-        children: _categories.map((category) {
-          return _buildRequestsByCategory(category);
-        }).toList(),
-      ),
-    );
-  }
-
-  Widget _buildRequestsByCategory(String category) {
-    var query =
-        FirebaseFirestore.instance
-                .collection('owner')
-                .doc(_userEmail)
-                .collection("towrequest")
-            as Query<Map<String, dynamic>>;
-
-    if (category != 'All') {
-      query = query.where('status', isEqualTo: category.toLowerCase());
-    }
-
-    return StreamBuilder<QuerySnapshot>(
-      stream: query.snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return _buildLoadingState();
-        }
-
-        if (snapshot.hasError) {
-          return _buildErrorState(snapshot.error.toString());
-        }
-
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return _buildEmptyState(category);
-        }
-
-        final requests = snapshot.data!.docs;
-
-        return ListView.builder(
-          padding: EdgeInsets.all(16),
-          itemCount: requests.length,
-          itemBuilder: (context, index) {
-            final requestData = requests[index].data() as Map<String, dynamic>;
-            final request = TowRequest.fromFirestore(
-              requestData,
-              requests[index].id,
-            );
-            return _buildRequestCard(request);
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildRequestCard(TowRequest request) {
-    Color statusColor = _getStatusColor(request.status);
-    IconData statusIcon = _getStatusIcon(request.status);
-
-    return Container(
-      margin: EdgeInsets.only(bottom: 16),
-      child: Card(
-        elevation: 6,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        shadowColor: Colors.purple.withOpacity(0.1),
-        child: ClipPath(
-          clipper: ShapeBorderClipper(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-          ),
-          child: Container(
-            decoration: BoxDecoration(
-              border: Border(
-                left: BorderSide(color: statusColor.withOpacity(0.3), width: 4),
-              ),
-            ),
-            child: Padding(
-              padding: EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Header with status and urgent badge
-                  Row(
-                    children: [
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: statusColor.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: statusColor.withOpacity(0.3),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(statusIcon, color: statusColor, size: 14),
-                            SizedBox(width: 6),
-                            Text(
-                              request.status.toUpperCase(),
-                              style: TextStyle(
-                                color: statusColor,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: -0.2,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Spacer(),
-                      if (request.isUrgent)
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [Colors.red, Colors.orange],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.red.withOpacity(0.3),
-                                blurRadius: 4,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.flash_on,
-                                color: Colors.white,
-                                size: 12,
-                              ),
-                              SizedBox(width: 4),
-                              Text(
-                                'URGENT',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                    ],
-                  ),
-                  SizedBox(height: 16),
-
-                  // Customer Info
-                  Row(
-                    children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [Color(0xFF7E57C2), Color(0xFF9575CD)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.purple.withOpacity(0.3),
-                              blurRadius: 6,
-                              offset: Offset(0, 3),
-                            ),
-                          ],
-                        ),
-                        child: Icon(
-                          Icons.person,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                      ),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              request.name,
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 16,
-                                color: Colors.grey[800],
-                              ),
-                            ),
-                            SizedBox(height: 2),
-                            Text(
-                              request.phone,
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          request.timestamp,
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 16),
-
-                  // Vehicle Details Chips
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      _buildDetailChip(
-                        Icons.directions_car,
-                        request.vehicleNumber,
-                      ),
-                      _buildDetailChip(Icons.build, request.issueType),
-                      _buildDetailChip(Icons.local_shipping, request.towType),
-                    ],
-                  ),
-                  SizedBox(height: 16),
-
-                  // Location Section
-                  Container(
-                    padding: EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.blue[50]?.withOpacity(0.5),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.blue[100]!),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: Colors.blue[100],
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.location_on,
-                            color: Colors.blue[800],
-                            size: 16,
-                          ),
-                        ),
-                        SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Pickup Location',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.blue[800],
-                                ),
-                              ),
-                              SizedBox(height: 2),
-                              Text(
-                                request.location,
-                                style: TextStyle(
-                                  color: Colors.grey[700],
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (request.latitude != null &&
-                            request.longitude != null)
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.blue[500],
-                              borderRadius: BorderRadius.circular(8),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.blue.withOpacity(0.3),
-                                  blurRadius: 4,
-                                  offset: Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: IconButton(
-                              icon: Icon(
-                                Icons.map,
-                                color: Colors.white,
-                                size: 18,
-                              ),
-                              onPressed: () => _openLocationInMap(request),
-                              padding: EdgeInsets.all(6),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-
-                  // Description
-                  if (request.description.isNotEmpty) ...[
-                    SizedBox(height: 12),
-                    Container(
-                      padding: EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[50],
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey[200]!),
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            padding: EdgeInsets.all(5),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[200],
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.description,
-                              color: Colors.grey[700],
-                              size: 14,
-                            ),
-                          ),
-                          SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Additional Notes',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.grey[700],
-                                  ),
-                                ),
-                                SizedBox(height: 4),
-                                Text(
-                                  request.description,
-                                  style: TextStyle(
-                                    color: Colors.grey[600],
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-
-                  // Action Buttons
-                  SizedBox(height: 16),
-                  _buildActionButtons(request),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActionButtons(TowRequest request) {
-    switch (request.status) {
-      case 'pending':
-        return Row(
-          children: [
-            Expanded(
-              child: SizedBox(
-                height: 44,
-                child: OutlinedButton(
-                  onPressed: () => _rejectRequest(request),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.red,
-                    side: BorderSide(color: Colors.red, width: 1.5),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    backgroundColor: Colors.red.withOpacity(0.05),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.cancel_outlined, size: 18),
-                      SizedBox(width: 6),
-                      Text(
-                        'Reject',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(width: 12),
-            Expanded(
-              child: SizedBox(
-                height: 44,
-                child: ElevatedButton(
-                  onPressed: () => _acceptRequest(request),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFF7E57C2),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 2,
-                    shadowColor: Colors.purple.withOpacity(0.3),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.check_circle_outline, size: 18),
-                      SizedBox(width: 6),
-                      Text(
-                        'Accept',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
-
-      case 'accepted':
-        return Row(
-          children: [
-            Expanded(
-              child: SizedBox(
-                height: 44,
-                child: OutlinedButton(
-                  onPressed: () => _trackLocation(request),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Color(0xFF7E57C2),
-                    side: BorderSide(color: Color(0xFF7E57C2), width: 1.5),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    backgroundColor: Colors.white,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.location_searching, size: 18),
-                      SizedBox(width: 6),
-                      Text(
-                        'Track',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(width: 12),
-            Expanded(
-              child: SizedBox(
-                height: 44,
-                child: ElevatedButton(
-                  onPressed: () => _showCompleteServiceDialog(request),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 2,
-                    shadowColor: Colors.green.withOpacity(0.3),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.done_all, size: 18),
-                      SizedBox(width: 6),
-                      Text(
-                        'Complete',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
-
-      case 'completed':
-        return Row(
-          children: [
-            Expanded(
-              child: SizedBox(
-                height: 44,
-                child: OutlinedButton(
-                  onPressed: () => _viewDetails(request),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Color(0xFF7E57C2),
-                    side: BorderSide(color: Color(0xFF7E57C2), width: 1.5),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    backgroundColor: Colors.white,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.info_outline, size: 18),
-                      SizedBox(width: 6),
-                      Text(
-                        'Details',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(width: 12),
-            Expanded(
-              child: SizedBox(
-                height: 44,
-                child: ElevatedButton(
-                  onPressed: () => _contactCustomer(request.phone),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 2,
-                    shadowColor: Colors.blue.withOpacity(0.3),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.phone, size: 18),
-                      SizedBox(width: 6),
-                      Text(
-                        'Call',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
-
-      default:
-        return SizedBox.shrink();
-    }
-  }
-
-  // FAST NOTIFICATION METHODS
-  void _acceptRequest(TowRequest request) async {
-    _showLoadingDialog('Accepting request...');
-
-    try {
-      // Update request status
-      await _updateRequestStatus(request.id, 'accepted');
-
-      // Create notification immediately
-      await FirebaseMessagingHandler.createLocalNotification(
-        userEmail: _userEmail,
-        title: 'Request Accepted ✅',
-        body: 'You accepted request from ${request.name}',
-        type: 'request_accepted',
-        requestId: request.id,
-      );
-
-      Navigator.pop(context); // Close loading dialog
-      _showSuccess('Request accepted!');
-    } catch (e) {
-      Navigator.pop(context); // Close loading dialog
-      _showError('Failed: $e');
-    }
-  }
-
-  void _rejectRequest(TowRequest request) async {
-    _showLoadingDialog('Rejecting request...');
-
-    try {
-      await _updateRequestStatus(request.id, 'rejected');
-
-      await FirebaseMessagingHandler.createLocalNotification(
-        userEmail: _userEmail,
-        title: 'Request Rejected ❌',
-        body: 'You rejected request from ${request.name}',
-        type: 'request_rejected',
-        requestId: request.id,
-      );
-
-      Navigator.pop(context);
-      _showSuccess('Request rejected');
-    } catch (e) {
-      Navigator.pop(context);
-      _showError('Failed: $e');
-    }
-  }
-
-  Future<void> _showCompleteServiceDialog(TowRequest request) async {
-    final amountController = TextEditingController();
-    final upiIdController = TextEditingController();
-    final notesController = TextEditingController();
-
-    // Calculate distance-based amount or let provider enter
-    // You can calculate based on request.distance if available
-    // For now, let provider enter manually
-
-    // Try to get saved UPI ID from provider profile
-    bool hasSavedUpiId = false;
-    try {
-      // Check tow profile collection first
-      final profileDoc = await FirebaseFirestore.instance
-          .collection('tow')
-          .doc(_userEmail)
-          .collection('profile')
-          .doc('provider_details')
-          .get();
-
-      String? savedUpiId;
-      if (profileDoc.exists && profileDoc.data()?['upiId'] != null) {
-        savedUpiId = profileDoc.data()!['upiId'] as String?;
-      }
-
-      // If not found, check tow_providers collection
-      if (savedUpiId == null || savedUpiId.isEmpty) {
-        final towProviderDoc = await FirebaseFirestore.instance
-            .collection('tow_providers')
-            .doc(_userEmail)
-            .get();
-        if (towProviderDoc.exists && towProviderDoc.data()?['upiId'] != null) {
-          savedUpiId = towProviderDoc.data()!['upiId'] as String?;
-        }
-      }
-
-      if (savedUpiId != null && savedUpiId.isNotEmpty) {
-        upiIdController.text = savedUpiId;
-        hasSavedUpiId = true;
-      }
-    } catch (e) {
-      print('Could not load saved UPI ID: $e');
-    }
-
-    final result = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Complete Service'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: amountController,
-                decoration: const InputDecoration(
-                  labelText: 'Service Amount *',
-                  hintText: 'Enter amount in ₹',
-                  prefixIcon: Icon(Icons.currency_rupee),
-                ),
-                keyboardType: TextInputType.number,
-                autofocus: true,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: upiIdController,
-                enabled: true, // Allow editing even if saved
-                decoration: InputDecoration(
-                  labelText: 'Your UPI ID *',
-                  hintText: 'yourname@paytm',
-                  prefixIcon: const Icon(Icons.payment),
-                  helperText: hasSavedUpiId
-                      ? 'Pre-filled from your profile. You can edit if needed.'
-                      : 'This will be used to receive payment',
-                  suffixIcon: hasSavedUpiId
-                      ? const Icon(Icons.check_circle, color: Colors.green)
-                      : null,
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: notesController,
-                decoration: const InputDecoration(
-                  labelText: 'Service Notes (Optional)',
-                  hintText: 'Any additional notes...',
-                  prefixIcon: Icon(Icons.note),
-                ),
-                maxLines: 3,
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (amountController.text.trim().isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please enter service amount')),
-                );
-                return;
-              }
-              if (double.tryParse(amountController.text.trim()) == null ||
-                  double.parse(amountController.text.trim()) <= 0) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please enter valid amount')),
-                );
-                return;
-              }
-              if (upiIdController.text.trim().isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please enter your UPI ID')),
-                );
-                return;
-              }
-              Navigator.pop(context, true);
-            },
-            child: const Text('Mark Complete'),
-          ),
-        ],
-      ),
-    );
-
-    if (result == true) {
-      final amount = double.parse(amountController.text.trim());
-      final upiId = upiIdController.text.trim();
-      final notes = notesController.text.trim();
-
-      await _completeServiceWithPayment(request, amount, upiId, notes);
-    }
-  }
-
-  Future<void> _completeServiceWithPayment(
-    TowRequest request,
-    double amount,
-    String upiId,
-    String notes,
-  ) async {
-    _showLoadingDialog('Completing service...');
-
-    try {
-      // Save UPI ID to provider profile
-      try {
-        await FirebaseFirestore.instance
-            .collection('tow')
-            .doc(_userEmail)
-            .collection('profile')
-            .doc('provider_details')
-            .update({
-              'upiId': upiId,
-              'updatedAt': FieldValue.serverTimestamp(),
-            });
-      } catch (e) {
-        print('Could not save UPI ID to profile: $e');
-      }
-
-      // Update request with completion and payment info
-      await _updateRequestStatusWithPayment(
-        request.id,
-        'completed',
-        amount,
-        upiId,
-        notes,
-        request,
-      );
-
-      await FirebaseMessagingHandler.createLocalNotification(
-        userEmail: _userEmail,
-        title: 'Request Completed 🎉',
-        body: 'You completed request from ${request.name}',
-        type: 'request_completed',
-        requestId: request.id,
-      );
-
-      Navigator.pop(context);
-      _showSuccess(
-        'Service completed. Customer will be notified to pay ₹$amount',
-      );
-    } catch (e) {
-      Navigator.pop(context);
-      _showError('Failed: $e');
-    }
-  }
-
-  Future<void> _updateRequestStatusWithPayment(
-    String requestId,
-    String status,
-    double amount,
-    String upiId,
-    String notes,
-    TowRequest request,
-  ) async {
-    // Update in owner's collection
-    await FirebaseFirestore.instance
-        .collection('owner')
-        .doc(_userEmail)
-        .collection("towrequest")
-        .doc(requestId)
-        .update({
-          'status': status,
-          'serviceAmount': amount,
-          'providerUpiId': upiId,
-          'paymentStatus': 'pending',
-          'completedAt': FieldValue.serverTimestamp(),
-          'serviceNotes': notes,
-          '${status}At': FieldValue.serverTimestamp(),
+  // NOTIFICATION METHODS - ADDED FROM GARAGE FILE
+  void _startNotificationListener() {
+    if (_towProviderId == null) return;
+    
+    final String sanitizedProviderId = _towProviderId!.replaceAll(RegExp(r'[\.#\$\[\]]'), '_');
+    
+    _notificationSubscription = _dbRef
+        .child('tow_provider_notifications')
+        .child(sanitizedProviderId)
+        .orderByChild('read')
+        .equalTo(false)
+        .onValue
+        .listen((event) {
+      if (mounted) {
+        setState(() {
+          if (event.snapshot.value == null) {
+            _unreadNotifications = 0;
+          } else {
+            final Map<dynamic, dynamic> notifications = event.snapshot.value as Map<dynamic, dynamic>;
+            _unreadNotifications = notifications.length;
+          }
         });
-
-    // Update in tow_requests collection if exists
-    try {
-      await FirebaseFirestore.instance
-          .collection('tow_requests')
-          .doc(requestId)
-          .update({
-            'status': status,
-            'serviceAmount': amount,
-            'providerUpiId': upiId,
-            'paymentStatus': 'pending',
-            'completedAt': FieldValue.serverTimestamp(),
-          });
-    } catch (e) {
-      print('Could not update tow_requests collection: $e');
-    }
-
-    // Send notification to customer
-    try {
-      final DatabaseReference dbRef = FirebaseDatabase.instance.ref();
-      // Get user ID from request - use requestId as identifier or find from Firestore
-      final requestDoc = await FirebaseFirestore.instance
-          .collection('owner')
-          .doc(_userEmail)
-          .collection('towrequest')
-          .doc(requestId)
-          .get();
-
-      final ownerEmail = requestDoc.data()?['userEmail'] ?? _userEmail;
-
-      final userNotificationRef = dbRef
-          .child('notifications')
-          .child(ownerEmail.replaceAll(RegExp(r'[\.#\$\[\]]'), '_'))
-          .push();
-
-      await userNotificationRef.set({
-        'id': userNotificationRef.key,
-        'requestId': requestId,
-        'title': 'Service Completed - Payment Pending 💰',
-        'message': 'Your tow service is completed. Please pay ₹$amount',
-        'timestamp': DateTime.now().millisecondsSinceEpoch,
-        'read': false,
-        'type': 'service_completed_payment_pending',
-        'vehicleNumber': request.vehicleNumber,
-        'providerName': request.name,
-        'status': 'completed',
-        'amount': amount,
-        'paymentStatus': 'pending',
-      });
-    } catch (e) {
-      print('Could not send notification: $e');
-    }
+      }
+    });
   }
 
-  void _showLoadingDialog(String message) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                padding: EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Color(0xFF7E57C2).withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: CircularProgressIndicator(
-                  color: Color(0xFF7E57C2),
-                  strokeWidth: 3,
-                ),
-              ),
-              SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  message,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16,
-                    color: Colors.grey[800],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+  void _navigateToNotifications() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => TowProviderNotificationsScreen(providerId: _towProviderId!),
       ),
     );
   }
 
-  Future<void> _updateRequestStatus(String requestId, String status) async {
-    await FirebaseFirestore.instance
-        .collection('owner')
-        .doc(_userEmail)
-        .collection("towrequest")
-        .doc(requestId)
-        .update({
-          'status': status,
-          '${status}At': FieldValue.serverTimestamp(),
-        });
-  }
+  // TRACK LOCATION FUNCTIONALITY
+  void _trackLocation(TowServiceRequest request) async {
+    print('📍 Tracking location for request: ${request.requestId}');
 
-  Widget _buildDetailChip(IconData icon, String text) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey[300]!),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 4,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: Color(0xFF7E57C2), size: 14),
-          SizedBox(width: 6),
-          Text(
-            text.length > 12 ? '${text.substring(0, 12)}...' : text,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[700],
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'pending':
-        return Color(0xFFFFA000);
-      case 'accepted':
-        return Color(0xFF2196F3);
-      case 'rejected':
-        return Color(0xFFF44336);
-      case 'completed':
-        return Color(0xFF4CAF50);
-      default:
-        return Colors.grey;
-    }
-  }
-
-  IconData _getStatusIcon(String status) {
-    switch (status) {
-      case 'pending':
-        return Icons.pending_actions;
-      case 'accepted':
-        return Icons.check_circle;
-      case 'rejected':
-        return Icons.cancel;
-      case 'completed':
-        return Icons.done_all;
-      default:
-        return Icons.help;
-    }
-  }
-
-  void _trackLocation(TowRequest request) async {
-    log(request.latitude.toString());
-    log(request.longitude.toString());
-    if (request.latitude != null && request.longitude != null) {
+    if (request.userLatitude != null && request.userLongitude != null) {
       final String googleMapsUrl =
-          'https://www.google.com/maps/search/?api=1&query=${request.latitude},${request.longitude}';
+          'https://www.google.com/maps/search/?api=1&query=${request.userLatitude},${request.userLongitude}';
       if (await canLaunchUrl(Uri.parse(googleMapsUrl))) {
         await launchUrl(Uri.parse(googleMapsUrl));
       } else {
         _showError('Could not launch maps');
       }
     } else {
-      _showError('Location not available');
+      _showError('Location coordinates not available');
     }
   }
 
-  void _openLocationInMap(TowRequest request) => _trackLocation(request);
+  void _openLocationInMap(TowServiceRequest request) async {
+    print('🗺️ Opening location in map for request: ${request.requestId}');
 
-  void _contactCustomer(String phone) async {
-    final Uri telLaunchUri = Uri(scheme: 'tel', path: phone);
-    if (await canLaunchUrl(telLaunchUri)) {
-      await launchUrl(telLaunchUri);
+    if (request.userLatitude != null && request.userLongitude != null) {
+      final String googleMapsUrl =
+          'https://www.google.com/maps/search/?api=1&query=${request.userLatitude},${request.userLongitude}';
+      if (await canLaunchUrl(Uri.parse(googleMapsUrl))) {
+        await launchUrl(Uri.parse(googleMapsUrl));
+      } else {
+        _showError('Could not launch maps');
+      }
     } else {
-      _showError('Could not make call');
+      _showError('Location coordinates not available');
     }
-  }
-
-  void _viewDetails(TowRequest request) {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Container(
-                width: double.infinity,
-                padding: EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF7E57C2), Color(0xFF9575CD)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.request_page,
-                            color: Colors.white,
-                            size: 24,
-                          ),
-                        ),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'Request Details',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 8),
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        'ID: ${request.requestId}',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Content
-              Padding(
-                padding: EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildDetailItem(
-                      'Customer Name',
-                      request.name,
-                      Icons.person,
-                    ),
-                    _buildDetailItem(
-                      'Phone Number',
-                      request.phone,
-                      Icons.phone,
-                    ),
-                    _buildDetailItem(
-                      'Vehicle Number',
-                      request.vehicleNumber,
-                      Icons.directions_car,
-                    ),
-                    _buildDetailItem(
-                      'Issue Type',
-                      request.issueType,
-                      Icons.build,
-                    ),
-                    _buildDetailItem(
-                      'Service Type',
-                      request.towType,
-                      Icons.local_shipping,
-                    ),
-                    _buildDetailItem(
-                      'Location',
-                      request.location,
-                      Icons.location_on,
-                    ),
-                    if (request.description.isNotEmpty)
-                      _buildDetailItem(
-                        'Description',
-                        request.description,
-                        Icons.description,
-                      ),
-                    _buildDetailItem(
-                      'Status',
-                      request.status.toUpperCase(),
-                      Icons.circle,
-                      color: _getStatusColor(request.status),
-                    ),
-                    _buildDetailItem(
-                      'Request Time',
-                      request.timestamp,
-                      Icons.access_time,
-                    ),
-                  ],
-                ),
-              ),
-
-              // Actions
-              Padding(
-                padding: EdgeInsets.all(20),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Color(0xFF7E57C2),
-                          side: BorderSide(color: Color(0xFF7E57C2)),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        child: Text('Close'),
-                      ),
-                    ),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          _contactCustomer(request.phone);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(0xFF7E57C2),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.phone, size: 18),
-                            SizedBox(width: 6),
-                            Text('Call'),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDetailItem(
-    String label,
-    String value,
-    IconData icon, {
-    Color? color,
-  }) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 12),
-      padding: EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[200]!),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: color ?? Color(0xFF7E57C2).withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: color ?? Color(0xFF7E57C2), size: 14),
-          ),
-          SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey[600],
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey[800],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // UI Helper Methods
-  Widget _buildLoadingState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 80,
-            height: 80,
-            padding: EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 12,
-                  offset: Offset(0, 4),
-                ),
-              ],
-            ),
-            child: CircularProgressIndicator(
-              color: Color(0xFF7E57C2),
-              strokeWidth: 3,
-            ),
-          ),
-          SizedBox(height: 24),
-          Text(
-            'Loading requests...',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[700],
-            ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            'Please wait a moment',
-            style: TextStyle(color: Colors.grey[500], fontSize: 14),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildErrorState(String error) {
-    return Center(
-      child: Padding(
-        padding: EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                color: Colors.red[50],
-                shape: BoxShape.circle,
-              ),
-              child: Icon(Icons.error_outline, color: Colors.red, size: 48),
-            ),
-            SizedBox(height: 24),
-            Text(
-              'Unable to Load',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: Colors.grey[800],
-              ),
-            ),
-            SizedBox(height: 12),
-            Text(
-              'There was an error loading your requests',
-              style: TextStyle(color: Colors.grey[600], fontSize: 14),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: 16),
-            Container(
-              padding: EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                error,
-                style: TextStyle(color: Colors.grey[700], fontSize: 12),
-                textAlign: TextAlign.center,
-              ),
-            ),
-            SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () => setState(() {}),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFF7E57C2),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-              ),
-              child: Text(
-                'Try Again',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyState(String category) {
-    return Center(
-      child: Padding(
-        padding: EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.request_quote_outlined,
-                color: Colors.grey[400],
-                size: 48,
-              ),
-            ),
-            SizedBox(height: 24),
-            Text(
-              category == 'All' ? 'No Requests' : 'No $category Requests',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: Colors.grey[600],
-              ),
-            ),
-            SizedBox(height: 12),
-            Text(
-              category == 'All'
-                  ? 'New tow requests will appear here'
-                  : 'You don\'t have any $category requests at the moment',
-              style: TextStyle(color: Colors.grey[500], fontSize: 14),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: 8),
-            if (category != 'All')
-              TextButton(
-                onPressed: () {
-                  _tabController.animateTo(0); // Switch to All tab
-                },
-                child: Text(
-                  'View All Requests',
-                  style: TextStyle(
-                    color: Color(0xFF7E57C2),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showSuccess(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(Icons.check_circle, color: Colors.white),
-            SizedBox(width: 8),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: Colors.green,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: EdgeInsets.all(16),
-      ),
-    );
   }
 
   void _showError(String message) {
@@ -1713,84 +151,1069 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen>
       ),
     );
   }
+
+  // EXISTING METHODS ADAPTED FOR TOW PROVIDERS
+  Future<void> _initializeData() async {
+    print('🔄 Starting data initialization...');
+    await _loadUserData();
+    if (_userEmail != null) {
+      await _loadTowProviderProfile();
+      if (_towProviderId != null) {
+        await _loadServiceRequests();
+      } else {
+        _showErrorState('Tow provider profile not found for this email');
+      }
+    } else {
+      _handleNoUser();
+    }
+  }
+
+  Future<void> _loadUserData() async {
+    try {
+      print('👤 Loading user data...');
+
+      User? currentUser = _auth.currentUser;
+      print('🔍 Firebase Auth currentUser: $currentUser');
+
+      if (currentUser != null) {
+        print('✅ Using Firebase Auth user: ${currentUser.email}');
+        setState(() {
+          _userEmail = currentUser.email;
+        });
+        return;
+      }
+
+      print('❌ No user found');
+      _handleNoUser();
+    } catch (e) {
+      print('❌ Error loading user data: $e');
+      _handleNoUser();
+    }
+  }
+
+  Future<void> _loadTowProviderProfile() async {
+    try {
+      print('🔍 Loading tow provider profile for email: $_userEmail');
+
+      final providerSnapshot = await _firestore
+          .collection('tow_providers')
+          .where('email', isEqualTo: _userEmail)
+          .limit(1)
+          .get();
+
+      if (providerSnapshot.docs.isNotEmpty) {
+        final providerDoc = providerSnapshot.docs.first;
+        final providerData = providerDoc.data();
+
+        setState(() {
+          _towProviderId = providerDoc.id;
+          _providerName = providerData['driverName'] ?? 'Our Tow Service';
+        });
+
+        print('✅ Found tow provider profile:');
+        print('   Provider ID: $_towProviderId');
+        print('   Provider Name: $_providerName');
+        print('   Email: $_userEmail');
+
+        // Start notification listener after provider profile is loaded - ADDED
+        _startNotificationListener();
+
+      } else {
+        print('❌ No tow provider profile found for email: $_userEmail');
+        _showErrorState(
+          'No tow provider profile found. Please complete provider registration first.',
+        );
+      }
+    } catch (e) {
+      print('❌ Error loading tow provider profile: $e');
+      _showErrorState('Error loading provider profile: ${e.toString()}');
+    }
+  }
+
+  Future<void> _loadServiceRequests() async {
+    try {
+      if (_towProviderId == null) {
+        print('❌ No tow provider ID available');
+        _showErrorState('Tow provider profile not loaded');
+        return;
+      }
+
+      print(
+        '📡 Fetching service requests for provider: "$_providerName" ($_towProviderId)',
+      );
+
+      // Method 1: Fetch from provider's service_requests collection (Primary method)
+      final serviceRequestsRef = _firestore
+          .collection('tow_providers')
+          .doc(_towProviderId!)
+          .collection('service_requests')
+          .orderBy('timestamp', descending: true);
+
+      print('🔍 Querying path: tow_providers/$_towProviderId/service_requests');
+
+      final serviceRequestsSnapshot = await serviceRequestsRef.get();
+
+      print(
+        '📊 Documents found in service_requests: ${serviceRequestsSnapshot.docs.length}',
+      );
+
+      List<TowServiceRequest> requests = [];
+
+      // Process requests from provider's service_requests collection
+      if (serviceRequestsSnapshot.docs.isNotEmpty) {
+        print('🎯 Processing requests from provider collection...');
+        for (var doc in serviceRequestsSnapshot.docs) {
+          try {
+            final data = doc.data();
+            TowServiceRequest request = _parseServiceRequest(doc.id, data);
+            requests.add(request);
+            print('✅ Added request: ${request.requestId}');
+          } catch (e) {
+            print('❌ Error parsing document ${doc.id}: $e');
+          }
+        }
+      } else {
+        // Method 2: Fallback - Search all service requests by provider email
+        print(
+          '🔄 No requests in provider collection, searching by provider email...',
+        );
+        requests = await _searchRequestsByProviderEmail();
+      }
+
+      if (requests.isEmpty) {
+        print('ℹ️ No service requests found');
+        _showNoDataState();
+        return;
+      }
+
+      _categorizeRequests(requests);
+      print('🎉 Successfully loaded ${requests.length} service requests');
+    } catch (e) {
+      print('❌ CRITICAL ERROR loading service requests: $e');
+      _showErrorState('Failed to load service requests: ${e.toString()}');
+    }
+  }
+
+  Future<List<TowServiceRequest>> _searchRequestsByProviderEmail() async {
+    try {
+      print('🔍 Searching requests by provider email: $_userEmail');
+
+      // Search in all tow requests where provider email matches
+      final allRequestsSnapshot = await _firestore
+          .collectionGroup('tow_requests')
+          .where('providerEmail', isEqualTo: _userEmail)
+          .orderBy('timestamp', descending: true)
+          .get();
+
+      print(
+        '📊 Found ${allRequestsSnapshot.docs.length} requests by provider email',
+      );
+
+      List<TowServiceRequest> requests = [];
+      for (var doc in allRequestsSnapshot.docs) {
+        try {
+          final data = doc.data();
+          TowServiceRequest request = _parseServiceRequest(doc.id, data);
+          requests.add(request);
+          print('✅ Added request by email search: ${request.requestId}');
+        } catch (e) {
+          print('❌ Error parsing email-search document ${doc.id}: $e');
+        }
+      }
+
+      return requests;
+    } catch (e) {
+      print('❌ Error searching by provider email: $e');
+      return [];
+    }
+  }
+
+  TowServiceRequest _parseServiceRequest(String docId, Map<String, dynamic> data) {
+    return TowServiceRequest(
+      id: docId,
+      requestId: data['requestId']?.toString() ?? 'TOW-$docId',
+      name: data['name']?.toString() ?? 'Customer',
+      phone: data['phone']?.toString() ?? 'Not provided',
+      vehicleNumber: data['vehicleNumber']?.toString() ?? 'Not specified',
+      vehicleType: data['vehicleType']?.toString() ?? 'Car',
+      issueType: data['issueType']?.toString() ?? 'Breakdown',
+      location: data['location']?.toString() ?? 'Not provided',
+      description: data['description']?.toString() ?? 'No description provided',
+      isUrgent: data['isUrgent'] ?? false,
+      status: data['status']?.toString() ?? 'pending',
+      timestamp: _parseTimestamp(data['timestamp']),
+      userEmail: data['userEmail']?.toString() ?? 'Unknown',
+      userId: data['userId']?.toString(),
+      userLatitude: data['userLatitude']?.toDouble(),
+      userLongitude: data['userLongitude']?.toDouble(),
+      providerLatitude: data['providerLatitude']?.toDouble(),
+      providerLongitude: data['providerLongitude']?.toDouble(),
+      distance: data['distance']?.toDouble() ?? 0.0,
+      providerName: data['providerName']?.toString() ?? _providerName ?? 'Our Tow Service',
+      providerPhone: data['providerPhone']?.toString() ?? '',
+      truckNumber: data['truckNumber']?.toString() ?? '',
+      truckType: data['truckType']?.toString() ?? '',
+      providerEmail: data['providerEmail']?.toString() ?? _userEmail,
+    );
+  }
+
+  DateTime _parseTimestamp(dynamic timestamp) {
+    try {
+      if (timestamp is Timestamp) {
+        return timestamp.toDate();
+      } else if (timestamp is int) {
+        return DateTime.fromMillisecondsSinceEpoch(timestamp);
+      } else if (timestamp is String) {
+        return DateTime.parse(timestamp);
+      } else {
+        return DateTime.now();
+      }
+    } catch (e) {
+      print('❌ Error parsing timestamp: $e');
+      return DateTime.now();
+    }
+  }
+
+  void _categorizeRequests(List<TowServiceRequest> requests) {
+    print('📊 Categorizing ${requests.length} requests...');
+
+    setState(() {
+      _allRequests = requests;
+      _pendingRequests = requests
+          .where((request) => request.status.toLowerCase() == 'pending')
+          .toList();
+      _acceptedRequests = requests
+          .where((request) => request.status.toLowerCase() == 'accepted')
+          .toList();
+      _completedRequests = requests
+          .where((request) => request.status.toLowerCase() == 'completed')
+          .toList();
+      _rejectedRequests = requests
+          .where((request) => request.status.toLowerCase() == 'rejected')
+          .toList();
+      _isLoading = false;
+      _hasError = false;
+    });
+
+    print('📈 Categorization complete:');
+    print('   Total: ${_allRequests.length}');
+    print('   Pending: ${_pendingRequests.length}');
+    print('   Accepted: ${_acceptedRequests.length}');
+    print('   Completed: ${_completedRequests.length}');
+    print('   Rejected: ${_rejectedRequests.length}');
+  }
+
+  void _handleNoUser() {
+    print('❌ No user detected');
+    setState(() {
+      _hasError = true;
+      _errorMessage = 'Please login again to access service requests';
+      _isLoading = false;
+    });
+  }
+
+  void _showErrorState(String message) {
+    print('❌ Showing error state: $message');
+    setState(() {
+      _hasError = true;
+      _errorMessage = message;
+      _isLoading = false;
+    });
+  }
+
+  void _showNoDataState() {
+    print('ℹ️ Showing no data state');
+    setState(() {
+      _allRequests = [];
+      _pendingRequests = [];
+      _acceptedRequests = [];
+      _completedRequests = [];
+      _rejectedRequests = [];
+      _isLoading = false;
+      _hasError = false;
+    });
+  }
+
+  void _handleRetry() {
+    print('🔄 Retrying data load...');
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+    });
+    _initializeData();
+  }
+
+  Future<void> _debugFirestoreStructure() async {
+    print('🧪 DEBUGGING FIRESTORE STRUCTURE...');
+
+    try {
+      if (_userEmail == null) {
+        print('❌ No user email available');
+        return;
+      }
+
+      print('1. Checking tow provider profile for: $_userEmail');
+      final providerSnapshot = await _firestore
+          .collection('tow_providers')
+          .where('email', isEqualTo: _userEmail)
+          .get();
+
+      print('   Provider documents found: ${providerSnapshot.docs.length}');
+      for (var doc in providerSnapshot.docs) {
+        print('   🚛 Provider: ${doc.id} - ${doc.data()['driverName']}');
+      }
+
+      if (_towProviderId != null) {
+        print('2. Checking service_requests for provider: $_towProviderId');
+        final serviceRequests = await _firestore
+            .collection('tow_providers')
+            .doc(_towProviderId!)
+            .collection('service_requests')
+            .get();
+
+        print(
+          '   Service requests in provider collection: ${serviceRequests.docs.length}',
+        );
+
+        for (var doc in serviceRequests.docs) {
+          final data = doc.data();
+          print('   📋 Request: ${data['requestId']} - ${data['vehicleNumber']} - ${data['status']}');
+        }
+      }
+
+      print('3. Searching all requests by provider email...');
+      final emailRequests = await _firestore
+          .collectionGroup('tow_requests')
+          .where('providerEmail', isEqualTo: _userEmail)
+          .get();
+
+      print('   Requests by email search: ${emailRequests.docs.length}');
+    } catch (e) {
+      print('❌ Debug failed: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Tow Service Requests'),
+        backgroundColor: Color(0xFFFF9800),
+        foregroundColor: Colors.white,
+        actions: [
+          // NOTIFICATION ICON WITH BADGE - UPDATED
+          Stack(
+            children: [
+              IconButton(
+                icon: Icon(Icons.notifications_outlined),
+                onPressed: _navigateToNotifications,
+              ),
+              if (_unreadNotifications > 0)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    padding: EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    constraints: BoxConstraints(
+                      minWidth: 16,
+                      minHeight: 16,
+                    ),
+                    child: Text(
+                      _unreadNotifications > 9 ? '9+' : '$_unreadNotifications',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          IconButton(icon: Icon(Icons.refresh), onPressed: _handleRetry),
+          IconButton(
+            icon: Icon(Icons.bug_report),
+            onPressed: _debugFirestoreStructure,
+            tooltip: 'Debug Firestore',
+          ),
+        ],
+        bottom: _allRequests.isNotEmpty && !_hasError
+            ? TabBar(
+                controller: _tabController,
+                indicatorColor: Colors.white,
+                labelStyle: TextStyle(fontWeight: FontWeight.w500),
+                tabs: [
+                  Tab(text: 'Pending (${_pendingRequests.length})'),
+                  Tab(text: 'Accepted (${_acceptedRequests.length})'),
+                  Tab(text: 'Completed (${_completedRequests.length})'),
+                  Tab(text: 'Rejected (${_rejectedRequests.length})'),
+                ],
+              )
+            : null,
+      ),
+      body: _buildBody(),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_isLoading) {
+      return _buildLoadingState();
+    }
+
+    if (_hasError) {
+      return _buildErrorState();
+    }
+
+    if (_allRequests.isEmpty) {
+      return _buildNoDataState();
+    }
+
+    return TabBarView(
+      controller: _tabController,
+      children: [
+        _buildRequestsList(_pendingRequests, 'Pending'),
+        _buildRequestsList(_acceptedRequests, 'Accepted'),
+        _buildRequestsList(_completedRequests, 'Completed'),
+        _buildRequestsList(_rejectedRequests, 'Rejected'),
+      ],
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(color: Color(0xFFFF9800)),
+          SizedBox(height: 16),
+          Text(
+            'Loading service requests...',
+            style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+          ),
+          SizedBox(height: 8),
+          if (_providerName != null)
+            Text(
+              'Provider: $_providerName',
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+            ),
+          if (_userEmail != null)
+            Text(
+              'Email: $_userEmail',
+              style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 80, color: Colors.orange),
+            SizedBox(height: 16),
+            Text(
+              'Unable to Load Requests',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+            ),
+            SizedBox(height: 12),
+            Text(
+              _errorMessage,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+            ),
+            SizedBox(height: 20),
+            if (_userEmail != null)
+              Text(
+                'Logged in as: $_userEmail',
+                style: TextStyle(color: Colors.grey, fontSize: 14),
+              ),
+            SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: _handleRetry,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFFFF9800),
+                foregroundColor: Colors.white,
+              ),
+              child: Text('Try Again'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNoDataState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.inbox_outlined, size: 80, color: Colors.grey[300]),
+          SizedBox(height: 16),
+          Text(
+            'No Service Requests Yet',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'When customers send tow service requests, they will appear here',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey[500]),
+          ),
+          SizedBox(height: 20),
+          if (_providerName != null)
+            Text(
+              'Provider: $_providerName',
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+            ),
+          SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: _handleRetry,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color(0xFFFF9800),
+              foregroundColor: Colors.white,
+            ),
+            child: Text('Refresh'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRequestsList(List<TowServiceRequest> requests, String status) {
+    if (requests.isEmpty) {
+      return _buildEmptyState(status);
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadServiceRequests,
+      child: ListView.builder(
+        padding: EdgeInsets.all(16),
+        itemCount: requests.length,
+        itemBuilder: (context, index) {
+          return _buildRequestCard(requests[index]);
+        },
+      ),
+    );
+  }
+
+  Widget _buildRequestCard(TowServiceRequest request) {
+    Color statusColor = _getStatusColor(request.status);
+
+    return Card(
+      elevation: 3,
+      margin: EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        request.requestId,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      if (request.distance > 0)
+                        Text(
+                          '${request.distance.toStringAsFixed(1)} km away',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.orange[600],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: statusColor.withOpacity(0.3)),
+                  ),
+                  child: Text(
+                    request.status.toUpperCase(),
+                    style: TextStyle(
+                      color: statusColor,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 12),
+
+            _buildInfoRow(
+              Icons.directions_car,
+              'Vehicle',
+              '${request.vehicleNumber} (${request.vehicleType})',
+            ),
+            _buildInfoRow(Icons.warning, 'Issue', request.issueType),
+            _buildInfoRow(Icons.person, 'Customer', request.name),
+            _buildInfoRow(Icons.phone, 'Phone', request.phone),
+
+            if (request.isUrgent)
+              _buildInfoRow(
+                Icons.emergency,
+                'Priority',
+                'URGENT',
+              ),
+
+            // LOCATION SECTION WITH TRACKING BUTTON
+            if (request.userLatitude != null &&
+                request.userLongitude != null) ...[
+              Divider(height: 20),
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange[50]?.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.orange[100]!),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.orange[100],
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.location_on,
+                        color: Colors.orange[800],
+                        size: 16,
+                      ),
+                    ),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Customer Location',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.orange[800],
+                            ),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            request.location,
+                            style: TextStyle(
+                              color: Colors.grey[700],
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.orange[500],
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.orange.withOpacity(0.3),
+                            blurRadius: 4,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: IconButton(
+                        icon: Icon(Icons.map, color: Colors.white, size: 18),
+                        onPressed: () => _openLocationInMap(request),
+                        padding: EdgeInsets.all(6),
+                        tooltip: 'Open in Maps',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            if (request.description.isNotEmpty &&
+                request.description != 'No description provided') ...[
+              Divider(height: 20),
+              Text(
+                'Problem Description:',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              SizedBox(height: 6),
+              Text(
+                request.description,
+                style: TextStyle(color: Colors.grey[700]),
+              ),
+            ],
+
+            // Action buttons based on status
+            if (request.status.toLowerCase() == 'pending') ...[
+              Divider(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _callCustomer(request.phone),
+                      icon: Icon(Icons.phone, size: 16),
+                      label: Text('Call'),
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  // TRACK LOCATION BUTTON FOR PENDING REQUESTS WITH COORDINATES
+                  if (request.userLatitude != null &&
+                      request.userLongitude != null)
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _trackLocation(request),
+                        icon: Icon(Icons.map, size: 16),
+                        label: Text('Track'),
+                      ),
+                    ),
+                  if (request.userLatitude != null &&
+                      request.userLongitude != null)
+                    SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () =>
+                          _updateRequestStatus(request, 'accepted'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                      ),
+                      icon: Icon(Icons.check, size: 16),
+                      label: Text('Accept'),
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () =>
+                          _updateRequestStatus(request, 'rejected'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                      ),
+                      icon: Icon(Icons.close, size: 16),
+                      label: Text('Reject'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+
+            if (request.status.toLowerCase() == 'accepted') ...[
+              Divider(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _callCustomer(request.phone),
+                      icon: Icon(Icons.phone, size: 16),
+                      label: Text('Call'),
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  // TRACK LOCATION BUTTON FOR ACCEPTED REQUESTS WITH COORDINATES
+                  if (request.userLatitude != null &&
+                      request.userLongitude != null)
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => _trackLocation(request),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                        ),
+                        icon: Icon(Icons.location_searching, size: 16),
+                        label: Text('Track'),
+                      ),
+                    ),
+                  if (request.userLatitude != null &&
+                      request.userLongitude != null)
+                    SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () =>
+                          _updateRequestStatus(request, 'completed'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                      ),
+                      icon: Icon(Icons.done_all, size: 16),
+                      label: Text('Complete'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+
+            // For completed requests, show track and call buttons
+            if (request.status.toLowerCase() == 'completed') ...[
+              Divider(height: 20),
+              Row(
+                children: [
+                  if (request.userLatitude != null &&
+                      request.userLongitude != null)
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _trackLocation(request),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Color(0xFFFF9800),
+                        ),
+                        icon: Icon(Icons.map, size: 16),
+                        label: Text('View Location'),
+                      ),
+                    ),
+                  if (request.userLatitude != null &&
+                      request.userLongitude != null)
+                    SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => _callCustomer(request.phone),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                      ),
+                      icon: Icon(Icons.phone, size: 16),
+                      label: Text('Call Again'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 16, color: Colors.grey[600]),
+          SizedBox(width: 8),
+          SizedBox(
+            width: 80,
+            child: Text(
+              '$label:',
+              style: TextStyle(fontWeight: FontWeight.w500),
+            ),
+          ),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(value, style: TextStyle(color: Colors.grey[800])),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(String status) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.check_circle_outline, size: 64, color: Colors.grey[300]),
+          SizedBox(height: 16),
+          Text(
+            'No $status Requests',
+            style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'All $status requests will appear here',
+            style: TextStyle(color: Colors.grey[500]),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return Colors.orange;
+      case 'accepted':
+        return Colors.blue;
+      case 'completed':
+        return Colors.green;
+      case 'rejected':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  void _callCustomer(String phone) {
+    print('📞 Calling customer: $phone');
+    final Uri telLaunchUri = Uri(scheme: 'tel', path: phone);
+    launchUrl(telLaunchUri);
+  }
+
+  Future<void> _updateRequestStatus(
+    TowServiceRequest request,
+    String newStatus,
+  ) async {
+    try {
+      // Update in provider's service_requests collection
+      if (_towProviderId != null) {
+        await _firestore
+            .collection('tow_providers')
+            .doc(_towProviderId!)
+            .collection('service_requests')
+            .doc(request.id)
+            .update({
+              'status': newStatus,
+              '${newStatus}At': FieldValue.serverTimestamp(),
+            });
+      }
+
+      // Also update in user's tow_requests collection
+      if (request.userEmail.isNotEmpty && request.userEmail != 'Unknown') {
+        try {
+          final userRequestSnapshot = await _firestore
+              .collection('owner')
+              .doc(request.userEmail)
+              .collection('tow_requests')
+              .where('requestId', isEqualTo: request.requestId)
+              .limit(1)
+              .get();
+
+          if (userRequestSnapshot.docs.isNotEmpty) {
+            await _firestore
+                .collection('owner')
+                .doc(request.userEmail)
+                .collection('tow_requests')
+                .doc(userRequestSnapshot.docs.first.id)
+                .update({
+                  'status': newStatus,
+                  '${newStatus}At': FieldValue.serverTimestamp(),
+                });
+          }
+        } catch (e) {
+          print('⚠️ Could not update user collection: $e');
+        }
+      }
+
+      // Refresh data
+      _loadServiceRequests();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Request status updated to $newStatus'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      print('❌ Error updating status: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to update status: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
 }
 
-class TowRequest {
+class TowServiceRequest {
   final String id;
+  final String requestId;
   final String name;
   final String phone;
+  final String vehicleNumber;
+  final String vehicleType;
+  final String issueType;
   final String location;
   final String description;
-  final String requestId;
-  final String vehicleNumber;
-  final String issueType;
-  final String towType;
   final bool isUrgent;
   final String status;
-  final String timestamp;
-  final double? latitude;
-  final double? longitude;
+  final DateTime timestamp;
+  final String userEmail;
+  final String? userId;
+  final double? userLatitude;
+  final double? userLongitude;
+  final double? providerLatitude;
+  final double? providerLongitude;
+  final double distance;
+  final String providerName;
+  final String providerPhone;
+  final String truckNumber;
+  final String truckType;
+  final String? providerEmail;
 
-  TowRequest({
+  TowServiceRequest({
     required this.id,
+    required this.requestId,
     required this.name,
     required this.phone,
+    required this.vehicleNumber,
+    required this.vehicleType,
+    required this.issueType,
     required this.location,
     required this.description,
-    required this.requestId,
-    required this.vehicleNumber,
-    required this.issueType,
-    required this.towType,
     required this.isUrgent,
     required this.status,
     required this.timestamp,
-    this.latitude,
-    this.longitude,
+    required this.userEmail,
+    this.userId,
+    this.userLatitude,
+    this.userLongitude,
+    this.providerLatitude,
+    this.providerLongitude,
+    required this.distance,
+    required this.providerName,
+    required this.providerPhone,
+    required this.truckNumber,
+    required this.truckType,
+    this.providerEmail,
   });
+}
 
-  factory TowRequest.fromFirestore(Map<String, dynamic> data, String docId) {
-    return TowRequest(
-      id: docId,
-      name: data['name'] ?? 'Unknown',
-      phone: data['phone'] ?? '',
-      location: data['location'] ?? 'Location not specified',
-      description: data['description'] ?? '',
-      requestId: data['requestId'] ?? docId,
-      vehicleNumber: data['vehicleNumber'] ?? 'Unknown Vehicle',
-      issueType: data['issueType'] ?? 'Unknown Issue',
-      towType: data['towType'] ?? 'Standard',
-      isUrgent: data['isUrgent'] ?? false,
-      status: data['status'] ?? 'pending',
-      timestamp: _formatTimestamp(data['timestamp']),
-      latitude: data['latitude'] != null
-          ? double.tryParse(data['latitude'].toString())
-          : null,
-      longitude: data['longitude'] != null
-          ? double.tryParse(data['longitude'].toString())
-          : null,
+// Tow Provider Notifications Screen (placeholder)
+class TowProviderNotificationsScreen extends StatelessWidget {
+  final String providerId;
+
+  const TowProviderNotificationsScreen({super.key, required this.providerId});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Tow Provider Notifications'),
+        backgroundColor: Color(0xFFFF9800),
+        foregroundColor: Colors.white,
+      ),
+      body: Center(
+        child: Text('Notifications for Tow Provider: $providerId'),
+      ),
     );
   }
 }
 
-String _formatTimestamp(dynamic timestamp) {
-  if (timestamp == null) return 'Recently';
-  try {
-    if (timestamp is Timestamp) {
-      final now = DateTime.now();
-      final time = timestamp.toDate();
-      final difference = now.difference(time);
 
-      if (difference.inMinutes < 1) return 'Just now';
-      if (difference.inMinutes < 60) return '${difference.inMinutes}m ago';
-      if (difference.inHours < 24) return '${difference.inHours}h ago';
-      if (difference.inDays < 7) return '${difference.inDays}d ago';
-      return '${time.day}/${time.month}/${time.year}';
-    }
-    return 'Recently';
-  } catch (e) {
-    return 'Recently';
-  }
-}
+
+
+
+
 // import 'package:flutter/material.dart';
 // import 'package:cloud_firestore/cloud_firestore.dart';
 // import 'package:intl/intl.dart';

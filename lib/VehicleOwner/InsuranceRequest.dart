@@ -1136,7 +1136,7 @@ class _RequestInsuranceScreenState extends State<RequestInsuranceScreen> {
       final String fileName =
           '${_userEmail}_${timestamp}_${docType.replaceAll(' ', '_')}.jpg';
       final Reference storageRef = FirebaseStorage.instance.ref().child(
-        'insurance_documents/${_userEmail}/$fileName',
+        'insurance_documents/$_userEmail/$fileName',
       );
 
       // Upload file to Firebase Storage
@@ -1223,10 +1223,8 @@ class _RequestInsuranceScreenState extends State<RequestInsuranceScreen> {
       final String storagePath = document['storagePath'];
 
       // Delete from Firebase Storage
-      if (storagePath != null) {
-        await FirebaseStorage.instance.ref().child(storagePath).delete();
-      }
-
+      await FirebaseStorage.instance.ref().child(storagePath).delete();
+    
       // Remove from local list
       setState(() {
         _uploadedDocuments.removeAt(index);
@@ -1454,8 +1452,9 @@ class _RequestInsuranceScreenState extends State<RequestInsuranceScreen> {
                 ),
               ),
               validator: (value) {
-                if (value == null || value.isEmpty)
+                if (value == null || value.isEmpty) {
                   return 'Please enter your name';
+                }
                 return null;
               },
             ),
@@ -1483,10 +1482,12 @@ class _RequestInsuranceScreenState extends State<RequestInsuranceScreen> {
               ),
               keyboardType: TextInputType.phone,
               validator: (value) {
-                if (value == null || value.isEmpty)
+                if (value == null || value.isEmpty) {
                   return 'Please enter mobile number';
-                if (value.length != 10)
+                }
+                if (value.length != 10) {
                   return 'Mobile number must be 10 digits';
+                }
                 return null;
               },
             ),
@@ -1502,8 +1503,9 @@ class _RequestInsuranceScreenState extends State<RequestInsuranceScreen> {
                 ),
               ),
               validator: (value) {
-                if (value == null || value.isEmpty)
+                if (value == null || value.isEmpty) {
                   return 'Please enter your address';
+                }
                 return null;
               },
             ),
@@ -1547,8 +1549,9 @@ class _RequestInsuranceScreenState extends State<RequestInsuranceScreen> {
                 ),
               ),
               validator: (value) {
-                if (value == null || value.isEmpty)
+                if (value == null || value.isEmpty) {
                   return 'Please enter vehicle number';
+                }
                 return null;
               },
             ),

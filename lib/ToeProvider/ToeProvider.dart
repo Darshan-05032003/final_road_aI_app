@@ -42,7 +42,7 @@ class _MainDashboardState extends State<MainDashboard> {
 
   final List<Widget> _screens = [
     const ProviderHomeScreen(),
-    const IncomingRequestsScreen(),
+    const TowServiceRequestsScreen(),
     const ActiveJobsScreen(),
     const ProviderProfileScreen(),
   ];

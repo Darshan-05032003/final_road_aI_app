@@ -566,7 +566,7 @@ class _TowProviderRegistrationPageState
 
   Widget _buildTruckTypeDropdown() {
     return DropdownButtonFormField<String>(
-      value: _selectedTruckType,
+      initialValue: _selectedTruckType,
       decoration: InputDecoration(
         labelText: 'Truck Type *',
         labelStyle: TextStyle(color: Colors.grey[600]),

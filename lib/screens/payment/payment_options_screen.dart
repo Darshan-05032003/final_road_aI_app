@@ -245,7 +245,7 @@ class _PaymentOptionsScreenState extends State<PaymentOptionsScreen> {
         upiId: widget.providerUpiId,
         merchantName: widget.providerName ?? 'Service Provider',
         transactionNote: 'Payment for ${widget.serviceType} service',
-        upiApp: selectedApp,
+        upiApp: selectedApp, receiverUpi: '', receiverName: '',
       );
 
       // Handle payment result

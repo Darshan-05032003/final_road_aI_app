@@ -3764,18 +3764,16 @@ class _TowServiceRequestScreenState extends State<TowServiceRequestScreen> {
           .doc(requestId)
           .set(requestData);
 
-      // 2. Save to provider's collection
+      // 2. Save to provider's service_requests collection (NESTED STRUCTURE)
       await FirebaseFirestore.instance
           .collection('tow_providers')
-          .doc(widget.selectedProvider.email)
+          .doc(widget.selectedProvider.id)
           .collection('service_requests')
-          .add(requestData);
+          .doc(requestId)
+          .set(requestData);
 
       // 3. Save to Realtime Database for notifications
-      // Create a copy without FieldValue objects (Realtime DB doesn't support them)
       final Map<String, dynamic> realtimeData = Map<String, dynamic>.from(requestData);
-      // Ensure timestamp is in milliseconds format for Realtime DB
-      realtimeData['timestamp'] = timestamp;
       
       final DatabaseReference dbRef = FirebaseDatabase.instance.ref();
       await dbRef.child('tow_requests').child(requestId).set({
@@ -3805,12 +3803,7 @@ class _TowServiceRequestScreenState extends State<TowServiceRequestScreen> {
       });
 
       // 5. Create provider notification
-      // Sanitize provider ID/email for Realtime Database path (remove invalid characters)
-      // Use ID if not empty, otherwise fallback to email
-      final String providerIdentifier = widget.selectedProvider.id.isNotEmpty 
-          ? widget.selectedProvider.id 
-          : widget.selectedProvider.email;
-      final String sanitizedProviderId = providerIdentifier
+      final String sanitizedProviderId = widget.selectedProvider.id
           .replaceAll(RegExp(r'[\.#\$\[\]]'), '_');
       
       final providerNotificationRef = dbRef
@@ -3992,6 +3985,33 @@ class _TowServiceRequestScreenState extends State<TowServiceRequestScreen> {
             _buildSelectedProviderCard(),
             SizedBox(height: 20),
 
+            if (widget.userEmail != null) ...[
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.green[50],
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.green),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.green, size: 16),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Logged in as: ${widget.userEmail}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.green[800],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 12),
+            ],
+
             _buildServiceDetailsCard(),
             SizedBox(height: 20),
             _buildPersonalDetailsCard(),
@@ -4098,7 +4118,7 @@ class _TowServiceRequestScreenState extends State<TowServiceRequestScreen> {
             ),
             SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: _selectedIssueType,
+              initialValue: _selectedIssueType,
               decoration: InputDecoration(
                 labelText: 'Issue Type *',
                 prefixIcon: Icon(Icons.warning_rounded, color: Colors.orange),
@@ -4225,7 +4245,7 @@ class _TowServiceRequestScreenState extends State<TowServiceRequestScreen> {
             ),
             SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: _selectedVehicleType,
+              initialValue: _selectedVehicleType,
               decoration: InputDecoration(
                 labelText: 'Vehicle Type *',
                 prefixIcon: Icon(
@@ -4425,7 +4445,7 @@ class _TowServiceRequestScreenState extends State<TowServiceRequestScreen> {
                       _isUrgent = value;
                     });
                   },
-                  activeColor: Colors.orange,
+                  activeThumbColor: Colors.orange,
                 ),
               ],
             ),

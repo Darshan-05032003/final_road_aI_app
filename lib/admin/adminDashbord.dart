@@ -4921,11 +4921,15 @@
 // }
 
 
+// admin_dashboard.dart
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
-import 'package:smart_road_app/core/language/app_localizations.dart';
-import 'package:smart_road_app/core/language/language_selector.dart';
+import 'package:smart_road_app/admin/analytics.dart';
+import 'package:smart_road_app/admin/home.dart';
+import 'package:smart_road_app/admin/livemonitoring.dart';
+import 'package:smart_road_app/admin/revenue.dart';
+import 'package:smart_road_app/admin/service_provider.dart';
+import 'package:smart_road_app/admin/usermanagement.dart';
 
 void main() {
   runApp(const VehicleAssistAdminApp());
@@ -4964,23 +4968,21 @@ class _AdminDashboardState extends State<AdminDashboard> {
     const LiveMonitoringPage(),
     const AnalyticsPage(),
     const RevenuePage(),
+    const ServiceProvidersPage(), // New page added
   ];
 
   @override
   Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context);
-    
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: Text(localizations?.translate('vehicle_assist_admin') ?? 'Vehicle Assist Admin'),
+        title: const Text('Vehicle Assist Admin'),
         backgroundColor: Colors.blue[700],
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
           IconButton(icon: const Icon(Icons.notifications), onPressed: () {}),
           IconButton(icon: const Icon(Icons.account_circle), onPressed: () {}),
-          LanguageSelector(),
         ],
       ),
       body: _pages[_currentIndex],
@@ -4990,319 +4992,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
         type: BottomNavigationBarType.fixed,
         selectedItemColor: Colors.blue[700],
         unselectedItemColor: Colors.grey[600],
-        items: [
-          BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: localizations?.dashboard ?? 'Dashboard'),
-          BottomNavigationBarItem(icon: Icon(Icons.people), label: localizations?.translate('users') ?? 'Users'),
-          BottomNavigationBarItem(icon: Icon(Icons.map), label: localizations?.translate('live_map') ?? 'Live Map'),
-          BottomNavigationBarItem(icon: Icon(Icons.analytics), label: localizations?.translate('analytics') ?? 'Analytics'),
-          BottomNavigationBarItem(icon: Icon(Icons.attach_money), label: localizations?.translate('revenue') ?? 'Revenue'),
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Dashboard'),
+          BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Users'),
+          BottomNavigationBarItem(icon: Icon(Icons.map), label: 'Live Map'),
+          BottomNavigationBarItem(icon: Icon(Icons.analytics), label: 'Analytics'),
+          BottomNavigationBarItem(icon: Icon(Icons.attach_money), label: 'Revenue'),
+          BottomNavigationBarItem(icon: Icon(Icons.business), label: 'Providers'),
         ],
-      ),
-    );
-  }
-}
-
-class DashboardHomePage extends StatelessWidget {
-  const DashboardHomePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context);
-    
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.red[500]!, Colors.orange[500]!],
-              ),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.warning, color: Colors.white, size: 30),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        localizations?.translate('emergency_alert') ?? 'EMERGENCY ALERT',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      Text(
-                        '${localizations?.translate('sos_triggered') ?? 'SOS triggered'} by John Doe - Vehicle breakdown on Highway 401',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    ],
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.white),
-                  child: Text(localizations?.translate('view_details') ?? 'View Details', style: TextStyle(color: Colors.red)),
-                ),
-              ],
-            ),
-          ),
-          
-          const SizedBox(height: 20),
-          
-          Text(localizations?.translate('quick_overview') ?? 'Quick Overview', style: Theme.of(context).textTheme.headlineSmall),
-          const SizedBox(height: 16),
-          
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            children: [
-              _buildStatCard(
-                localizations?.translate('total_users') ?? 'Total Users',
-                '1,247',
-                Icons.people,
-                Colors.blue,
-                '+12% from last month',
-                localizations,
-              ),
-              _buildStatCard(
-                localizations?.translate('active_services') ?? 'Active Services',
-                '23',
-                Icons.directions_car,
-                Colors.green,
-                '5 pending approval',
-                localizations,
-              ),
-              _buildStatCard(
-                localizations?.translate('revenue_today') ?? 'Revenue Today',
-                '\$2,847',
-                Icons.attach_money,
-                Colors.purple,
-                '+8% from yesterday',
-                localizations,
-              ),
-              _buildStatCard(
-                localizations?.translate('sos_alerts') ?? 'SOS Alerts',
-                '3',
-                Icons.warning,
-                Colors.red,
-                '1 requires attention',
-                localizations,
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 20),
-          
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.2),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(localizations?.translate('recent_activity_admin') ?? 'Recent Activity', style: Theme.of(context).textTheme.headlineSmall),
-                const SizedBox(height: 16),
-                _buildActivityItem(localizations?.translate('new_tow_provider_registered') ?? 'New tow provider registered', '5 mins ago', Icons.person_add),
-                _buildActivityItem(localizations?.translate('service_request_completed') ?? 'Service request completed', '12 mins ago', Icons.check_circle),
-                _buildActivityItem(localizations?.translate('emergency_alert_resolved') ?? 'Emergency alert resolved', '25 mins ago', Icons.warning),
-                _buildActivityItem(localizations?.translate('monthly_revenue_report') ?? 'Monthly revenue report generated', '1 hour ago', Icons.analytics),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatCard(String title, String value, IconData icon, Color color, String subtitle, AppLocalizations? localizations) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(icon, color: color, size: 24),
-              ),
-              Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
-          const SizedBox(height: 4),
-          Text(subtitle, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActivityItem(String title, String time, IconData icon) {
-    return ListTile(
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Colors.blue.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(icon, color: Colors.blue, size: 20),
-      ),
-      title: Text(title),
-      subtitle: Text(time, style: TextStyle(color: Colors.grey[600])),
-      trailing: Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey[400]),
-    );
-  }
-}
-
-// Other admin pages (AnalyticsPage, LiveMonitoringPage, UserManagementPage, RevenuePage) 
-// would follow the same pattern with language support
-
-class AnalyticsPage extends StatefulWidget {
-  const AnalyticsPage({super.key});
-
-  @override
-  State<AnalyticsPage> createState() => _AnalyticsPageState();
-}
-
-class _AnalyticsPageState extends State<AnalyticsPage> with SingleTickerProviderStateMixin {
-  // ... existing analytics page code with language support
-  // Add LanguageSelector to app bar and use AppLocalizations for all text
-  
-  @override
-  Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context);
-    
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(localizations?.translate('analytics') ?? 'Analytics'),
-        actions: [
-          LanguageSelector(),
-        ],
-      ),
-      body: Center(
-        child: Text('Analytics Page with Multi-language Support'),
-      ),
-    );
-  }
-}
-
-class LiveMonitoringPage extends StatefulWidget {
-  const LiveMonitoringPage({super.key});
-
-  @override
-  State<LiveMonitoringPage> createState() => _LiveMonitoringPageState();
-}
-
-class _LiveMonitoringPageState extends State<LiveMonitoringPage> {
-  // ... existing live monitoring page code with language support
-  
-  @override
-  Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context);
-    
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(localizations?.translate('live_map') ?? 'Live Map'),
-        actions: [
-          LanguageSelector(),
-        ],
-      ),
-      body: Center(
-        child: Text('Live Monitoring Page with Multi-language Support'),
-      ),
-    );
-  }
-}
-
-class UserManagementPage extends StatefulWidget {
-  const UserManagementPage({super.key});
-
-  @override
-  State<UserManagementPage> createState() => _UserManagementPageState();
-}
-
-class _UserManagementPageState extends State<UserManagementPage> {
-  // ... existing user management page code with language support
-  
-  @override
-  Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context);
-    
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(localizations?.translate('users') ?? 'Users'),
-        actions: [
-          LanguageSelector(),
-        ],
-      ),
-      body: Center(
-        child: Text('User Management Page with Multi-language Support'),
-      ),
-    );
-  }
-}
-
-class RevenuePage extends StatefulWidget {
-  const RevenuePage({super.key});
-
-  @override
-  State<RevenuePage> createState() => _RevenuePageState();
-}
-
-class _RevenuePageState extends State<RevenuePage> with SingleTickerProviderStateMixin {
-  // ... existing revenue page code with language support
-  
-  @override
-  Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context);
-    
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(localizations?.translate('revenue') ?? 'Revenue'),
-        actions: [
-          LanguageSelector(),
-        ],
-      ),
-      body: Center(
-        child: Text('Revenue Page with Multi-language Support'),
       ),
     );
   }

@@ -945,13 +945,13 @@
 //     required this.garageAddress,
 //     this.garageEmail,
 //   });
-// }
+// }import 'dart:developer';
+import 'dart:async';
 
-import 'package:smart_road_app/VehicleOwner/notification.dart';
-import 'package:smart_road_app/garage/calling.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -983,6 +983,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen>
     with SingleTickerProviderStateMixin {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final DatabaseReference _dbRef = FirebaseDatabase.instance.ref();
   String? _userEmail;
   String? _garageId;
   String? _garageName;
@@ -990,6 +991,8 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen>
   bool _hasError = false;
   String _errorMessage = '';
   late TabController _tabController;
+  int _unreadNotifications = 0;
+  StreamSubscription? _notificationSubscription;
 
   List<ServiceRequest> _allRequests = [];
   List<ServiceRequest> _pendingRequests = [];
@@ -1008,56 +1011,41 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen>
   @override
   void dispose() {
     _tabController.dispose();
+    _notificationSubscription?.cancel();
     super.dispose();
   }
 
-  // TRACK LOCATION FUNCTIONALITY (From first code)
-  void _trackLocation(ServiceRequest request) async {
-    print('📍 Tracking location for request: ${request.requestId}');
-
-    if (request.userLatitude != null && request.userLongitude != null) {
-      final String googleMapsUrl =
-          'https://www.google.com/maps/search/?api=1&query=${request.userLatitude},${request.userLongitude}';
-      if (await canLaunchUrl(Uri.parse(googleMapsUrl))) {
-        await launchUrl(Uri.parse(googleMapsUrl));
-      } else {
-        _showError('Could not launch maps');
+  // NOTIFICATION METHODS
+  void _startNotificationListener() {
+    if (_garageId == null) return;
+    
+    final String sanitizedGarageId = _garageId!.replaceAll(RegExp(r'[\.#\$\[\]]'), '_');
+    
+    _notificationSubscription = _dbRef
+        .child('garage_notifications')
+        .child(sanitizedGarageId)
+        .orderByChild('read')
+        .equalTo(false)
+        .onValue
+        .listen((event) {
+      if (mounted) {
+        setState(() {
+          if (event.snapshot.value == null) {
+            _unreadNotifications = 0;
+          } else {
+            final Map<dynamic, dynamic> notifications = event.snapshot.value as Map<dynamic, dynamic>;
+            _unreadNotifications = notifications.length;
+          }
+        });
       }
-    } else {
-      _showError('Location coordinates not available');
-    }
+    });
   }
 
-  void _openLocationInMap(ServiceRequest request) async {
-    print('🗺️ Opening location in map for request: ${request.requestId}');
-
-    if (request.userLatitude != null && request.userLongitude != null) {
-      final String googleMapsUrl =
-          'https://www.google.com/maps/search/?api=1&query=${request.userLatitude},${request.userLongitude}';
-      if (await canLaunchUrl(Uri.parse(googleMapsUrl))) {
-        await launchUrl(Uri.parse(googleMapsUrl));
-      } else {
-        _showError('Could not launch maps');
-      }
-    } else {
-      _showError('Location coordinates not available');
-    }
-  }
-
-  void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(Icons.error_outline, color: Colors.white),
-            SizedBox(width: 8),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: Colors.red,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: EdgeInsets.all(16),
+  void _navigateToNotifications() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => GarageNotificationsScreen(garageId: _garageId!),
       ),
     );
   }
@@ -1124,11 +1112,13 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen>
         print('   Garage ID: $_garageId');
         print('   Garage Name: $_garageName');
         print('   Email: $_userEmail');
+
+        // Start notification listener after garage profile is loaded
+        _startNotificationListener();
+
       } else {
         print('❌ No garage profile found for email: $_userEmail');
-        _showErrorState(
-          'No garage profile found. Please complete garage registration first.',
-        );
+        _showErrorState('No garage profile found. Please complete garage registration first.');
       }
     } catch (e) {
       print('❌ Error loading garage profile: $e');
@@ -1144,9 +1134,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen>
         return;
       }
 
-      print(
-        '📡 Fetching service requests for garage: "$_garageName" ($_garageId)',
-      );
+      print('📡 Fetching service requests for garage: "$_garageName" ($_garageId)');
 
       // Method 1: Fetch from garage's service_requests collection (Primary method)
       final serviceRequestsRef = _firestore
@@ -1159,9 +1147,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen>
 
       final serviceRequestsSnapshot = await serviceRequestsRef.get();
 
-      print(
-        '📊 Documents found in service_requests: ${serviceRequestsSnapshot.docs.length}',
-      );
+      print('📊 Documents found in service_requests: ${serviceRequestsSnapshot.docs.length}');
 
       List<ServiceRequest> requests = [];
 
@@ -1180,9 +1166,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen>
         }
       } else {
         // Method 2: Fallback - Search all service requests by garage email
-        print(
-          '🔄 No requests in garage collection, searching by garage email...',
-        );
+        print('🔄 No requests in garage collection, searching by garage email...');
         requests = await _searchRequestsByGarageEmail();
       }
 
@@ -1211,9 +1195,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen>
           .orderBy('createdAt', descending: true)
           .get();
 
-      print(
-        '📊 Found ${allRequestsSnapshot.docs.length} requests by garage email',
-      );
+      print('📊 Found ${allRequestsSnapshot.docs.length} requests by garage email');
 
       List<ServiceRequest> requests = [];
       for (var doc in allRequestsSnapshot.docs) {
@@ -1245,8 +1227,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen>
       name: data['name']?.toString() ?? 'Customer',
       phone: data['phone']?.toString() ?? 'Not provided',
       location: data['location']?.toString() ?? 'Not provided',
-      problemDescription:
-          data['description']?.toString() ?? 'No description provided',
+      problemDescription: data['description']?.toString() ?? 'No description provided',
       userEmail: data['userEmail']?.toString() ?? 'Unknown',
       status: data['status']?.toString() ?? 'Pending',
       createdAt: _parseTimestamp(data['createdAt']),
@@ -1263,7 +1244,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen>
       liveLocationEnabled: data['liveLocationEnabled'] ?? false,
       garageName: data['garageName']?.toString() ?? _garageName ?? 'Our Garage',
       garageAddress: data['garageAddress']?.toString() ?? '',
-      garageEmail: data['garageEmail']?.toString() ?? _userEmail,
+      garageEmail: data['garageEmail']?.toString() ?? _userEmail ?? 'Unknown',
     );
   }
 
@@ -1323,26 +1304,16 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen>
 
     setState(() {
       _allRequests = requests;
-      _pendingRequests = requests
-          .where((request) => request.status.toLowerCase() == 'pending')
-          .toList();
-      _confirmedRequests = requests
-          .where(
-            (request) =>
-                request.status.toLowerCase() == 'confirmed' ||
-                request.status.toLowerCase() == 'accepted',
-          )
-          .toList();
-      _completedRequests = requests
-          .where((request) => request.status.toLowerCase() == 'completed')
-          .toList();
-      _cancelledRequests = requests
-          .where(
-            (request) =>
-                request.status.toLowerCase() == 'cancelled' ||
-                request.status.toLowerCase() == 'rejected',
-          )
-          .toList();
+      _pendingRequests = requests.where((request) =>
+        request.status.toLowerCase() == 'pending').toList();
+      _confirmedRequests = requests.where((request) =>
+        request.status.toLowerCase() == 'confirmed' ||
+        request.status.toLowerCase() == 'accepted').toList();
+      _completedRequests = requests.where((request) =>
+        request.status.toLowerCase() == 'completed').toList();
+      _cancelledRequests = requests.where((request) =>
+        request.status.toLowerCase() == 'cancelled' ||
+        request.status.toLowerCase() == 'rejected').toList();
       _isLoading = false;
       _hasError = false;
     });
@@ -1423,15 +1394,11 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen>
             .collection('service_requests')
             .get();
 
-        print(
-          '   Service requests in garage collection: ${serviceRequests.docs.length}',
-        );
+        print('   Service requests in garage collection: ${serviceRequests.docs.length}');
 
         for (var doc in serviceRequests.docs) {
           final data = doc.data();
-          print(
-            '   📋 Request: ${data['requestId']} - ${data['vehicleNumber']} - ${data['status']}',
-          );
+          print('   📋 Request: ${data['requestId']} - ${data['vehicleNumber']} - ${data['status']}');
         }
       }
 
@@ -1455,16 +1422,44 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen>
         backgroundColor: Color(0xFF2563EB),
         foregroundColor: Colors.white,
         actions: [
-          IconButton(
-            icon: Icon(Icons.notifications),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => NotificationsPage()),
-              );
-            },
+          // NOTIFICATION ICON WITH BADGE
+          Stack(
+            children: [
+              IconButton(
+                icon: Icon(Icons.notifications_outlined),
+                onPressed: _navigateToNotifications,
+              ),
+              if (_unreadNotifications > 0)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    padding: EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    constraints: BoxConstraints(
+                      minWidth: 16,
+                      minHeight: 16,
+                    ),
+                    child: Text(
+                      _unreadNotifications > 9 ? '9+' : '$_unreadNotifications',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
           ),
-          IconButton(icon: Icon(Icons.refresh), onPressed: _handleRetry),
+          IconButton(
+            icon: Icon(Icons.refresh),
+            onPressed: _handleRetry,
+          ),
           IconButton(
             icon: Icon(Icons.bug_report),
             onPressed: _debugFirestoreStructure,
@@ -1526,15 +1521,9 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen>
           ),
           SizedBox(height: 8),
           if (_garageName != null)
-            Text(
-              'Garage: $_garageName',
-              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-            ),
+            Text('Garage: $_garageName', style: TextStyle(fontSize: 14, color: Colors.grey[600])),
           if (_userEmail != null)
-            Text(
-              'Email: $_userEmail',
-              style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-            ),
+            Text('Email: $_userEmail', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
         ],
       ),
     );
@@ -1561,10 +1550,8 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen>
             ),
             SizedBox(height: 20),
             if (_userEmail != null)
-              Text(
-                'Logged in as: $_userEmail',
-                style: TextStyle(color: Colors.grey, fontSize: 14),
-              ),
+              Text('Logged in as: $_userEmail',
+                  style: TextStyle(color: Colors.grey, fontSize: 14)),
             SizedBox(height: 24),
             ElevatedButton(
               onPressed: _handleRetry,
@@ -1599,10 +1586,8 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen>
           ),
           SizedBox(height: 20),
           if (_garageName != null)
-            Text(
-              'Garage: $_garageName',
-              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-            ),
+            Text('Garage: $_garageName',
+                style: TextStyle(fontSize: 14, color: Colors.grey[600])),
           SizedBox(height: 20),
           ElevatedButton(
             onPressed: _handleRetry,
@@ -1634,6 +1619,27 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen>
     );
   }
 
+  Widget _buildEmptyState(String status) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.check_circle_outline, size: 80, color: Colors.grey[300]),
+          SizedBox(height: 16),
+          Text(
+            'No $status Requests',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'All $status requests will appear here',
+            style: TextStyle(color: Colors.grey[500]),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildRequestCard(ServiceRequest request) {
     Color statusColor = _getStatusColor(request.status);
 
@@ -1655,19 +1661,13 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen>
                     children: [
                       Text(
                         request.requestId,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                       ),
                       SizedBox(height: 4),
                       if (request.distance > 0)
                         Text(
                           '${request.distance.toStringAsFixed(1)} km away',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.blue[600],
-                          ),
+                          style: TextStyle(fontSize: 12, color: Colors.blue[600]),
                         ),
                     ],
                   ),
@@ -1692,82 +1692,52 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen>
             ),
             SizedBox(height: 12),
 
-            _buildInfoRow(
-              Icons.directions_car,
-              'Vehicle',
-              '${request.vehicleNumber} (${request.vehicleModel})',
-            ),
+            _buildInfoRow(Icons.directions_car, 'Vehicle', '${request.vehicleNumber} (${request.vehicleModel})'),
             _buildInfoRow(Icons.build, 'Service', request.serviceType),
             _buildInfoRow(Icons.calendar_today, 'Date', request.preferredDate),
             _buildInfoRow(Icons.access_time, 'Time', request.preferredTime),
 
             // LOCATION SECTION WITH TRACKING BUTTON
-            if (request.userLatitude != null &&
-                request.userLongitude != null) ...[
+            if (request.userLatitude != null && request.userLongitude != null) ...[
               Divider(height: 20),
               Container(
                 padding: EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: Colors.blue[50]?.withOpacity(0.5),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.blue[100]!),
                 ),
                 child: Row(
                   children: [
-                    Container(
-                      padding: EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.blue[100],
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.location_on,
-                        color: Colors.blue[800],
-                        size: 16,
-                      ),
-                    ),
-                    SizedBox(width: 10),
+                    Icon(Icons.location_on, color: Colors.blue[700], size: 20),
+                    SizedBox(width: 8),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Customer Location',
+                            'Customer Location Available',
                             style: TextStyle(
-                              fontSize: 12,
                               fontWeight: FontWeight.w600,
                               color: Colors.blue[800],
                             ),
                           ),
-                          SizedBox(height: 2),
+                          SizedBox(height: 4),
                           Text(
-                            request.location,
-                            style: TextStyle(
-                              color: Colors.grey[700],
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                            ),
+                            'Lat: ${request.userLatitude!.toStringAsFixed(4)}, Lng: ${request.userLongitude!.toStringAsFixed(4)}',
+                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                           ),
                         ],
                       ),
                     ),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.blue[500],
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.blue.withOpacity(0.3),
-                            blurRadius: 4,
-                            offset: Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: IconButton(
-                        icon: Icon(Icons.map, color: Colors.white, size: 18),
-                        onPressed: () => _openLocationInMap(request),
-                        padding: EdgeInsets.all(6),
-                        tooltip: 'Open in Maps',
+                    ElevatedButton.icon(
+                      onPressed: () => _openCustomerLocation(request),
+                      icon: Icon(Icons.directions, size: 16),
+                      label: Text('Track'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue[600],
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        textStyle: TextStyle(fontSize: 12),
                       ),
                     ),
                   ],
@@ -1775,184 +1745,104 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen>
               ),
             ],
 
-            if (request.selectedIssues.isNotEmpty) ...[
-              Divider(height: 20),
-              Text(
-                'Reported Issues:',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-              SizedBox(height: 6),
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: request.selectedIssues
-                    .map(
-                      (issue) => Chip(
-                        label: Text(issue),
-                        backgroundColor: Colors.blue[50],
-                        labelStyle: TextStyle(fontSize: 12),
-                      ),
-                    )
-                    .toList(),
-              ),
-            ],
-
-            Divider(height: 20),
-
-            _buildInfoRow(Icons.person, 'Customer', request.name),
-            _buildInfoRow(Icons.phone, 'Phone', request.phone),
-            _buildInfoRow(Icons.location_on, 'Location', request.location),
-
-            if (request.liveLocationEnabled)
-              _buildInfoRow(
-                Icons.location_searching,
-                'Live Location',
-                'Enabled',
-              ),
-
-            if (request.problemDescription.isNotEmpty &&
-                request.problemDescription != 'No description provided') ...[
+            // PROBLEM DESCRIPTION
+            if (request.problemDescription.isNotEmpty && request.problemDescription != 'No description provided') ...[
               Divider(height: 20),
               Text(
                 'Problem Description:',
-                style: TextStyle(fontWeight: FontWeight.w600),
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
               ),
-              SizedBox(height: 6),
+              SizedBox(height: 4),
               Text(
                 request.problemDescription,
                 style: TextStyle(color: Colors.grey[700]),
               ),
             ],
 
-            // Action buttons based on status
-            if (request.status.toLowerCase() == 'pending') ...[
+            // SELECTED ISSUES
+            if (request.selectedIssues.isNotEmpty) ...[
               Divider(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => _callCustomer(request.phone),
-                      icon: Icon(Icons.phone, size: 16),
-                      label: Text('Call'),
-                    ),
-                  ),
-                  SizedBox(width: 8),
-                  // TRACK LOCATION BUTTON FOR PENDING REQUESTS WITH COORDINATES
-                  if (request.userLatitude != null &&
-                      request.userLongitude != null)
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _trackLocation(request),
-                        icon: Icon(Icons.map, size: 16),
-                        label: Text('Track'),
-                      ),
-                    ),
-                  if (request.userLatitude != null &&
-                      request.userLongitude != null)
-                    SizedBox(width: 8),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () =>
-                          _updateRequestStatus(request, 'confirmed'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                      ),
-                      icon: Icon(Icons.check, size: 16),
-                      label: Text('Confirm'),
-                    ),
-                  ),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () =>
-                          _updateRequestStatus(request, 'cancelled'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.red,
-                      ),
-                      icon: Icon(Icons.close, size: 16),
-                      label: Text('Reject'),
-                    ),
-                  ),
-                ],
+              Text(
+                'Reported Issues:',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+              ),
+              SizedBox(height: 4),
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: request.selectedIssues.map((issue) {
+                  return Chip(
+                    label: Text(issue),
+                    backgroundColor: Colors.orange[50],
+                    labelStyle: TextStyle(fontSize: 12, color: Colors.orange[800]),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: VisualDensity.compact,
+                  );
+                }).toList(),
               ),
             ],
 
-            if (request.status.toLowerCase() == 'confirmed') ...[
-              Divider(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
+            // CUSTOMER CONTACT & ACTIONS
+            Divider(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        request.name,
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        request.phone,
+                        style: TextStyle(color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                ),
+                Row(
+                  children: [
+                    // CALL BUTTON
+                    IconButton(
                       onPressed: () => _callCustomer(request.phone),
-                      icon: Icon(Icons.phone, size: 16),
-                      label: Text('Call'),
+                      icon: Icon(Icons.phone, color: Colors.green),
+                      tooltip: 'Call Customer',
                     ),
-                  ),
-                  SizedBox(width: 8),
-                  // TRACK LOCATION BUTTON FOR CONFIRMED REQUESTS WITH COORDINATES
-                  if (request.userLatitude != null &&
-                      request.userLongitude != null)
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () => _trackLocation(request),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange,
-                        ),
-                        icon: Icon(Icons.location_searching, size: 16),
-                        label: Text('Track'),
+                    
+                    // STATUS ACTIONS
+                    if (request.status == 'Pending') ...[
+                      IconButton(
+                        onPressed: () => _updateRequestStatus(request, 'Confirmed'),
+                        icon: Icon(Icons.check_circle, color: Colors.green),
+                        tooltip: 'Confirm Request',
                       ),
-                    ),
-                  if (request.userLatitude != null &&
-                      request.userLongitude != null)
-                    SizedBox(width: 8),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () =>
-                          _updateRequestStatus(request, 'completed'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
+                      IconButton(
+                        onPressed: () => _updateRequestStatus(request, 'Cancelled'),
+                        icon: Icon(Icons.cancel, color: Colors.red),
+                        tooltip: 'Cancel Request',
                       ),
-                      icon: Icon(Icons.done_all, size: 16),
-                      label: Text('Complete'),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+                    ],
+                    
+                    if (request.status == 'Confirmed') ...[
+                      IconButton(
+                        onPressed: () => _updateRequestStatus(request, 'Completed'),
+                        icon: Icon(Icons.done_all, color: Colors.blue),
+                        tooltip: 'Mark as Completed',
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
 
-            // For completed requests, show track and call buttons
-            if (request.status.toLowerCase() == 'completed') ...[
-              Divider(height: 20),
-              Row(
-                children: [
-                  if (request.userLatitude != null &&
-                      request.userLongitude != null)
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _trackLocation(request),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Color(0xFF2563EB),
-                        ),
-                        icon: Icon(Icons.map, size: 16),
-                        label: Text('View Location'),
-                      ),
-                    ),
-                  if (request.userLatitude != null &&
-                      request.userLongitude != null)
-                    SizedBox(width: 8),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () => _callCustomer(request.phone),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                      ),
-                      icon: Icon(Icons.phone, size: 16),
-                      label: Text('Call Again'),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+            // TIMESTAMP
+            SizedBox(height: 8),
+            Text(
+              'Requested: ${DateFormat('MMM dd, yyyy - hh:mm a').format(request.createdAt)}',
+              style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+            ),
           ],
         ),
       ),
@@ -1963,41 +1853,18 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen>
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 4),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, size: 16, color: Colors.grey[600]),
           SizedBox(width: 8),
-          SizedBox(
-            width: 80,
-            child: Text(
-              '$label:',
-              style: TextStyle(fontWeight: FontWeight.w500),
-            ),
+          Text(
+            '$label: ',
+            style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
           ),
-          SizedBox(width: 8),
           Expanded(
-            child: Text(value, style: TextStyle(color: Colors.grey[800])),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyState(String status) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.check_circle_outline, size: 64, color: Colors.grey[300]),
-          SizedBox(height: 16),
-          Text(
-            'No $status Requests',
-            style: TextStyle(fontSize: 18, color: Colors.grey[600]),
-          ),
-          SizedBox(height: 8),
-          Text(
-            'All $status requests will appear here',
-            style: TextStyle(color: Colors.grey[500]),
+            child: Text(
+              value,
+              style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+            ),
           ),
         ],
       ),
@@ -2009,82 +1876,113 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen>
       case 'pending':
         return Colors.orange;
       case 'confirmed':
+      case 'accepted':
         return Colors.blue;
       case 'completed':
         return Colors.green;
       case 'cancelled':
+      case 'rejected':
         return Colors.red;
       default:
         return Colors.grey;
     }
   }
 
-  void _callCustomer(String phone) {
-    print('📞 Calling customer: $phone');
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => DynamicCallScreen(phoneNumber: phone),
-      ),
-    );
+  Future<void> _callCustomer(String phone) async {
+    try {
+      final url = 'tel:$phone';
+      if (await canLaunch(url)) {
+        await launch(url);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not launch phone app')),
+        );
+      }
+    } catch (e) {
+      print('❌ Error making call: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error making call: $e')),
+      );
+    }
   }
 
-  Future<void> _updateRequestStatus(
-    ServiceRequest request,
-    String newStatus,
-  ) async {
+  Future<void> _openCustomerLocation(ServiceRequest request) async {
     try {
+      if (request.userLatitude == null || request.userLongitude == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Customer location not available')),
+        );
+        return;
+      }
+
+      final url = 'https://www.google.com/maps/search/?api=1&query=${request.userLatitude},${request.userLongitude}';
+      
+      if (await canLaunch(url)) {
+        await launch(url);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open maps')),
+        );
+      }
+    } catch (e) {
+      print('❌ Error opening location: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error opening location: $e')),
+      );
+    }
+  }
+
+  Future<void> _updateRequestStatus(ServiceRequest request, String newStatus) async {
+    try {
+      print('🔄 Updating request ${request.requestId} to $newStatus');
+
       // Update in garage's service_requests collection
       if (_garageId != null) {
-        await _firestore
+        final garageRequestRef = _firestore
             .collection('garages')
             .doc(_garageId!)
             .collection('service_requests')
-            .doc(request.id)
-            .update({
-              'status': newStatus,
-              'updatedAt': FieldValue.serverTimestamp(),
-            });
+            .doc(request.id);
+
+        await garageRequestRef.update({
+          'status': newStatus,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+        print('✅ Updated in garage collection');
       }
 
-      // Also update in user's garagerequest collection
-      if (request.userEmail.isNotEmpty && request.userEmail != 'Unknown') {
-        try {
-          final userRequestSnapshot = await _firestore
-              .collection('owner')
-              .doc(request.userEmail)
-              .collection('garagerequest')
-              .where('requestId', isEqualTo: request.requestId)
-              .limit(1)
-              .get();
+      // Also update in user's garagerequest collection if possible
+      try {
+        final userRequestQuery = await _firestore
+            .collectionGroup('garagerequest')
+            .where('requestId', isEqualTo: request.requestId)
+            .limit(1)
+            .get();
 
-          if (userRequestSnapshot.docs.isNotEmpty) {
-            await _firestore
-                .collection('owner')
-                .doc(request.userEmail)
-                .collection('garagerequest')
-                .doc(userRequestSnapshot.docs.first.id)
-                .update({
-                  'status': newStatus,
-                  'updatedAt': FieldValue.serverTimestamp(),
-                });
-          }
-        } catch (e) {
-          print('⚠️ Could not update user collection: $e');
+        if (userRequestQuery.docs.isNotEmpty) {
+          final userRequestDoc = userRequestQuery.docs.first;
+          await userRequestDoc.reference.update({
+            'status': newStatus,
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+          print('✅ Updated in user collection');
         }
+      } catch (e) {
+        print('⚠️ Could not update user collection: $e');
       }
 
-      // Refresh data
-      _loadServiceRequests();
+      // Reload requests to reflect changes
+      await _loadServiceRequests();
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Request status updated to $newStatus'),
+          content: Text('Request ${newStatus.toLowerCase()} successfully'),
           backgroundColor: Colors.green,
         ),
       );
+
     } catch (e) {
-      print('❌ Error updating status: $e');
+      print('❌ Error updating request status: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Failed to update status: $e'),
@@ -2122,7 +2020,7 @@ class ServiceRequest {
   final bool liveLocationEnabled;
   final String garageName;
   final String garageAddress;
-  final String? garageEmail;
+  final String garageEmail;
 
   ServiceRequest({
     required this.id,
@@ -2151,6 +2049,27 @@ class ServiceRequest {
     required this.liveLocationEnabled,
     required this.garageName,
     required this.garageAddress,
-    this.garageEmail,
+    required this.garageEmail,
   });
+}
+
+// Garage Notifications Screen (placeholder - you'll need to implement this)
+class GarageNotificationsScreen extends StatelessWidget {
+  final String garageId;
+
+  const GarageNotificationsScreen({super.key, required this.garageId});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Garage Notifications'),
+        backgroundColor: Color(0xFF2563EB),
+        foregroundColor: Colors.white,
+      ),
+      body: Center(
+        child: Text('Notifications for Garage: $garageId'),
+      ),
+    );
+  }
 }

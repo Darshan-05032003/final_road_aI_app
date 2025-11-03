@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:smart_road_app/VehicleOwner/real_voice_assis.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
-import 'package:text_to_speech/text_to_speech.dart';
+import 'package:smart_road_app/services/tts_service.dart';
 import 'dart:io';
 import 'package:url_launcher/url_launcher.dart';
+
 
 void main() {
   runApp(const MyApp());
@@ -46,14 +47,15 @@ class _AdvancedAIAssistantScreenState extends State<AdvancedAIAssistantScreen>
 
   final ImagePicker _imagePicker = ImagePicker();
   final stt.SpeechToText _speechToText = stt.SpeechToText();
-  final TextToSpeech _textToSpeech = TextToSpeech();
+  final TtsService _tts = TtsService();
   String _lastWords = '';
   String _currentMode = 'car_damage'; // 'car_damage' or 'symbol_error'
 
   @override
   void initState() {
     super.initState();
-    _initializeSpeech();
+  _initializeSpeech();
+  _tts.init();
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
@@ -73,6 +75,8 @@ class _AdvancedAIAssistantScreenState extends State<AdvancedAIAssistantScreen>
     await _speechToText.initialize();
     setState(() {});
   }
+
+  // TTS is handled by TtsService
 
   void _startListening() async {
     if (!_speechToText.isAvailable) {
@@ -113,12 +117,12 @@ class _AdvancedAIAssistantScreenState extends State<AdvancedAIAssistantScreen>
       setState(() {
         _currentMode = 'car_damage';
       });
-      _textToSpeech.speak('Switched to car damage detection mode');
+  _tts.speak('Switched to car damage detection mode');
     } else if (lowerCommand.contains('symbol') || lowerCommand.contains('warning light')) {
       setState(() {
         _currentMode = 'symbol_error';
       });
-      _textToSpeech.speak('Switched to car symbol error detection mode');
+  _tts.speak('Switched to car symbol error detection mode');
     }
     
     // Action commands
@@ -130,7 +134,7 @@ class _AdvancedAIAssistantScreenState extends State<AdvancedAIAssistantScreen>
       if (_selectedImage != null) {
         _analyzeImage();
       } else {
-        _textToSpeech.speak('Please select an image first');
+  _tts.speak('Please select an image first');
       }
     } else if (lowerCommand.contains('solution') || lowerCommand.contains('fix')) {
       _openSolutions();
@@ -179,7 +183,7 @@ class _AdvancedAIAssistantScreenState extends State<AdvancedAIAssistantScreen>
     }
     
     if (response.isNotEmpty) {
-      _textToSpeech.speak(response);
+  _tts.speak(response);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(response),
@@ -242,7 +246,7 @@ class _AdvancedAIAssistantScreenState extends State<AdvancedAIAssistantScreen>
         Here are the solutions: ${_analysisResult!.solutions.join('. ')}
       ''';
       
-      _textToSpeech.speak(solutionText);
+  _tts.speak(solutionText);
       setState(() {
         _isSpeaking = true;
       });
@@ -565,7 +569,7 @@ class _AdvancedAIAssistantScreenState extends State<AdvancedAIAssistantScreen>
   void dispose() {
     _animationController.dispose();
     _speechToText.stop();
-    _textToSpeech.stop();
+    _tts.stop();
     super.dispose();
   }
 
@@ -676,7 +680,9 @@ class _AdvancedAIAssistantScreenState extends State<AdvancedAIAssistantScreen>
                   setState(() {
                     _currentMode = 'car_damage';
                   });
-                  _textToSpeech.speak('Car damage mode activated');
+    
+    
+                  _tts.speak('Car damage mode activated');
                 },
                 icon: const Icon(Icons.car_crash),
                 label: const Text('Car Damage'),
@@ -692,7 +698,7 @@ class _AdvancedAIAssistantScreenState extends State<AdvancedAIAssistantScreen>
                   setState(() {
                     _currentMode = 'symbol_error';
                   });
-                  _textToSpeech.speak('Symbol error mode activated');
+                  _tts.speak('Symbol error mode activated');
                 },
                 icon: const Icon(Icons.warning),
                 label: const Text('Symbol Error'),
@@ -1517,7 +1523,7 @@ class YouTubeLinksBottomSheet extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          ...links.map((link) => _buildYouTubeCard(link, context)).toList(),
+          ...links.map((link) => _buildYouTubeCard(link, context)),
         ],
       ),
     );
@@ -1585,7 +1591,7 @@ class GoogleLinksBottomSheet extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          ...links.map((link) => _buildGoogleCard(link, context)).toList(),
+          ...links.map((link) => _buildGoogleCard(link, context)),
         ],
       ),
     );
@@ -1639,7 +1645,7 @@ class AlternativeSolutionsBottomSheet extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          ...solutions.map((solution) => _buildSolutionCard(solution, context)).toList(),
+          ...solutions.map((solution) => _buildSolutionCard(solution, context)),
         ],
       ),
     );
@@ -2069,6 +2075,8 @@ class CarDamageGuideBottomSheet extends StatelessWidget {
   CarDamageGuideBottomSheet({super.key});
 
   @override
+
+
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),

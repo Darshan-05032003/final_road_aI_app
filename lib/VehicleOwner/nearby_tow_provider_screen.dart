@@ -1034,6 +1034,521 @@
 //   }
 // }
 
+// import 'dart:math';
+
+// import 'package:smart_road_app/VehicleOwner/TowRequest.dart';
+// import 'package:cloud_firestore/cloud_firestore.dart';
+// import 'package:flutter/material.dart';
+// import 'package:geolocator/geolocator.dart';
+
+// class NearbyTowProvidersScreen extends StatefulWidget {
+//   final Position userLocation;
+//   final String? userEmail;
+
+//   const NearbyTowProvidersScreen({
+//     super.key,
+//     required this.userLocation,
+//     required this.userEmail,
+//   });
+
+//   @override
+//   _NearbyTowProvidersScreenState createState() =>
+//       _NearbyTowProvidersScreenState();
+// }
+
+// class _NearbyTowProvidersScreenState extends State<NearbyTowProvidersScreen> {
+//   List<TowProvider> _nearbyTowProviders = [];
+//   bool _isLoading = true;
+//   bool _hasError = false;
+//   String _errorMessage = '';
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     _loadNearbyTowProviders();
+//   }
+
+//   // Calculate distance between two coordinates in kilometers
+//   double _calculateDistance(
+//     double lat1,
+//     double lon1,
+//     double lat2,
+//     double lon2,
+//   ) {
+//     const double earthRadius = 6371;
+
+//     double dLat = _toRadians(lat2 - lat1);
+//     double dLon = _toRadians(lon2 - lon1);
+
+//     double a =
+//         sin(dLat / 2) * sin(dLat / 2) +
+//         cos(_toRadians(lat1)) *
+//             cos(_toRadians(lat2)) *
+//             sin(dLon / 2) *
+//             sin(dLon / 2);
+
+//     double c = 2 * atan2(sqrt(a), sqrt(1 - a));
+//     double distance = earthRadius * c;
+
+//     return distance;
+//   }
+
+//   double _toRadians(double degree) {
+//     return degree * pi / 180;
+//   }
+
+//   Future<void> _loadNearbyTowProviders() async {
+//     try {
+//       print(
+//         '📍 User location: ${widget.userLocation.latitude}, ${widget.userLocation.longitude}',
+//       );
+//       print('🔍 Loading tow providers from Firestore...');
+
+//       // Fetch all active tow providers from Firestore
+//       final providersSnapshot = await FirebaseFirestore.instance
+//           .collection('tow_providers')
+//           .where('isActive', isEqualTo: true)
+//           .where('isAvailable', isEqualTo: true)
+//           .get();
+
+//       print('📊 Total tow providers found: ${providersSnapshot.docs.length}');
+
+//       List<TowProvider> allProviders = [];
+
+//       for (var doc in providersSnapshot.docs) {
+//         try {
+//           final data = doc.data();
+//           print('🔍 Processing tow provider: ${data['driverName']}');
+
+//           // Check if provider has location data
+//           if (data['latitude'] == null || data['longitude'] == null) {
+//             print('⚠️ Tow provider ${data['driverName']} has no location data');
+//             continue;
+//           }
+
+//           double providerLat = data['latitude'].toDouble();
+//           double providerLon = data['longitude'].toDouble();
+
+//           // Calculate distance from user
+//           double distance = _calculateDistance(
+//             widget.userLocation.latitude,
+//             widget.userLocation.longitude,
+//             providerLat,
+//             providerLon,
+//           );
+
+//           print(
+//             '📏 Distance to ${data['driverName']}: ${distance.toStringAsFixed(1)} km',
+//           );
+
+//           // Only include providers within 20 km radius
+//           if (distance <= 20) {
+//             TowProvider provider = TowProvider(
+//               id: doc.id,
+//               driverName: data['driverName'] ?? 'Unknown Driver',
+//               email: data['email'] ?? 'Not provided',
+//               phone: data['phone'] ?? 'Not provided',
+//               truckNumber: data['truckNumber'] ?? 'Not provided',
+//               truckType: data['truckType'] ?? 'Not specified',
+//               serviceArea: data['serviceArea'] ?? 'Not specified',
+//               distance: distance,
+//               rating: (data['rating'] ?? 4.0).toDouble(),
+//               reviews: (data['reviews'] ?? 0).toInt(),
+//               totalJobs: (data['totalJobs'] ?? 0).toInt(),
+//               isAvailable: data['isAvailable'] ?? true,
+//               latitude: providerLat,
+//               longitude: providerLon,
+//             );
+
+//             allProviders.add(provider);
+//             print(
+//               '✅ Added tow provider: ${provider.driverName} (${distance.toStringAsFixed(1)} km)',
+//             );
+//           } else {
+//             print(
+//               '❌ Tow provider ${data['driverName']} is too far: ${distance.toStringAsFixed(1)} km',
+//             );
+//           }
+//         } catch (e) {
+//           print('❌ Error processing tow provider document: $e');
+//         }
+//       }
+
+//       // Sort by distance (nearest first)
+//       allProviders.sort((a, b) => a.distance.compareTo(b.distance));
+
+//       setState(() {
+//         _nearbyTowProviders = allProviders;
+//         _isLoading = false;
+//         _hasError = false;
+//       });
+
+//       print(
+//         '🎉 Nearby tow providers loaded: ${_nearbyTowProviders.length} within 20km',
+//       );
+//     } catch (e) {
+//       print('❌ Error loading nearby tow providers: $e');
+//       setState(() {
+//         _hasError = true;
+//         _errorMessage = 'Failed to load tow providers: $e';
+//         _isLoading = false;
+//       });
+//     }
+//   }
+
+//   void _selectTowProvider(TowProvider provider) {
+//     print(
+//       '🎯 Selected tow provider: ${provider.driverName} (${provider.distance.toStringAsFixed(1)} km)',
+//     );
+
+//     Navigator.push(
+//       context,
+//       MaterialPageRoute(
+//         builder: (context) => TowServiceRequestScreen(
+//           selectedProvider: provider,
+//           userLocation: widget.userLocation,
+//           userEmail: widget.userEmail,
+//         ),
+//       ),
+//     );
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       appBar: AppBar(
+//         title: Text('Nearby Tow Providers'),
+//         backgroundColor: Colors.orange,
+//         foregroundColor: Colors.white,
+//         actions: [
+//           IconButton(
+//             icon: Icon(Icons.refresh),
+//             onPressed: _loadNearbyTowProviders,
+//           ),
+//         ],
+//       ),
+//       body: _isLoading
+//           ? _buildLoadingState()
+//           : _hasError
+//           ? _buildErrorState()
+//           : _buildProvidersList(),
+//     );
+//   }
+
+//   Widget _buildLoadingState() {
+//     return Center(
+//       child: Column(
+//         mainAxisAlignment: MainAxisAlignment.center,
+//         children: [
+//           CircularProgressIndicator(color: Colors.orange),
+//           SizedBox(height: 16),
+//           Text(
+//             'Finding Nearby Tow Providers...',
+//             style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+//           ),
+//           SizedBox(height: 8),
+//           Text(
+//             'Searching within 20km radius',
+//             style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+
+//   Widget _buildErrorState() {
+//     return Center(
+//       child: Padding(
+//         padding: EdgeInsets.all(24),
+//         child: Column(
+//           mainAxisAlignment: MainAxisAlignment.center,
+//           children: [
+//             Icon(Icons.error_outline, size: 80, color: Colors.orange),
+//             SizedBox(height: 16),
+//             Text(
+//               'Unable to Load Tow Providers',
+//               style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+//             ),
+//             SizedBox(height: 12),
+//             Text(
+//               _errorMessage,
+//               textAlign: TextAlign.center,
+//               style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+//             ),
+//             SizedBox(height: 24),
+//             ElevatedButton(
+//               onPressed: _loadNearbyTowProviders,
+//               style: ElevatedButton.styleFrom(
+//                 backgroundColor: Colors.orange,
+//                 foregroundColor: Colors.white,
+//               ),
+//               child: Text('Try Again'),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+
+//   Widget _buildProvidersList() {
+//     return Column(
+//       children: [
+//         // Header with user location
+//         Container(
+//           padding: EdgeInsets.all(16),
+//           color: Colors.grey[50],
+//           child: Row(
+//             children: [
+//               Icon(Icons.location_on, color: Colors.orange, size: 20),
+//               SizedBox(width: 8),
+//               Expanded(
+//                 child: Column(
+//                   crossAxisAlignment: CrossAxisAlignment.start,
+//                   children: [
+//                     Text(
+//                       'Tow Providers Near You',
+//                       style: TextStyle(
+//                         fontWeight: FontWeight.w500,
+//                         color: Colors.grey[700],
+//                       ),
+//                     ),
+//                     Text(
+//                       'Within 20km radius • ${_nearbyTowProviders.length} found',
+//                       style: TextStyle(
+//                         fontSize: 12,
+//                         color: _nearbyTowProviders.isNotEmpty
+//                             ? Colors.green
+//                             : Colors.orange,
+//                         fontWeight: FontWeight.w600,
+//                       ),
+//                     ),
+//                   ],
+//                 ),
+//               ),
+//             ],
+//           ),
+//         ),
+
+//         if (_nearbyTowProviders.isEmpty)
+//           _buildNoProvidersState()
+//         else
+//           Expanded(
+//             child: RefreshIndicator(
+//               onRefresh: _loadNearbyTowProviders,
+//               child: ListView.builder(
+//                 padding: EdgeInsets.all(16),
+//                 itemCount: _nearbyTowProviders.length,
+//                 itemBuilder: (context, index) {
+//                   final provider = _nearbyTowProviders[index];
+//                   return _buildProviderCard(provider);
+//                 },
+//               ),
+//             ),
+//           ),
+//       ],
+//     );
+//   }
+
+//   Widget _buildNoProvidersState() {
+//     return Expanded(
+//       child: Center(
+//         child: Column(
+//           mainAxisAlignment: MainAxisAlignment.center,
+//           children: [
+//             Icon(Icons.local_shipping, size: 80, color: Colors.grey[300]),
+//             SizedBox(height: 16),
+//             Text(
+//               'No Tow Providers Found Nearby',
+//               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+//             ),
+//             SizedBox(height: 8),
+//             Text(
+//               'No registered tow providers found within 20km radius',
+//               style: TextStyle(color: Colors.grey[500]),
+//             ),
+//             SizedBox(height: 20),
+//             ElevatedButton(
+//               onPressed: _loadNearbyTowProviders,
+//               style: ElevatedButton.styleFrom(
+//                 backgroundColor: Colors.orange,
+//                 foregroundColor: Colors.white,
+//               ),
+//               child: Text('Refresh'),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+
+//   Widget _buildProviderCard(TowProvider provider) {
+//     return Card(
+//       elevation: 3,
+//       margin: EdgeInsets.only(bottom: 12),
+//       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+//       child: Padding(
+//         padding: EdgeInsets.all(16),
+//         child: Column(
+//           crossAxisAlignment: CrossAxisAlignment.start,
+//           children: [
+//             Row(
+//               children: [
+//                 // Provider Avatar
+//                 Container(
+//                   width: 50,
+//                   height: 50,
+//                   decoration: BoxDecoration(
+//                     color: Colors.orange.withOpacity(0.1),
+//                     borderRadius: BorderRadius.circular(10),
+//                   ),
+//                   child: Icon(
+//                     Icons.local_shipping,
+//                     color: Colors.orange,
+//                     size: 30,
+//                   ),
+//                 ),
+//                 SizedBox(width: 12),
+//                 Expanded(
+//                   child: Column(
+//                     crossAxisAlignment: CrossAxisAlignment.start,
+//                     children: [
+//                       Text(
+//                         provider.driverName,
+//                         style: TextStyle(
+//                           fontWeight: FontWeight.bold,
+//                           fontSize: 16,
+//                         ),
+//                       ),
+//                       SizedBox(height: 4),
+//                       Text(
+//                         provider.truckType,
+//                         style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+//                       ),
+//                       SizedBox(height: 4),
+//                       Text(
+//                         provider.serviceArea,
+//                         style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+//                         maxLines: 1,
+//                         overflow: TextOverflow.ellipsis,
+//                       ),
+//                     ],
+//                   ),
+//                 ),
+//               ],
+//             ),
+//             SizedBox(height: 12),
+
+//             // Rating and Distance
+//             Row(
+//               children: [
+//                 // Rating
+//                 Row(
+//                   children: [
+//                     Icon(Icons.star, color: Colors.amber, size: 16),
+//                     SizedBox(width: 4),
+//                     Text(
+//                       provider.rating.toStringAsFixed(1),
+//                       style: TextStyle(fontWeight: FontWeight.w600),
+//                     ),
+//                     SizedBox(width: 4),
+//                     Text(
+//                       '(${provider.reviews} reviews)',
+//                       style: TextStyle(color: Colors.grey[600], fontSize: 12),
+//                     ),
+//                   ],
+//                 ),
+//                 Spacer(),
+//                 // Distance
+//                 Row(
+//                   children: [
+//                     Icon(Icons.location_on, color: Colors.red, size: 16),
+//                     SizedBox(width: 4),
+//                     Text(
+//                       '${provider.distance.toStringAsFixed(1)} km',
+//                       style: TextStyle(fontWeight: FontWeight.w600),
+//                     ),
+//                   ],
+//                 ),
+//               ],
+//             ),
+//             SizedBox(height: 8),
+
+//             // Truck Info
+//             Row(
+//               children: [
+//                 Icon(Icons.confirmation_number, size: 14, color: Colors.grey),
+//                 SizedBox(width: 4),
+//                 Text(
+//                   'Truck: ${provider.truckNumber}',
+//                   style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+//                 ),
+//                 Spacer(),
+//                 Icon(Icons.work, size: 14, color: Colors.grey),
+//                 SizedBox(width: 4),
+//                 Text(
+//                   'Jobs: ${provider.totalJobs}',
+//                   style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+//                 ),
+//               ],
+//             ),
+//             SizedBox(height: 12),
+
+//             // Select Button
+//             SizedBox(
+//               width: double.infinity,
+//               child: ElevatedButton(
+//                 onPressed: () => _selectTowProvider(provider),
+//                 style: ElevatedButton.styleFrom(
+//                   backgroundColor: Colors.orange,
+//                   foregroundColor: Colors.white,
+//                   shape: RoundedRectangleBorder(
+//                     borderRadius: BorderRadius.circular(8),
+//                   ),
+//                 ),
+//                 child: Text('Request Tow Service'),
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
+
+// class TowProvider {
+//   final String id;
+//   final String driverName;
+//   final String email;
+//   final String phone;
+//   final String truckNumber;
+//   final String truckType;
+//   final String serviceArea;
+//   final double distance;
+//   final double rating;
+//   final int reviews;
+//   final int totalJobs;
+//   final bool isAvailable;
+//   final double latitude;
+//   final double longitude;
+
+//   TowProvider({
+//     required this.id,
+//     required this.driverName,
+//     required this.email,
+//     required this.phone,
+//     required this.truckNumber,
+//     required this.truckType,
+//     required this.serviceArea,
+//     required this.distance,
+//     required this.rating,
+//     required this.reviews,
+//     required this.totalJobs,
+//     required this.isAvailable,
+//     required this.latitude,
+//     required this.longitude,
+//   });
+// }
+
 import 'dart:math';
 
 import 'package:smart_road_app/VehicleOwner/TowRequest.dart';
@@ -1068,14 +1583,14 @@ class _NearbyTowProvidersScreenState extends State<NearbyTowProvidersScreen> {
     _loadNearbyTowProviders();
   }
 
-  // Calculate distance between two coordinates in kilometers
+  // Calculate distance between two coordinates in kilometers using Haversine formula
   double _calculateDistance(
     double lat1,
     double lon1,
     double lat2,
     double lon2,
   ) {
-    const double earthRadius = 6371;
+    const double earthRadius = 6371; // Earth's radius in kilometers
 
     double dLat = _toRadians(lat2 - lat1);
     double dLon = _toRadians(lon2 - lon1);
@@ -1102,7 +1617,7 @@ class _NearbyTowProvidersScreenState extends State<NearbyTowProvidersScreen> {
       print(
         '📍 User location: ${widget.userLocation.latitude}, ${widget.userLocation.longitude}',
       );
-      print('🔍 Loading tow providers from Firestore...');
+      print('🔍 Loading registered tow providers from Firestore...');
 
       // Fetch all active tow providers from Firestore
       final providersSnapshot = await FirebaseFirestore.instance
@@ -1111,23 +1626,30 @@ class _NearbyTowProvidersScreenState extends State<NearbyTowProvidersScreen> {
           .where('isAvailable', isEqualTo: true)
           .get();
 
-      print('📊 Total tow providers found: ${providersSnapshot.docs.length}');
+      print('📊 Total tow providers found in system: ${providersSnapshot.docs.length}');
 
       List<TowProvider> allProviders = [];
 
       for (var doc in providersSnapshot.docs) {
         try {
           final data = doc.data();
-          print('🔍 Processing tow provider: ${data['driverName']}');
+          print('\n🔍 Processing tow provider: ${data['driverName']}');
 
           // Check if provider has location data
           if (data['latitude'] == null || data['longitude'] == null) {
-            print('⚠️ Tow provider ${data['driverName']} has no location data');
+            print(
+              '⚠️ Tow provider ${data['driverName']} has no location data - skipping',
+            );
             continue;
           }
 
-          double providerLat = data['latitude'].toDouble();
-          double providerLon = data['longitude'].toDouble();
+          double providerLat = data['latitude'] is int
+              ? (data['latitude'] as int).toDouble()
+              : data['latitude'].toDouble();
+
+          double providerLon = data['longitude'] is int
+              ? (data['longitude'] as int).toDouble()
+              : data['longitude'].toDouble();
 
           // Calculate distance from user
           double distance = _calculateDistance(
@@ -1162,15 +1684,16 @@ class _NearbyTowProvidersScreenState extends State<NearbyTowProvidersScreen> {
 
             allProviders.add(provider);
             print(
-              '✅ Added tow provider: ${provider.driverName} (${distance.toStringAsFixed(1)} km)',
+              '✅ ADDED: ${provider.driverName} (${distance.toStringAsFixed(1)} km away)',
             );
           } else {
             print(
-              '❌ Tow provider ${data['driverName']} is too far: ${distance.toStringAsFixed(1)} km',
+              '❌ TOO FAR: ${data['driverName']} - ${distance.toStringAsFixed(1)} km',
             );
           }
         } catch (e) {
           print('❌ Error processing tow provider document: $e');
+          print('📋 Problematic data: ${doc.data()}');
         }
       }
 
@@ -1183,14 +1706,19 @@ class _NearbyTowProvidersScreenState extends State<NearbyTowProvidersScreen> {
         _hasError = false;
       });
 
+      print('\n🎉 FINAL RESULTS:');
       print(
-        '🎉 Nearby tow providers loaded: ${_nearbyTowProviders.length} within 20km',
+        '📍 User Location: ${widget.userLocation.latitude}, ${widget.userLocation.longitude}',
+      );
+      print('📊 Nearby tow providers loaded: ${_nearbyTowProviders.length} within 20km');
+      print(
+        '📈 Distance range: ${_nearbyTowProviders.isNotEmpty ? _nearbyTowProviders.first.distance.toStringAsFixed(1) : 0}km - ${_nearbyTowProviders.isNotEmpty ? _nearbyTowProviders.last.distance.toStringAsFixed(1) : 0}km',
       );
     } catch (e) {
-      print('❌ Error loading nearby tow providers: $e');
+      print('❌ CRITICAL ERROR loading nearby tow providers: $e');
       setState(() {
         _hasError = true;
-        _errorMessage = 'Failed to load tow providers: $e';
+        _errorMessage = 'Failed to load tow providers: ${e.toString()}';
         _isLoading = false;
       });
     }
@@ -1218,12 +1746,19 @@ class _NearbyTowProvidersScreenState extends State<NearbyTowProvidersScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Nearby Tow Providers'),
-        backgroundColor: Colors.orange,
+        backgroundColor: Color(0xFFFF9800),
         foregroundColor: Colors.white,
         actions: [
           IconButton(
             icon: Icon(Icons.refresh),
-            onPressed: _loadNearbyTowProviders,
+            onPressed: () {
+              setState(() {
+                _isLoading = true;
+                _hasError = false;
+              });
+              _loadNearbyTowProviders();
+            },
+            tooltip: 'Refresh',
           ),
         ],
       ),
@@ -1240,16 +1775,11 @@ class _NearbyTowProvidersScreenState extends State<NearbyTowProvidersScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          CircularProgressIndicator(color: Colors.orange),
+          CircularProgressIndicator(color: Color(0xFFFF9800)),
           SizedBox(height: 16),
           Text(
             'Finding Nearby Tow Providers...',
             style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-          ),
-          SizedBox(height: 8),
-          Text(
-            'Searching within 20km radius',
-            style: TextStyle(fontSize: 12, color: Colors.grey[500]),
           ),
         ],
       ),
@@ -1279,7 +1809,7 @@ class _NearbyTowProvidersScreenState extends State<NearbyTowProvidersScreen> {
             ElevatedButton(
               onPressed: _loadNearbyTowProviders,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange,
+                backgroundColor: Color(0xFFFF9800),
                 foregroundColor: Colors.white,
               ),
               child: Text('Try Again'),
@@ -1293,13 +1823,20 @@ class _NearbyTowProvidersScreenState extends State<NearbyTowProvidersScreen> {
   Widget _buildProvidersList() {
     return Column(
       children: [
-        // Header with user location
+        // Header with user location and results
         Container(
           padding: EdgeInsets.all(16),
-          color: Colors.grey[50],
+          decoration: BoxDecoration(
+            color: Colors.grey[50],
+            border: Border(
+              bottom: BorderSide(
+                color: const Color.fromARGB(255, 234, 217, 217),
+              ),
+            ),
+          ),
           child: Row(
             children: [
-              Icon(Icons.location_on, color: Colors.orange, size: 20),
+              Icon(Icons.location_on, color: Color(0xFFFF9800), size: 20),
               SizedBox(width: 8),
               Expanded(
                 child: Column(
@@ -1312,8 +1849,9 @@ class _NearbyTowProvidersScreenState extends State<NearbyTowProvidersScreen> {
                         color: Colors.grey[700],
                       ),
                     ),
+                    SizedBox(height: 2),
                     Text(
-                      'Within 20km radius • ${_nearbyTowProviders.length} found',
+                      '${_nearbyTowProviders.length} providers found within 20km • Sorted by distance',
                       style: TextStyle(
                         fontSize: 12,
                         color: _nearbyTowProviders.isNotEmpty
@@ -1340,7 +1878,7 @@ class _NearbyTowProvidersScreenState extends State<NearbyTowProvidersScreen> {
                 itemCount: _nearbyTowProviders.length,
                 itemBuilder: (context, index) {
                   final provider = _nearbyTowProviders[index];
-                  return _buildProviderCard(provider);
+                  return _buildProviderCard(provider, index);
                 },
               ),
             ),
@@ -1352,36 +1890,45 @@ class _NearbyTowProvidersScreenState extends State<NearbyTowProvidersScreen> {
   Widget _buildNoProvidersState() {
     return Expanded(
       child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.local_shipping, size: 80, color: Colors.grey[300]),
-            SizedBox(height: 16),
-            Text(
-              'No Tow Providers Found Nearby',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'No registered tow providers found within 20km radius',
-              style: TextStyle(color: Colors.grey[500]),
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _loadNearbyTowProviders,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange,
-                foregroundColor: Colors.white,
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.local_shipping,
+                size: 80,
+                color: Colors.grey[300],
               ),
-              child: Text('Refresh'),
-            ),
-          ],
+              SizedBox(height: 16),
+              Text(
+                'No Tow Providers Found Nearby',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 8),
+              Text(
+                'We couldn\'t find any registered tow providers within 20km of your current location.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey[500]),
+              ),
+              SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _loadNearbyTowProviders,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xFFFF9800),
+                  foregroundColor: Colors.white,
+                ),
+                child: Text('Search Again'),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildProviderCard(TowProvider provider) {
+  Widget _buildProviderCard(TowProvider provider, int index) {
     return Card(
       elevation: 3,
       margin: EdgeInsets.only(bottom: 12),
@@ -1393,17 +1940,16 @@ class _NearbyTowProvidersScreenState extends State<NearbyTowProvidersScreen> {
           children: [
             Row(
               children: [
-                // Provider Avatar
                 Container(
                   width: 50,
                   height: 50,
                   decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.1),
+                    color: Color(0xFFFF9800).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
                     Icons.local_shipping,
-                    color: Colors.orange,
+                    color: Color(0xFFFF9800),
                     size: 30,
                   ),
                 ),
@@ -1423,8 +1969,10 @@ class _NearbyTowProvidersScreenState extends State<NearbyTowProvidersScreen> {
                       Text(
                         provider.truckType,
                         style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      SizedBox(height: 4),
+                      SizedBox(height: 2),
                       Text(
                         provider.serviceArea,
                         style: TextStyle(fontSize: 11, color: Colors.grey[500]),
@@ -1441,7 +1989,6 @@ class _NearbyTowProvidersScreenState extends State<NearbyTowProvidersScreen> {
             // Rating and Distance
             Row(
               children: [
-                // Rating
                 Row(
                   children: [
                     Icon(Icons.star, color: Colors.amber, size: 16),
@@ -1458,7 +2005,6 @@ class _NearbyTowProvidersScreenState extends State<NearbyTowProvidersScreen> {
                   ],
                 ),
                 Spacer(),
-                // Distance
                 Row(
                   children: [
                     Icon(Icons.location_on, color: Colors.red, size: 16),
@@ -1499,7 +2045,7 @@ class _NearbyTowProvidersScreenState extends State<NearbyTowProvidersScreen> {
               child: ElevatedButton(
                 onPressed: () => _selectTowProvider(provider),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
+                  backgroundColor: Color(0xFFFF9800),
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),

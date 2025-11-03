@@ -5171,7 +5171,7 @@ class _GarageServiceRequestScreenState
             ),
             SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: _selectedServiceType,
+              initialValue: _selectedServiceType,
               decoration: InputDecoration(
                 labelText: 'Service Type *',
                 prefixIcon: Icon(
@@ -5331,7 +5331,7 @@ class _GarageServiceRequestScreenState
               children: [
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    value: _selectedVehicleType,
+                    initialValue: _selectedVehicleType,
                     decoration: InputDecoration(
                       labelText: 'Vehicle Type *',
                       border: OutlineInputBorder(
@@ -5357,7 +5357,7 @@ class _GarageServiceRequestScreenState
                 SizedBox(width: 12),
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    value: _selectedFuelType,
+                    initialValue: _selectedFuelType,
                     decoration: InputDecoration(
                       labelText: 'Fuel Type *',
                       border: OutlineInputBorder(
