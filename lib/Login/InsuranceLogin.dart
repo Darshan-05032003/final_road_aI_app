@@ -437,23 +437,43 @@ class _InsuranceLoginPageState extends State<InsuranceLoginPage> {
                         height: 24,
                         width: 24,
                         errorBuilder: (context, error, stackTrace) {
-                          return Icon(Icons.g_mobiledata, size: 24, color: Colors.red[600]);
+                          // Fallback: Use a styled "G" icon
+                          return Container(
+                            width: 24,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.grey[300]!, width: 1),
+                            ),
+                            child: Center(
+                              child: Text(
+                                'G',
+                                style: TextStyle(
+                                  color: Colors.blue[600],
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          );
                         },
                       ),
-                      label: Text(
+                      label: const Text(
                         'Continue with Google',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: Colors.grey[800],
+                          color: Colors.black87,
                         ),
                       ),
                       style: OutlinedButton.styleFrom(
                         side: BorderSide(color: Colors.grey[300]!),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
+                        ),
+                        backgroundColor: Colors.white,
+                      ),
                     ),
                   ),
 
