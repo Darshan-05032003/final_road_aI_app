@@ -52,6 +52,9 @@ class _PaymentOptionsScreenState extends State<PaymentOptionsScreen> {
   }
 
   Widget _buildAmountCard() {
+    final taxAmount = _paymentService.calculateTax(widget.amount);
+    final totalAmount = _paymentService.calculateTotalWithTax(widget.amount);
+
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(24),
@@ -63,21 +66,67 @@ class _PaymentOptionsScreenState extends State<PaymentOptionsScreen> {
       child: Column(
         children: [
           const Text(
-            'Total Amount',
+            'Payment Summary',
             style: TextStyle(
               fontSize: 16,
               color: Colors.grey,
               fontWeight: FontWeight.w500,
             ),
           ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Service Amount:',
+                style: TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+              Text(
+                '₹${widget.amount.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'GST (18%):',
+                style: TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+              Text(
+                '₹${taxAmount.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          const Divider(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Total Amount:',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
           Text(
-            '₹${widget.amount.toStringAsFixed(2)}',
+                '₹${totalAmount.toStringAsFixed(2)}',
             style: const TextStyle(
-              fontSize: 36,
+                  fontSize: 28,
               fontWeight: FontWeight.bold,
               color: Colors.blue,
             ),
+              ),
+            ],
           ),
           if (widget.providerName != null) ...[
             const SizedBox(height: 12),
@@ -299,6 +348,23 @@ class _PaymentOptionsScreenState extends State<PaymentOptionsScreen> {
       final upiTransactionId = result['upiTransactionId'] as String?;
 
       try {
+        // Verify payment status
+        if (transactionId != null) {
+          final verification = await _paymentService.verifyPaymentStatus(transactionId);
+          if (!verification['verified'] || verification['status'] != 'paid') {
+            // Payment verification failed - update status
+            await _paymentService.updatePaymentStatus(
+              transactionId,
+              'pending',
+              failureReason: 'Payment verification pending',
+            );
+          }
+        }
+
+        // Calculate tax and total
+        final taxAmount = _paymentService.calculateTax(widget.amount);
+        final totalAmount = _paymentService.calculateTotalWithTax(widget.amount);
+
         // Save payment transaction
         await _paymentService.updateRequestPaymentInfo(
           widget.requestId,
@@ -310,6 +376,9 @@ class _PaymentOptionsScreenState extends State<PaymentOptionsScreen> {
             'upiTransactionId': upiTransactionId,
             'paidAt': DateTime.now().toIso8601String(),
             'paymentMethod': 'UPI',
+            'serviceAmount': widget.amount,
+            'taxAmount': taxAmount,
+            'totalAmount': totalAmount,
           },
         );
 

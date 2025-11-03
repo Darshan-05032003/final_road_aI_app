@@ -1,6 +1,8 @@
 import 'dart:math';
 
 import 'package:smart_road_app/Roleselection.dart';
+import 'package:smart_road_app/screens/onboarding/welcome_screen.dart';
+import 'package:smart_road_app/services/onboarding_service.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 
@@ -64,10 +66,24 @@ class _SplashScreenState extends State<SplashScreen>
 
     // Navigate to next screen after 3 seconds
     Timer(const Duration(milliseconds: 3000), () {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => RoleSelectionScreen()),
-      );
+      _navigateToNextScreen();
     });
+  }
+
+  Future<void> _navigateToNextScreen() async {
+    final isOnboardingCompleted = await OnboardingService.isOnboardingCompleted();
+    
+    if (mounted) {
+      if (isOnboardingCompleted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const RoleSelectionScreen()),
+        );
+      } else {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const WelcomeScreen()),
+        );
+      }
+    }
   }
 
   @override

@@ -613,7 +613,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
                               Padding(
                                 padding: const EdgeInsets.only(left: 16),
                                 child: Text(
-                                  'Select how you want to use AutoConnect ecosystem',
+                                  'Select how you want to use Smart Road App',
                                   style: TextStyle(
                                     fontSize: 16,
                                     color: Colors.grey[700],

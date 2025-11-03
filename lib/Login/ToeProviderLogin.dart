@@ -510,6 +510,179 @@ class _TowProviderLoginPageState extends State<TowProviderLoginPage> {
     }
   }
 
+  // Forgot Password method
+  Future<void> _resetPassword() async {
+    String email = _emailController.text.trim();
+    
+    // If email field is empty, show dialog to enter email
+    if (email.isEmpty || !email.contains('@')) {
+      _showForgotPasswordDialog();
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(
+        email: email,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Password reset email sent! Check your inbox."),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      String errorMessage = "Failed to send reset email";
+
+      if (e.code == 'user-not-found') {
+        errorMessage = "No user found with this email address.";
+      } else if (e.code == 'invalid-email') {
+        errorMessage = "Invalid email address format.";
+      } else if (e.code == 'too-many-requests') {
+        errorMessage = "Too many requests. Please try again later.";
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Failed to send reset email. Please try again."),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  // Show forgot password dialog
+  void _showForgotPasswordDialog() {
+    final emailController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reset Password'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Enter your email address to receive a password reset link:'),
+            const SizedBox(height: 20),
+            TextField(
+              controller: emailController,
+              decoration: InputDecoration(
+                labelText: 'Email',
+                hintText: 'Enter your email',
+                prefixIcon: const Icon(Icons.email),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              keyboardType: TextInputType.emailAddress,
+              autofocus: true,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final email = emailController.text.trim();
+              if (email.isEmpty || !email.contains('@')) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Please enter a valid email address"),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+                return;
+              }
+              
+              Navigator.pop(context);
+              await _sendPasswordResetEmail(email);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.purple[600],
+            ),
+            child: const Text('Send Reset Link'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Send password reset email
+  Future<void> _sendPasswordResetEmail(String email) async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(
+        email: email,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Password reset email sent! Check your inbox."),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      String errorMessage = "Failed to send reset email";
+
+      if (e.code == 'user-not-found') {
+        errorMessage = "No user found with this email address.";
+      } else if (e.code == 'invalid-email') {
+        errorMessage = "Invalid email address format.";
+      } else if (e.code == 'too-many-requests') {
+        errorMessage = "Too many requests. Please try again later.";
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Failed to send reset email. Please try again."),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
   // Google Sign-In method
   Future<void> _signInWithGoogle() async {
     setState(() {
@@ -738,6 +911,16 @@ class _TowProviderLoginPageState extends State<TowProviderLoginPage> {
                                   ),
 
                                   // Forgot Password
+                                  TextButton(
+                                    onPressed: _isLoading ? null : _resetPassword,
+                                    child: Text(
+                                      'Forgot Password?',
+                                      style: TextStyle(
+                                        color: Colors.purple[600],
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
                                 ],
                               ),
 
@@ -807,7 +990,7 @@ class _TowProviderLoginPageState extends State<TowProviderLoginPage> {
                                   ),
                                   Expanded(child: Divider(color: Colors.grey[300])),
                                 ],
-                              ),
+                                  ),
 
                               SizedBox(height: 20),
 
@@ -824,7 +1007,7 @@ class _TowProviderLoginPageState extends State<TowProviderLoginPage> {
                                     errorBuilder: (context, error, stackTrace) {
                                       return Icon(Icons.g_mobiledata, size: 24, color: Colors.red[600]);
                                     },
-                                  ),
+                              ),
                                   label: Text(
                                     'Continue with Google',
                                     style: TextStyle(
