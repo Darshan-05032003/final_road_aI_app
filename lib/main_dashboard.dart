@@ -13,12 +13,12 @@ import 'package:smart_road_app/features/smart_parking/smart_parking.dart';
 import 'package:smart_road_app/features/guardian_angel/guardian_angle.dart';
 import 'package:smart_road_app/features/predictive_hazard/predictive_hazard_detector.dart';
 
-class MainDashboard extends StatefulWidget {
+class MainAiDashboard extends StatefulWidget {
   @override
-  _MainDashboardState createState() => _MainDashboardState();
+  _MainAiDashboardState createState() => _MainAiDashboardState();
 }
 
-class _MainDashboardState extends State<MainDashboard> 
+class _MainAiDashboardState extends State<MainAiDashboard> 
     with SingleTickerProviderStateMixin {
   late AnimationController _dashboardController;
   late Animation<double> _scaleAnimation;

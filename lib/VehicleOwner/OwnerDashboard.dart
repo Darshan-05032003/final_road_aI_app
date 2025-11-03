@@ -7157,7 +7157,7 @@ class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
           onNotificationTap: _navigateToNotifications,
         );
       case 2:
-        return EnhancedHistoryScreen(userEmail: _userEmail ?? 'avi@gmail.com', serviceHistory: []);
+        return EnhancedHistoryScreen(userEmail: _userEmail ?? 'avi@gmail.com', serviceHistory: [], garageName: null,);
       case 3:
         return RequestInsuranceScreen();
       case 4:
@@ -7495,6 +7495,10 @@ class _EnhancedHomeScreenWithInsuranceState extends State<EnhancedHomeScreenWith
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _jumpAnimation;
+  
+  get insuranceRequests => null;
+  
+  get currentPosition => null;
 
   @override
   void initState() {
@@ -7528,7 +7532,7 @@ class _EnhancedHomeScreenWithInsuranceState extends State<EnhancedHomeScreenWith
   void _navigateToMainDashboard() {
     // Navigate to main dashboard screen
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (context) => MainDashboard()),
+      MaterialPageRoute(builder: (context) => MainAiDashboard()),
     );
   }
 
