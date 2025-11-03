@@ -4,6 +4,8 @@ class LanguageService extends ChangeNotifier {
   Locale _currentLocale = const Locale('en', 'US');
   
   Locale get currentLocale => _currentLocale;
+
+  GlobalKey<NavigatorState>? get navigatorKey => null;
   
   void changeLanguage(Locale newLocale) {
     if (_currentLocale != newLocale) {

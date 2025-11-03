@@ -3,18 +3,11 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:permission_handler/permission_handler.dart';
-
 import 'package:smart_road_app/Splashscreen.dart';
-import 'package:smart_road_app/Roleselection.dart';
-import 'package:smart_road_app/ToeProvider/notificatinservice.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:provider/provider.dart';
+
+import 'package:smart_road_app/main_dashboard.dart';
 import 'package:smart_road_app/core/language/language_service.dart';
-import 'package:smart_road_app/core/language/app_localizations.dart';
 import 'package:smart_road_app/services/theme_service.dart';
-import 'package:smart_road_app/screens/notifications/notification_history_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,7 +18,7 @@ void main() async {
       await Firebase.initializeApp(
         options: const FirebaseOptions(
           apiKey: "AIzaSyCOfjtsUEcqxB5Zr7d5BvnRKKiz3fLqUuE",
-          appId: "1:210471346742:android:e0432932179a38707f6e97",
+          appId: "1:210471346742:android:e0432932179a38707f6e97", 
           messagingSenderId: "210471346742",
           projectId: "smart-4ebfc",
           storageBucket: "gs://smart-4ebfc.firebasestorage.app",
@@ -40,57 +33,44 @@ void main() async {
     print('Firebase initialization error: $e');
   }
 
-  // Initialize Firebase Messaging after Firebase is ready
-  await FirebaseMessagingHandler.initialize();
-
-  // Request storage, camera, and location permissions
-  await _requestPermissions();
-
-  runApp(const VoiceAssistantApp());
+  runApp(const SmartRoadApp());
 }
 
-Future<void> _requestPermissions() async {
-  await [
-    Permission.storage,
-    Permission.camera,
-    Permission.photos, // For iOS
-    Permission.videos, // For iOS
-    Permission.location,
-  ].request();
-}
-
-class VoiceAssistantApp extends StatelessWidget {
-  const VoiceAssistantApp({super.key});
+class SmartRoadApp extends StatelessWidget {
+  const SmartRoadApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (context) => LanguageService()),
+        ChangeNotifierProvider(create: (context) => ThemeService()),
       ],
-      child: Consumer2<LanguageService, ThemeService>(
-        builder: (context, languageService, themeService, child) {
-          return MaterialApp(
-            title: 'Smart Road App',
-            home: const SplashScreen(),
-            debugShowCheckedModeBanner: false,
-            locale: languageService.currentLocale,
-            localizationsDelegates: [
-              AppLocalizationsDelegate(),
-              GlobalMaterialLocalizations.delegate,
-              GlobalWidgetsLocalizations.delegate,
-              GlobalCupertinoLocalizations.delegate,
-            ],
-            supportedLocales: const [
-              Locale('en', 'US'),
-              Locale('es', 'ES'),
-              Locale('hi', 'IN'),
-              Locale('fr', 'FR'),
-            ],
-            builder: (context, child) {
-              return MediaQuery(
-                data: MediaQuery.of(context).copyWith(textScaleFactor: 1.0),
-                child: child!,
+      child: Consumer<LanguageService>(
+        builder: (context, languageService, child) {
+          return Consumer<ThemeService>(
+            builder: (context, themeService, child) {
+              return MaterialApp(
+                title: 'Smart Road AI',
+                home: SplashScreen(),
+                debugShowCheckedModeBanner: false,
+                theme: ThemeData.light(),
+                darkTheme: ThemeData.dark(),
+                themeMode: themeService.themeMode, // Use theme service
+                locale: languageService.currentLocale,
+                localizationsDelegates: const [
+                  GlobalMaterialLocalizations.delegate,
+                  GlobalWidgetsLocalizations.delegate,
+                  GlobalCupertinoLocalizations.delegate,
+                ],
+                supportedLocales: const [
+                  Locale('en', 'US'),
+                  Locale('es', 'ES'),
+                  Locale('hi', 'IN'),
+                  Locale('fr', 'FR'),
+                ],
+                // Important: This ensures the app rebuilds when language changes
+                navigatorKey: languageService.navigatorKey,
               );
             },
           );
@@ -99,6 +79,110 @@ class VoiceAssistantApp extends StatelessWidget {
     );
   }
 }
+
+
+
+
+
+// import 'package:flutter/material.dart';
+// import 'package:firebase_core/firebase_core.dart';
+// import 'package:provider/provider.dart';
+// import 'package:flutter_localizations/flutter_localizations.dart';
+// import 'package:permission_handler/permission_handler.dart';
+
+// import 'package:smart_road_app/Splashscreen.dart';
+// import 'package:smart_road_app/Roleselection.dart';
+// import 'package:smart_road_app/ToeProvider/notificatinservice.dart';
+// import 'package:smart_road_app/core/language/language_service.dart';
+// import 'package:smart_road_app/core/language/app_localizations.dart';
+// import 'package:smart_road_app/services/theme_service.dart';
+// import 'package:smart_road_app/screens/notifications/notification_history_screen.dart';
+
+// void main() async {
+//   WidgetsFlutterBinding.ensureInitialized();
+
+//   // Initialize Firebase
+//   try {
+//     if (Firebase.apps.isEmpty) {
+//       await Firebase.initializeApp(
+//         options: const FirebaseOptions(
+//           apiKey: "AIzaSyCOfjtsUEcqxB5Zr7d5BvnRKKiz3fLqUuE",
+//           appId: "1:210471346742:android:e0432932179a38707f6e97",
+//           messagingSenderId: "210471346742",
+//           projectId: "smart-4ebfc",
+//           storageBucket: "gs://smart-4ebfc.firebasestorage.app",
+//           databaseURL: "https://smart-4ebfc-default-rtdb.firebaseio.com/",
+//         ),
+//       );
+//       print('Firebase initialized successfully');
+//     } else {
+//       print('Firebase already initialized');
+//     }
+//   } catch (e) {
+//     print('Firebase initialization error: $e');
+//   }
+
+//   // Initialize Firebase Messaging after Firebase is ready
+//   await FirebaseMessagingHandler.initialize();
+
+//   // Request storage, camera, and location permissions
+//   await _requestPermissions();
+
+//   runApp(const VoiceAssistantApp());
+// }
+
+// Future<void> _requestPermissions() async {
+//   await [
+//     Permission.storage,
+//     Permission.camera,
+//     Permission.photos, // For iOS
+//     Permission.videos, // For iOS
+//     Permission.location,
+//   ].request();
+// }
+
+// class VoiceAssistantApp extends StatelessWidget {
+//   const VoiceAssistantApp({super.key});
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return MultiProvider(
+//       providers: [
+//         ChangeNotifierProvider(create: (context) => LanguageService()),
+//         ChangeNotifierProvider(create: (context) => ThemeService()), // ADDED THIS LINE
+//       ],
+//       child: Consumer2<LanguageService, ThemeService>(
+//         builder: (context, languageService, themeService, child) {
+//           return MaterialApp(
+//             title: 'Smart Road App',
+//             home: const SplashScreen(),
+//             debugShowCheckedModeBanner: false,
+//             locale: languageService.currentLocale,
+//             theme: themeService.currentTheme, // ADDED THIS LINE TO USE THEME
+//             localizationsDelegates: [
+//               AppLocalizationsDelegate(),
+//               GlobalMaterialLocalizations.delegate,
+//               GlobalWidgetsLocalizations.delegate,
+//               GlobalCupertinoLocalizations.delegate,
+//             ],
+//             supportedLocales: const [
+//               Locale('en', 'US'),
+//               Locale('es', 'ES'),
+//               Locale('hi', 'IN'),
+//               Locale('fr', 'FR'),
+//             ],
+//             builder: (context, child) {
+//               return MediaQuery(
+//                 data: MediaQuery.of(context).copyWith(textScaleFactor: 1.0),
+//                 child: child!,
+//               );
+//             },
+//           );
+//         },
+//       ),
+//     );
+//   }
+// }
 
 
 

@@ -11,6 +11,8 @@ class ThemeService extends ChangeNotifier {
     _loadThemeMode();
   }
 
+  ThemeData? get currentTheme => null;
+
   Future<void> _loadThemeMode() async {
     try {
       final prefs = await SharedPreferences.getInstance();

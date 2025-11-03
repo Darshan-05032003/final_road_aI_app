@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 class EnhancedHistoryScreen extends StatefulWidget {
   final String userEmail;
 
-  const EnhancedHistoryScreen({super.key, required this.userEmail, required List<Map<String, dynamic>> serviceHistory});
+  const EnhancedHistoryScreen({super.key, required this.userEmail, required List<Map<String, dynamic>> serviceHistory, required garageName});
 
   @override
   State<EnhancedHistoryScreen> createState() => _EnhancedHistoryScreenState();
