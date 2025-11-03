@@ -5013,20 +5013,10 @@ import 'package:smart_road_app/admin/livemonitoring.dart';
 import 'package:smart_road_app/admin/revenue.dart';
 import 'package:smart_road_app/admin/service_provider.dart';
 import 'package:smart_road_app/admin/usermanagement.dart';
-<<<<<<< HEAD
-//import 'package:smart_road_app/services/auth_service.dart';
-import 'package:smart_road_app/Login/adminLogin.dart';
-import 'package:smart_road_app/shared_prefrences.dart';
-
-void main() {
-  runApp(const VehicleAssistAdminApp());
-}
-=======
 import 'package:smart_road_app/core/theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smart_road_app/Login/adminLogin.dart';
 import 'package:firebase_auth/firebase_auth.dart';
->>>>>>> 5f19259 (done admin sync)
 
 class VehicleAssistAdminApp extends StatelessWidget {
   const VehicleAssistAdminApp({super.key});
@@ -5104,12 +5094,24 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                 );
 
                 // Perform logout
-                await AuthService.logout();
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setBool('adminIsLoggedIn', false);
+                await prefs.remove('adminUserEmail');
+                try {
+                  await FirebaseAuth.instance.signOut();
+                } catch (e) {
+                  print('Error signing out from Firebase: $e');
+                }
+
+                // Close loading indicator
+                if (mounted) {
+                  Navigator.of(context).pop();
+                }
 
                 // Navigate to login page
                 if (mounted) {
                   Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (context) => AdminLoginPage()),
+                    MaterialPageRoute(builder: (context) => const AdminLoginPage()),
                     (route) => false,
                   );
                 }
@@ -5234,14 +5236,6 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
-<<<<<<< HEAD
-          IconButton(icon: const Icon(Icons.notifications), onPressed: () {}),
-          IconButton(icon: const Icon(Icons.account_circle), onPressed: () {}),
-          IconButton(
-            icon: const Icon(Icons.logout), 
-            onPressed: _logout,
-            tooltip: 'Logout',
-=======
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
@@ -5312,7 +5306,6 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                 ),
               ),
             ],
->>>>>>> 5f19259 (done admin sync)
           ),
         ],
       ),
