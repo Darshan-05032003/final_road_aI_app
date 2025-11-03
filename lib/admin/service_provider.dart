@@ -1,5 +1,8 @@
-// service_providers.dart
 import 'package:flutter/material.dart';
+import 'package:smart_road_app/admin/services/admin_data_service.dart';
+import 'package:smart_road_app/core/theme/app_theme.dart';
+import 'package:smart_road_app/core/animations/app_animations.dart';
+import 'package:smart_road_app/widgets/enhanced_card.dart';
 
 class ServiceProvidersPage extends StatefulWidget {
   const ServiceProvidersPage({super.key});
@@ -9,164 +12,134 @@ class ServiceProvidersPage extends StatefulWidget {
 }
 
 class _ServiceProvidersPageState extends State<ServiceProvidersPage> {
+  final AdminDataService _dataService = AdminDataService();
   String _selectedFilter = 'All';
-  final List<String> _filters = ['All', 'Tow Providers', 'Garages', 'Active', 'Inactive'];
+  bool _isLoading = true;
+  List<Map<String, dynamic>> _providers = [];
 
-  // Sample data for service providers
-  final List<Map<String, dynamic>> _providers = [
-    {
-      'id': '1',
-      'name': 'City Tow Services',
-      'type': 'Tow Provider',
-      'totalUsers': 1247,
-      'completedServices': 856,
-      'rating': 4.9,
-      'status': 'Active',
-      'joinDate': '2023-05-15',
-      'revenue': 12500,
-      'responseTime': '8.2 min',
-      'specialization': ['Car Towing', 'Roadside Assistance', 'Recovery'],
-      'coverage': ['Manhattan', 'Brooklyn', 'Queens'],
-    },
-    {
-      'id': '2',
-      'name': 'Pro Auto Garage',
-      'type': 'Garage',
-      'totalUsers': 892,
-      'completedServices': 623,
-      'rating': 4.7,
-      'status': 'Active',
-      'joinDate': '2023-08-22',
-      'revenue': 9800,
-      'responseTime': '15.5 min',
-      'specialization': ['Engine Repair', 'Brake Service', 'Oil Change'],
-      'coverage': ['Manhattan', 'Bronx'],
-    },
-    {
-      'id': '3',
-      'name': 'Quick Tow Express',
-      'type': 'Tow Provider',
-      'totalUsers': 567,
-      'completedServices': 421,
-      'rating': 4.8,
-      'status': 'Active',
-      'joinDate': '2024-01-10',
-      'revenue': 7200,
-      'responseTime': '6.8 min',
-      'specialization': ['Motorcycle Towing', 'Light Duty'],
-      'coverage': ['Manhattan', 'New Jersey'],
-    },
-    {
-      'id': '4',
-      'name': 'Master Mechanics',
-      'type': 'Garage',
-      'totalUsers': 734,
-      'completedServices': 512,
-      'rating': 4.6,
-      'status': 'Inactive',
-      'joinDate': '2023-11-05',
-      'revenue': 6500,
-      'responseTime': '12.3 min',
-      'specialization': ['Transmission', 'Electrical', 'Diagnostics'],
-      'coverage': ['Brooklyn', 'Queens'],
-    },
-    {
-      'id': '5',
-      'name': 'Emergency Roadside Help',
-      'type': 'Tow Provider',
-      'totalUsers': 345,
-      'completedServices': 289,
-      'rating': 4.9,
-      'status': 'Active',
-      'joinDate': '2024-02-18',
-      'revenue': 4200,
-      'responseTime': '5.2 min',
-      'specialization': ['24/7 Emergency', 'Lockout Service', 'Jump Start'],
-      'coverage': ['All NYC Areas'],
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadProviders();
+  }
+
+  Future<void> _loadProviders() async {
+    setState(() => _isLoading = true);
+    
+    try {
+      final providers = await _dataService.getTopProviders(limit: 50);
+      if (mounted) {
+        setState(() {
+          _providers = providers;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading providers: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   List<Map<String, dynamic>> get _filteredProviders {
     if (_selectedFilter == 'All') return _providers;
     if (_selectedFilter == 'Tow Providers') {
-      return _providers.where((provider) => provider['type'] == 'Tow Provider').toList();
+      return _providers.where((p) => p['type'] == 'Tow Provider').toList();
     }
-    if (_selectedFilter == 'Garages') {
-      return _providers.where((provider) => provider['type'] == 'Garage').toList();
-    }
-    if (_selectedFilter == 'Active') {
-      return _providers.where((provider) => provider['status'] == 'Active').toList();
-    }
-    if (_selectedFilter == 'Inactive') {
-      return _providers.where((provider) => provider['status'] == 'Inactive').toList();
+    if (_selectedFilter == 'Garage') {
+      return _providers.where((p) => p['type'] == 'Garage').toList();
     }
     return _providers;
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryPurple),
+        ),
+      );
+    }
+
     return Column(
       children: [
-        // Header with Stats
-        Container(
-          padding: const EdgeInsets.all(16),
-          color: Colors.white,
-          child: Column(
-            children: [
-              // Quick Stats
-              Row(
+        // Header
+        AppAnimations.fadeIn(
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: AppTheme.primaryGradient,
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.primaryPurple.withValues(alpha: 0.3),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: SafeArea(
+              bottom: false,
+              child: Column(
                 children: [
-                  _buildStatItem('Total Providers', _providers.length.toString(), Colors.blue, Icons.business),
-                  _buildStatItem('Tow Providers', 
-                    _providers.where((p) => p['type'] == 'Tow Provider').length.toString(), 
-                    Colors.orange, Icons.local_shipping),
-                  _buildStatItem('Garages', 
-                    _providers.where((p) => p['type'] == 'Garage').length.toString(), 
-                    Colors.green, Icons.garage),
-                  _buildStatItem('Active', 
-                    _providers.where((p) => p['status'] == 'Active').length.toString(), 
-                    Colors.teal, Icons.check_circle),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.business_rounded, color: Colors.white, size: 24),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            'Service Providers',
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.refresh, color: Colors.white),
+                        onPressed: _loadProviders,
+                        tooltip: 'Refresh',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildStatItem('Total', '${_providers.length}', Colors.white),
+                      ),
+                      Expanded(
+                        child: _buildStatItem('Garages', '${_providers.where((p) => p['type'] == 'Garage').length}', Colors.white),
+                      ),
+                      Expanded(
+                        child: _buildStatItem('Tow', '${_providers.where((p) => p['type'] == 'Tow Provider').length}', Colors.white),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _buildFilterChip('All', _selectedFilter == 'All'),
+                        _buildFilterChip('Garage', _selectedFilter == 'Garage'),
+                        _buildFilterChip('Tow Providers', _selectedFilter == 'Tow Providers'),
+                      ],
+                    ),
+                  ),
                 ],
               ),
-              const SizedBox(height: 16),
-              // Overall Stats
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.blue[50],
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildOverallStat('Total Users Served', '3,785', Icons.people, Colors.blue),
-                    _buildOverallStat('Completed Services', '2,701', Icons.assignment_turned_in, Colors.green),
-                    _buildOverallStat('Avg Rating', '4.8/5', Icons.star, Colors.amber),
-                    _buildOverallStat('Total Revenue', '\$40,200', Icons.attach_money, Colors.purple),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        // Filters
-        Container(
-          padding: const EdgeInsets.all(16),
-          color: Colors.white,
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: _filters.map((filter) {
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: FilterChip(
-                    label: Text(filter),
-                    selected: _selectedFilter == filter,
-                    onSelected: (selected) => setState(() => _selectedFilter = filter),
-                  ),
-                );
-              }).toList(),
             ),
           ),
         ),
@@ -174,201 +147,101 @@ class _ServiceProvidersPageState extends State<ServiceProvidersPage> {
         // Providers List
         Expanded(
           child: _filteredProviders.isEmpty
-              ? _buildEmptyState()
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _filteredProviders.length,
-                  itemBuilder: (context, index) {
-                    return _buildProviderCard(_filteredProviders[index]);
-                  },
+              ? AppAnimations.fadeIn(
+                  child: _buildEmptyState(),
+                )
+              : RefreshIndicator(
+                  onRefresh: _loadProviders,
+                  color: AppTheme.primaryPurple,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _filteredProviders.length,
+                    itemBuilder: (context, index) {
+                      return AppAnimations.fadeIn(
+                        delay: index * 30,
+                        child: _buildProviderCard(_filteredProviders[index]),
+                      );
+                    },
+                  ),
                 ),
         ),
       ],
     );
   }
 
-  Widget _buildStatItem(String title, String value, Color color, IconData icon) {
-    return Expanded(
-      child: Container(
-        margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.2)),
+  Widget _buildStatItem(String title, String value, Color textColor) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            color: textColor,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(icon, size: 16, color: color),
-            ),
-            const SizedBox(width: 8),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color)),
-                Text(title, style: const TextStyle(fontSize: 10, color: Colors.grey)),
-              ],
-            ),
-          ],
+        const SizedBox(height: 4),
+        Text(
+          title,
+          style: TextStyle(
+            color: textColor.withValues(alpha: 0.9),
+            fontSize: 12,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFilterChip(String label, bool selected) {
+    return Container(
+      margin: const EdgeInsets.only(right: 8),
+      child: FilterChip(
+        label: Text(label),
+        selected: selected,
+        onSelected: (bool value) {
+          setState(() => _selectedFilter = value ? label : 'All');
+        },
+        selectedColor: Colors.white,
+        checkmarkColor: AppTheme.primaryPurple,
+        labelStyle: TextStyle(
+          color: selected ? AppTheme.primaryPurple : Colors.white,
+          fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
         ),
       ),
     );
   }
 
-  Widget _buildOverallStat(String title, String value, IconData icon, Color color) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, color: color, size: 24),
-        ),
-        const SizedBox(height: 8),
-        Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-        Text(title, style: const TextStyle(fontSize: 10, color: Colors.grey)),
-      ],
-    );
-  }
-
   Widget _buildProviderCard(Map<String, dynamic> provider) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
+    final type = provider['type'] ?? 'Provider';
+    final color = type == 'Garage' ? AppTheme.garageServiceColor : AppTheme.towServiceColor;
+    final rating = provider['rating'] ?? 0.0;
+    final services = provider['services'] ?? 0;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: EnhancedCard(
+        showBorder: true,
+        borderColor: color.withValues(alpha: 0.3),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
             Row(
               children: [
                 Container(
-                  width: 50,
-                  height: 50,
+                  width: 56,
+                  height: 56,
                   decoration: BoxDecoration(
-                    color: _getProviderColor(provider['type']).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(25),
-                  ),
-                  child: Icon(
-                    _getProviderIcon(provider['type']),
-                    color: _getProviderColor(provider['type']),
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        provider['name'],
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: _getProviderColor(provider['type']).withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              provider['type'],
-                              style: TextStyle(
-                                color: _getProviderColor(provider['type']),
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: _getStatusColor(provider['status']).withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              provider['status'],
-                              style: TextStyle(
-                                color: _getStatusColor(provider['status']),
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                Column(
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.star, size: 16, color: Colors.amber),
-                        const SizedBox(width: 4),
-                        Text(provider['rating'].toString()),
-                      ],
+                    gradient: LinearGradient(
+                      colors: [color, color.withValues(alpha: 0.7)],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Joined ${provider['joinDate']}',
-                      style: const TextStyle(fontSize: 10, color: Colors.grey),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Center(
+                    child: Icon(
+                      type == 'Garage' ? Icons.build_circle : Icons.local_shipping,
+                      color: Colors.white,
+                      size: 28,
                     ),
-                  ],
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 16),
-
-            // Key Metrics
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildProviderMetric('Users Served', provider['totalUsers'].toString(), Icons.people, Colors.blue),
-                _buildProviderMetric('Services Done', provider['completedServices'].toString(), Icons.assignment_turned_in, Colors.green),
-                _buildProviderMetric('Revenue', '\$${provider['revenue']}', Icons.attach_money, Colors.purple),
-                _buildProviderMetric('Response Time', provider['responseTime'], Icons.timer, Colors.orange),
-              ],
-            ),
-
-            const SizedBox(height: 16),
-
-            // Specialization and Coverage
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Specialization', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                      const SizedBox(height: 4),
-                      Wrap(
-                        spacing: 4,
-                        runSpacing: 4,
-                        children: (provider['specialization'] as List<dynamic>).map((spec) {
-                          return Chip(
-                            label: Text(spec.toString(), style: const TextStyle(fontSize: 10)),
-                            backgroundColor: Colors.blue[50],
-                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            labelPadding: const EdgeInsets.symmetric(horizontal: 4),
-                          );
-                        }).toList(),
-                      ),
-                    ],
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -376,122 +249,117 @@ class _ServiceProvidersPageState extends State<ServiceProvidersPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Coverage Areas', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                      Text(
+                        provider['name'] ?? 'Unknown',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       const SizedBox(height: 4),
-                      Wrap(
-                        spacing: 4,
-                        runSpacing: 4,
-                        children: (provider['coverage'] as List<dynamic>).map((area) {
-                          return Chip(
-                            label: Text(area.toString(), style: const TextStyle(fontSize: 10)),
-                            backgroundColor: Colors.green[50],
-                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            labelPadding: const EdgeInsets.symmetric(horizontal: 4),
-                          );
-                        }).toList(),
+                      Text(
+                        type,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.star, size: 16, color: Colors.amber,),
+                          const SizedBox(width: 4),
+                          Text(
+                            rating.toStringAsFixed(1),
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Icon(Icons.work_outline, size: 16, color: Colors.grey[600]),
+                          const SizedBox(width: 4),
+                          Text(
+                            '$services services',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
               ],
             ),
-
-            const SizedBox(height: 16),
-
-            // Actions
+            const SizedBox(height: 12),
             Row(
               children: [
+                Icon(Icons.email_outlined, size: 14, color: Colors.grey[600]),
+                const SizedBox(width: 4),
                 Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.visibility, size: 16),
-                    label: const Text('View Details'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.analytics, size: 16),
-                    label: const Text('Analytics'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.chat, size: 16),
-                    label: const Text('Contact'),
+                  child: Text(
+                    provider['email'] ?? 'N/A',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.grey[600],
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
             ),
+            if (provider['phone'] != null) ...[
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Icon(Icons.phone_outlined, size: 14, color: Colors.grey[600]),
+                  const SizedBox(width: 4),
+                  Text(
+                    provider['phone'] ?? 'N/A',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
     );
   }
 
-  Widget _buildProviderMetric(String title, String value, IconData icon, Color color) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Icon(icon, size: 16, color: color),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-        ),
-        Text(
-          title,
-          style: const TextStyle(fontSize: 10, color: Colors.grey),
-        ),
-      ],
-    );
-  }
-
   Widget _buildEmptyState() {
-    return const Center(
+    return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.business_outlined, size: 80, color: Colors.grey),
-          SizedBox(height: 16),
-          Text('No providers found'),
-          SizedBox(height: 8),
-          Text('Try adjusting your filters'),
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryPurple.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.business_outlined,
+              size: 64,
+              color: AppTheme.primaryPurple,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'No providers found',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Providers will appear here once registered',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Colors.grey[600],
+            ),
+            textAlign: TextAlign.center,
+          ),
         ],
       ),
     );
-  }
-
-  Color _getProviderColor(String type) {
-    switch (type) {
-      case 'Tow Provider': return Colors.orange;
-      case 'Garage': return Colors.green;
-      default: return Colors.blue;
-    }
-  }
-
-  IconData _getProviderIcon(String type) {
-    switch (type) {
-      case 'Tow Provider': return Icons.local_shipping;
-      case 'Garage': return Icons.garage;
-      default: return Icons.business;
-    }
-  }
-
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'Active': return Colors.green;
-      case 'Inactive': return Colors.red;
-      default: return Colors.grey;
-    }
   }
 }

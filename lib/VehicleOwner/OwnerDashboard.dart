@@ -4956,7 +4956,6 @@
 //   }
 // }
 
-
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:smart_road_app/core/language/app_localizations.dart';
@@ -4970,6 +4969,11 @@ import 'package:smart_road_app/VehicleOwner/SpareParts.dart';
 import 'package:smart_road_app/VehicleOwner/ai.dart';
 import 'package:smart_road_app/VehicleOwner/TowRequest.dart';
 import 'package:smart_road_app/screens/payment/payment_options_screen.dart';
+import 'package:smart_road_app/services/cache_sync_service.dart';
+import 'package:smart_road_app/core/theme/app_theme.dart';
+import 'package:smart_road_app/core/animations/app_animations.dart';
+import 'package:smart_road_app/widgets/enhanced_card.dart';
+import 'package:smart_road_app/widgets/enhanced_button.dart';
 import 'package:smart_road_app/controller/sharedprefrence.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
@@ -5021,10 +5025,11 @@ class OwnerNotificationService {
         .equalTo(false)
         .onValue
         .map((event) {
-      if (event.snapshot.value == null) return 0;
-      final Map<dynamic, dynamic> notifications = event.snapshot.value as Map<dynamic, dynamic>;
-      return notifications.length;
-    });
+          if (event.snapshot.value == null) return 0;
+          final Map<dynamic, dynamic> notifications =
+              event.snapshot.value as Map<dynamic, dynamic>;
+          return notifications.length;
+        });
   }
 
   // Mark notification as read
@@ -5042,10 +5047,11 @@ class EnhancedVehicleDashboard extends StatefulWidget {
   const EnhancedVehicleDashboard({super.key});
 
   @override
-  _EnhancedVehicleDashboardState createState() => _EnhancedVehicleDashboardState();
+  _EnhancedVehicleDashboardState createState() =>
+      _EnhancedVehicleDashboardState();
 }
 
-class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard> 
+class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
     with SingleTickerProviderStateMixin {
   int _currentIndex = 0;
   late AnimationController _animationController;
@@ -5082,14 +5088,14 @@ class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
     try {
       String? userEmail = await AuthService.getUserEmail();
       final user = FirebaseAuth.instance.currentUser;
-      
+
       setState(() {
         _userEmail = userEmail;
         _userId = user?.uid;
       });
-      
+
       print('✅ Dashboard loaded for user: $_userEmail');
-      
+
       // Start listening to notifications
       if (_userId != null) {
         _startNotificationListener();
@@ -5101,15 +5107,16 @@ class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
 
   void _startNotificationListener() {
     _notificationSubscription?.cancel();
-    _notificationSubscription = OwnerNotificationService
-        .getUnreadNotificationCount(_userId!)
-        .listen((count) {
-      if (mounted) {
-        setState(() {
-          _unreadNotifications = count;
+    _notificationSubscription =
+        OwnerNotificationService.getUnreadNotificationCount(_userId!).listen((
+          count,
+        ) {
+          if (mounted) {
+            setState(() {
+              _unreadNotifications = count;
+            });
+          }
         });
-      }
-    });
   }
 
   Future<void> _initializeLocation() async {
@@ -5131,7 +5138,7 @@ class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
 
     try {
       LocationPermission permission = await Geolocator.checkPermission();
-      
+
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
@@ -5153,22 +5160,26 @@ class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
         return;
       }
 
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.best,
-        timeLimit: Duration(seconds: 15),
-      ).timeout(Duration(seconds: 20), onTimeout: () {
-        throw TimeoutException('Location request timed out');
-      });
+      Position position =
+          await Geolocator.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.best,
+            timeLimit: Duration(seconds: 15),
+          ).timeout(
+            Duration(seconds: 20),
+            onTimeout: () {
+              throw TimeoutException('Location request timed out');
+            },
+          );
 
       String address = await _getAddressFromLatLng(position);
 
       setState(() {
         _currentPosition = position;
-        _currentLocation = '${position.latitude.toStringAsFixed(6)}, ${position.longitude.toStringAsFixed(6)}';
+        _currentLocation =
+            '${position.latitude.toStringAsFixed(6)}, ${position.longitude.toStringAsFixed(6)}';
         _locationAddress = address;
         _locationLoading = false;
       });
-
     } on TimeoutException catch (e) {
       print('⏰ Location timeout: $e');
       setState(() {
@@ -5208,8 +5219,14 @@ class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
       builder: (BuildContext context) {
         final localizations = AppLocalizations.of(context);
         return AlertDialog(
-          title: Text(localizations?.translate('location_permission_required') ?? 'Location Permission Required'),
-          content: Text(localizations?.translate('location_permission_message') ?? 'This app needs location permission to show nearby services. Please enable location permissions in app settings.'),
+          title: Text(
+            localizations?.translate('location_permission_required') ??
+                'Location Permission Required',
+          ),
+          content: Text(
+            localizations?.translate('location_permission_message') ??
+                'This app needs location permission to show nearby services. Please enable location permissions in app settings.',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
@@ -5220,7 +5237,9 @@ class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
                 Navigator.of(context).pop();
                 Geolocator.openAppSettings();
               },
-              child: Text(localizations?.translate('open_settings') ?? 'Open Settings'),
+              child: Text(
+                localizations?.translate('open_settings') ?? 'Open Settings',
+              ),
             ),
           ],
         );
@@ -5244,7 +5263,7 @@ class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
       'memberSince': '2023',
       'points': 450,
       'nextService': '2024-02-20',
-      'emergencyContacts': ['+1-234-567-8900', '+1-234-567-8901']
+      'emergencyContacts': ['+1-234-567-8900', '+1-234-567-8901'],
     };
   }
 
@@ -5258,7 +5277,7 @@ class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
-    
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: _buildEnhancedAppBar(localizations),
@@ -5288,11 +5307,9 @@ class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
             ),
           ),
           Text(
-            localizations?.translate('always_here_to_help') ?? 'Always here to help',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.white70,
-            ),
+            localizations?.translate('always_here_to_help') ??
+                'Always here to help',
+            style: TextStyle(fontSize: 12, color: Colors.white70),
           ),
         ],
       ),
@@ -5312,7 +5329,8 @@ class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
             IconButton(
               icon: Icon(Icons.notifications_outlined),
               onPressed: _navigateToNotifications,
-              tooltip: localizations?.translate('notifications') ?? 'Notifications',
+              tooltip:
+                  localizations?.translate('notifications') ?? 'Notifications',
             ),
             if (_unreadNotifications > 0)
               Positioned(
@@ -5324,10 +5342,7 @@ class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
                     color: Colors.red,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  constraints: BoxConstraints(
-                    minWidth: 16,
-                    minHeight: 16,
-                  ),
+                  constraints: BoxConstraints(minWidth: 16, minHeight: 16),
                   child: Text(
                     _unreadNotifications > 9 ? '9+' : '$_unreadNotifications',
                     style: TextStyle(
@@ -5344,12 +5359,18 @@ class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
         IconButton(
           icon: Icon(Icons.location_on),
           onPressed: _getCurrentLocation,
-          tooltip: localizations?.translate('refresh_location') ?? 'Refresh Location',
+          tooltip:
+              localizations?.translate('refresh_location') ??
+              'Refresh Location',
         ),
         IconButton(
           icon: Icon(Icons.auto_awesome),
-          onPressed: (){
-            Navigator.of(context).push(MaterialPageRoute(builder: (context)=>AdvancedAIAssistantScreen()));
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => AdvancedAIAssistantScreen(),
+              ),
+            );
           },
           tooltip: 'AI Assistance',
         ),
@@ -5379,7 +5400,8 @@ class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
             ),
             _buildDrawerItem(
               icon: Icons.notifications_rounded,
-              title: '${localizations?.translate('notifications') ?? 'Notifications'} ${_unreadNotifications > 0 ? '($_unreadNotifications)' : ''}',
+              title:
+                  '${localizations?.translate('notifications') ?? 'Notifications'} ${_unreadNotifications > 0 ? '($_unreadNotifications)' : ''}',
               onTap: _navigateToNotifications,
             ),
             _buildDrawerItem(
@@ -5412,9 +5434,7 @@ class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
   Widget _buildDrawerHeader(AppLocalizations? localizations) {
     return Container(
       padding: EdgeInsets.only(top: 60, bottom: 20, left: 20, right: 20),
-      decoration: BoxDecoration(
-        color: Color(0xFF5B21B6).withOpacity(0.8),
-      ),
+      decoration: BoxDecoration(color: Color(0xFF5B21B6).withOpacity(0.8)),
       child: Column(
         children: [
           CircleAvatar(
@@ -5438,10 +5458,7 @@ class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
           SizedBox(height: 4),
           Text(
             _userData['email'],
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
-            ),
+            style: TextStyle(color: Colors.white70, fontSize: 14),
           ),
           SizedBox(height: 8),
           Container(
@@ -5554,11 +5571,17 @@ class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
           onNotificationTap: _navigateToNotifications,
         );
       case 2:
-        return EnhancedHistoryScreen(userEmail: _userEmail ?? 'avi@gmail.com', serviceHistory: []);
+        return EnhancedHistoryScreen(
+          userEmail: _userEmail ?? 'avi@gmail.com',
+          serviceHistory: [],
+        );
       case 3:
         return RequestInsuranceScreen();
       case 4:
-        return EnhancedProfileScreen(userEmail: _userEmail ?? 'avi@gmail.com', serviceHistory: []);
+        return EnhancedProfileScreen(
+          userEmail: _userEmail ?? 'avi@gmail.com',
+          serviceHistory: [],
+        );
       default:
         return EnhancedHomeScreenWithInsurance(
           userData: _userData,
@@ -5581,7 +5604,10 @@ class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
       final localizations = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(localizations?.translate('wait_for_location') ?? 'Please wait for location to load'),
+          content: Text(
+            localizations?.translate('wait_for_location') ??
+                'Please wait for location to load',
+          ),
           backgroundColor: Colors.orange,
         ),
       );
@@ -5604,7 +5630,10 @@ class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
       final localizations = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(localizations?.translate('wait_for_location') ?? 'Please wait for location to load'),
+          content: Text(
+            localizations?.translate('wait_for_location') ??
+                'Please wait for location to load',
+          ),
           backgroundColor: Colors.orange,
         ),
       );
@@ -5655,7 +5684,10 @@ class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
           backgroundColor: Colors.white,
           selectedItemColor: Color(0xFF6D28D9),
           unselectedItemColor: Colors.grey[600],
-          selectedLabelStyle: TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+          selectedLabelStyle: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 12,
+          ),
           unselectedLabelStyle: TextStyle(fontSize: 12),
           items: [
             BottomNavigationBarItem(
@@ -5732,37 +5764,48 @@ class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
   }
 
   void _showSpareParts() {
-    Navigator.of(context).push(MaterialPageRoute(builder: (context)=>SparePartsStore()));
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (context) => SparePartsStore()));
     Navigator.pop(context);
   }
 
   void _logout() async {
     print('🚪 Logout button pressed...');
-    
+
     Navigator.pop(context);
-    
+
     final localizations = AppLocalizations.of(context);
-    
+
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text(localizations?.translate('logout_confirmation') ?? 'Logout Confirmation'),
-          content: Text(localizations?.translate('logout_confirm_message') ?? 'Are you sure you want to logout?'),
+          title: Text(
+            localizations?.translate('logout_confirmation') ??
+                'Logout Confirmation',
+          ),
+          content: Text(
+            localizations?.translate('logout_confirm_message') ??
+                'Are you sure you want to logout?',
+          ),
           actions: [
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
                 print('❌ Logout cancelled by user');
               },
-              child: Text(localizations?.translate('cancel') ?? 'Cancel', style: TextStyle(color: Colors.grey[600])),
+              child: Text(
+                localizations?.translate('cancel') ?? 'Cancel',
+                style: TextStyle(color: Colors.grey[600]),
+              ),
             ),
             TextButton(
               onPressed: () async {
                 Navigator.of(context).pop();
                 print('✅ User confirmed logout');
-                
+
                 try {
                   showDialog(
                     context: context,
@@ -5776,7 +5819,10 @@ class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
                             children: [
                               CircularProgressIndicator(),
                               SizedBox(width: 20),
-                              Text(localizations?.translate('logging_out') ?? "Logging out..."),
+                              Text(
+                                localizations?.translate('logging_out') ??
+                                    "Logging out...",
+                              ),
                             ],
                           ),
                         ),
@@ -5786,36 +5832,41 @@ class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
 
                   print('🗑️ Clearing shared preferences...');
                   await AuthService.clearLoginData();
-                  
+
                   print('🔥 Signing out from Firebase...');
                   await FirebaseAuth.instance.signOut();
-                  
+
                   Navigator.of(context).pop();
-                  
+
                   print('🔄 Navigating to login page...');
                   Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
                     MaterialPageRoute(builder: (context) => VehicleLoginPage()),
                     (Route<dynamic> route) => false,
                   );
-                  
+
                   print('🎉 Logout completed successfully!');
-                  
                 } catch (e) {
                   print('❌ Error during logout: $e');
-                  
+
                   if (Navigator.canPop(context)) {
                     Navigator.of(context).pop();
                   }
-                  
+
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(localizations?.translate('logout_failed') ?? 'Logout failed. Please try again.'),
+                      content: Text(
+                        localizations?.translate('logout_failed') ??
+                            'Logout failed. Please try again.',
+                      ),
                       backgroundColor: Colors.red,
                     ),
                   );
                 }
               },
-              child: Text(localizations?.logout ?? 'Logout', style: TextStyle(color: Colors.red)),
+              child: Text(
+                localizations?.logout ?? 'Logout',
+                style: TextStyle(color: Colors.red),
+              ),
             ),
           ],
         );
@@ -5856,7 +5907,7 @@ class EnhancedHomeScreenWithInsurance extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
-    
+
     return SingleChildScrollView(
       padding: EdgeInsets.all(16),
       child: Column(
@@ -5917,7 +5968,8 @@ class EnhancedHomeScreenWithInsurance extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      localizations?.translate('your_plan_active') ?? 'Your plan is active',
+                      localizations?.translate('your_plan_active') ??
+                          'Your plan is active',
                       style: TextStyle(color: Colors.white70),
                     ),
                   ],
@@ -5961,7 +6013,11 @@ class EnhancedHomeScreenWithInsurance extends StatelessWidget {
                   style: TextStyle(color: Colors.white),
                 ),
                 Spacer(),
-                Icon(Icons.calendar_today_rounded, color: Colors.white70, size: 14),
+                Icon(
+                  Icons.calendar_today_rounded,
+                  color: Colors.white70,
+                  size: 14,
+                ),
                 SizedBox(width: 4),
                 Text(
                   '${localizations?.translate('next_service') ?? 'Next'}: ${userData['nextService']}',
@@ -5986,15 +6042,12 @@ class EnhancedHomeScreenWithInsurance extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(
-                  Icons.location_on,
-                  color: Color(0xFF6D28D9),
-                  size: 24,
-                ),
+                Icon(Icons.location_on, color: Color(0xFF6D28D9), size: 24),
                 SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    localizations?.translate('current_location') ?? 'Current Location',
+                    localizations?.translate('current_location') ??
+                        'Current Location',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
@@ -6003,11 +6056,7 @@ class EnhancedHomeScreenWithInsurance extends StatelessWidget {
                   ),
                 ),
                 if (currentPosition != null)
-                  Icon(
-                    Icons.check_circle,
-                    color: Colors.green,
-                    size: 20,
-                  ),
+                  Icon(Icons.check_circle, color: Colors.green, size: 20),
               ],
             ),
             SizedBox(height: 8),
@@ -6021,11 +6070,9 @@ class EnhancedHomeScreenWithInsurance extends StatelessWidget {
                       ),
                       SizedBox(width: 8),
                       Text(
-                        localizations?.translate('fetching_location') ?? 'Fetching location...',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[500],
-                        ),
+                        localizations?.translate('fetching_location') ??
+                            'Fetching location...',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                       ),
                     ],
                   )
@@ -6060,7 +6107,10 @@ class EnhancedHomeScreenWithInsurance extends StatelessWidget {
             ElevatedButton.icon(
               onPressed: onRefreshLocation,
               icon: Icon(Icons.refresh, size: 16),
-              label: Text(localizations?.translate('refresh_location') ?? 'Refresh Location'),
+              label: Text(
+                localizations?.translate('refresh_location') ??
+                    'Refresh Location',
+              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Color(0xFF6D28D9),
                 foregroundColor: Colors.white,
@@ -6074,13 +6124,17 @@ class EnhancedHomeScreenWithInsurance extends StatelessWidget {
     );
   }
 
-  Widget _buildQuickActions(BuildContext context, AppLocalizations? localizations) {
+  Widget _buildQuickActions(
+    BuildContext context,
+    AppLocalizations? localizations,
+  ) {
     return Row(
       children: [
         Expanded(
           child: _buildQuickActionItem(
             icon: Icons.handyman_rounded,
-            title: localizations?.translate('garage_service') ?? 'Garage Service',
+            title:
+                localizations?.translate('garage_service') ?? 'Garage Service',
             color: Color(0xFF6D28D9),
             onTap: onGarageServiceTap,
           ),
@@ -6156,7 +6210,10 @@ class EnhancedHomeScreenWithInsurance extends StatelessWidget {
     );
   }
 
-  Widget _buildInsuranceReminder(BuildContext context, AppLocalizations? localizations) {
+  Widget _buildInsuranceReminder(
+    BuildContext context,
+    AppLocalizations? localizations,
+  ) {
     final activePolicy = insuranceRequests.firstWhere(
       (policy) => policy['status'] == 'Active',
       orElse: () => {},
@@ -6179,14 +6236,16 @@ class EnhancedHomeScreenWithInsurance extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    localizations?.translate('no_active_insurance') ?? 'No Active Insurance',
+                    localizations?.translate('no_active_insurance') ??
+                        'No Active Insurance',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: Colors.orange[800],
                     ),
                   ),
                   Text(
-                    localizations?.translate('get_vehicle_insured') ?? 'Get your vehicle insured today',
+                    localizations?.translate('get_vehicle_insured') ??
+                        'Get your vehicle insured today',
                     style: TextStyle(color: Colors.orange[700], fontSize: 12),
                   ),
                 ],
@@ -6195,14 +6254,18 @@ class EnhancedHomeScreenWithInsurance extends StatelessWidget {
             ElevatedButton(
               onPressed: () => Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => RequestInsuranceScreen()),
+                MaterialPageRoute(
+                  builder: (context) => RequestInsuranceScreen(),
+                ),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.orange,
                 foregroundColor: Colors.white,
                 padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               ),
-              child: Text(localizations?.translate('get_insurance') ?? 'Get Insurance'),
+              child: Text(
+                localizations?.translate('get_insurance') ?? 'Get Insurance',
+              ),
             ),
           ],
         ),
@@ -6284,13 +6347,7 @@ class EnhancedHomeScreenWithInsurance extends StatelessWidget {
               color: color,
             ),
           ),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[600],
-            ),
-          ),
+          Text(title, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
         ],
       ),
     );
@@ -6329,7 +6386,7 @@ class EnhancedServicesScreen extends StatefulWidget {
 }
 
 class _EnhancedServicesScreenState extends State<EnhancedServicesScreen> {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final CacheSyncService _cacheSync = CacheSyncService();
   List<Map<String, dynamic>> _allServices = [];
   bool _isLoadingServices = true;
 
@@ -6352,73 +6409,51 @@ class _EnhancedServicesScreenState extends State<EnhancedServicesScreen> {
         _isLoadingServices = true;
       });
 
-      List<Map<String, dynamic>> allServices = [];
+      // Use cache-first loading (loads from SQLite instantly, syncs with Firestore in background)
+      final allServices = await _cacheSync.getServiceRequests(
+        userEmail: widget.userEmail!,
+        useCache: true,
+        syncInBackground: true,
+      );
 
-      // Load Garage Requests
-      try {
-        final garageRequestsSnapshot = await _firestore
-            .collection('owner')
-            .doc(widget.userEmail!)
-            .collection('garagerequest')
-            .orderBy('createdAt', descending: true)
-            .get();
-
-        for (var doc in garageRequestsSnapshot.docs) {
-          final data = doc.data();
-          allServices.add({
-            ...data,
-            'id': doc.id,
-            'serviceType': 'Garage Service',
-            'requestId': data['requestId'] ?? doc.id,
-            'status': _normalizeStatus(data['status'] ?? 'pending'),
-          });
-        }
-      } catch (e) {
-        print('Error loading garage requests: $e');
-      }
-
-      // Load Tow Requests
-      try {
-        final towRequestsSnapshot = await _firestore
-            .collection('owner')
-            .doc(widget.userEmail!)
-            .collection('towrequest')
-            .orderBy('createdAt', descending: true)
-            .get();
-
-        for (var doc in towRequestsSnapshot.docs) {
-          final data = doc.data();
-          allServices.add({
-            ...data,
-            'id': doc.id,
-            'serviceType': 'Tow Service',
-            'requestId': data['requestId'] ?? doc.id,
-            'status': _normalizeStatus(data['status'] ?? 'pending'),
-          });
-        }
-      } catch (e) {
-        print('Error loading tow requests: $e');
-      }
+      // Normalize and format the data
+      final formattedServices = allServices.map((service) {
+        return {
+          ...service,
+          'serviceType':
+              service['serviceType'] ??
+              (service.containsKey('garageName') ||
+                      service.containsKey('garageEmail')
+                  ? 'Garage Service'
+                  : 'Tow Service'),
+          'requestId': service['requestId'] ?? service['id'],
+          'status': _normalizeStatus(service['status'] ?? 'pending'),
+        };
+      }).toList();
 
       // Filter to show only current services (pending, in process, or completed with pending payment)
-      final currentServices = allServices.where((service) {
+      final currentServices = formattedServices.where((service) {
         final status = (service['status'] as String?)?.toLowerCase() ?? '';
-        final paymentStatus = (service['paymentStatus'] as String?)?.toLowerCase() ?? 'pending';
+        final paymentStatus =
+            (service['paymentStatus'] as String?)?.toLowerCase() ?? 'pending';
         final serviceAmount = service['serviceAmount'];
-        
+
         // Include pending or in process services
-        if (status == 'pending' || status == 'in process' || status.contains('pending') || status.contains('process')) {
+        if (status == 'pending' ||
+            status == 'in process' ||
+            status.contains('pending') ||
+            status.contains('process')) {
           return true;
         }
-        
+
         // Also include completed services with pending payment
-        if ((status == 'completed' || status.contains('complete')) && 
-            paymentStatus == 'pending' && 
-            serviceAmount != null && 
+        if ((status == 'completed' || status.contains('complete')) &&
+            paymentStatus == 'pending' &&
+            serviceAmount != null &&
             (serviceAmount is num && serviceAmount > 0)) {
           return true;
         }
-        
+
         return false;
       }).toList();
 
@@ -6445,11 +6480,16 @@ class _EnhancedServicesScreenState extends State<EnhancedServicesScreen> {
     final normalized = status.toLowerCase().trim();
     if (normalized.contains('pending') || normalized == 'pending') {
       return 'pending';
-    } else if (normalized.contains('process') || normalized == 'in process' || normalized == 'accepted' || normalized == 'confirmed') {
+    } else if (normalized.contains('process') ||
+        normalized == 'in process' ||
+        normalized == 'accepted' ||
+        normalized == 'confirmed') {
       return 'in process';
     } else if (normalized.contains('complete') || normalized == 'completed') {
       return 'completed';
-    } else if (normalized.contains('reject') || normalized == 'rejected' || normalized == 'cancelled') {
+    } else if (normalized.contains('reject') ||
+        normalized == 'rejected' ||
+        normalized == 'cancelled') {
       return 'rejected';
     }
     return normalized;
@@ -6486,7 +6526,7 @@ class _EnhancedServicesScreenState extends State<EnhancedServicesScreen> {
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
-    
+
     return CustomScrollView(
       slivers: [
         SliverToBoxAdapter(
@@ -6502,8 +6542,12 @@ class _EnhancedServicesScreenState extends State<EnhancedServicesScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      localizations?.translate('current_service') ?? 'Current Service',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      localizations?.translate('current_service') ??
+                          'Current Service',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     IconButton(
                       icon: Icon(Icons.refresh),
@@ -6549,12 +6593,9 @@ class _EnhancedServicesScreenState extends State<EnhancedServicesScreen> {
           )
         else
           SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                return _buildServiceCard(_allServices[index], localizations);
-              },
-              childCount: _allServices.length,
-            ),
+            delegate: SliverChildBuilderDelegate((context, index) {
+              return _buildServiceCard(_allServices[index], localizations);
+            }, childCount: _allServices.length),
           ),
       ],
     );
@@ -6571,15 +6612,12 @@ class _EnhancedServicesScreenState extends State<EnhancedServicesScreen> {
           children: [
             Row(
               children: [
-                Icon(
-                  Icons.location_on,
-                  color: Color(0xFF6D28D9),
-                  size: 24,
-                ),
+                Icon(Icons.location_on, color: Color(0xFF6D28D9), size: 24),
                 SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    localizations?.translate('current_location') ?? 'Current Location',
+                    localizations?.translate('current_location') ??
+                        'Current Location',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
@@ -6588,11 +6626,7 @@ class _EnhancedServicesScreenState extends State<EnhancedServicesScreen> {
                   ),
                 ),
                 if (widget.currentPosition != null)
-                  Icon(
-                    Icons.check_circle,
-                    color: Colors.green,
-                    size: 20,
-                  ),
+                  Icon(Icons.check_circle, color: Colors.green, size: 20),
               ],
             ),
             SizedBox(height: 8),
@@ -6606,11 +6640,9 @@ class _EnhancedServicesScreenState extends State<EnhancedServicesScreen> {
                       ),
                       SizedBox(width: 8),
                       Text(
-                        localizations?.translate('fetching_location') ?? 'Fetching location...',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[500],
-                        ),
+                        localizations?.translate('fetching_location') ??
+                            'Fetching location...',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                       ),
                     ],
                   )
@@ -6645,7 +6677,10 @@ class _EnhancedServicesScreenState extends State<EnhancedServicesScreen> {
             ElevatedButton.icon(
               onPressed: widget.onRefreshLocation,
               icon: Icon(Icons.refresh, size: 16),
-              label: Text(localizations?.translate('refresh_location') ?? 'Refresh Location'),
+              label: Text(
+                localizations?.translate('refresh_location') ??
+                    'Refresh Location',
+              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Color(0xFF6D28D9),
                 foregroundColor: Colors.white,
@@ -6659,7 +6694,10 @@ class _EnhancedServicesScreenState extends State<EnhancedServicesScreen> {
     );
   }
 
-  Widget _buildEmergencyServices(BuildContext context, AppLocalizations? localizations) {
+  Widget _buildEmergencyServices(
+    BuildContext context,
+    AppLocalizations? localizations,
+  ) {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
@@ -6669,8 +6707,13 @@ class _EnhancedServicesScreenState extends State<EnhancedServicesScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              localizations?.translate('emergency_services') ?? 'Emergency Services',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF6D28D9)),
+              localizations?.translate('emergency_services') ??
+                  'Emergency Services',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF6D28D9),
+              ),
             ),
             SizedBox(height: 12),
             Row(
@@ -6678,8 +6721,12 @@ class _EnhancedServicesScreenState extends State<EnhancedServicesScreen> {
                 Expanded(
                   child: _buildEmergencyServiceCard(
                     icon: Icons.local_shipping_rounded,
-                    title: localizations?.translate('tow_service') ?? 'Tow Service',
-                    subtitle: localizations?.translate('vehicle_towing') ?? 'Vehicle towing',
+                    title:
+                        localizations?.translate('tow_service') ??
+                        'Tow Service',
+                    subtitle:
+                        localizations?.translate('vehicle_towing') ??
+                        'Vehicle towing',
                     color: Color(0xFF6D28D9),
                     onTap: widget.onTowServiceTap,
                   ),
@@ -6688,8 +6735,12 @@ class _EnhancedServicesScreenState extends State<EnhancedServicesScreen> {
                 Expanded(
                   child: _buildEmergencyServiceCard(
                     icon: Icons.handyman_rounded,
-                    title: localizations?.translate('garage_service') ?? 'Garage Service',
-                    subtitle: localizations?.translate('mechanic_repair') ?? 'Mechanic & repair',
+                    title:
+                        localizations?.translate('garage_service') ??
+                        'Garage Service',
+                    subtitle:
+                        localizations?.translate('mechanic_repair') ??
+                        'Mechanic & repair',
                     color: Color(0xFFF59E0B),
                     onTap: widget.onGarageServiceTap,
                   ),
@@ -6740,10 +6791,7 @@ class _EnhancedServicesScreenState extends State<EnhancedServicesScreen> {
             ),
             Text(
               subtitle,
-              style: TextStyle(
-                fontSize: 10,
-                color: Colors.grey[600],
-              ),
+              style: TextStyle(fontSize: 10, color: Colors.grey[600]),
               textAlign: TextAlign.center,
             ),
           ],
@@ -6752,29 +6800,36 @@ class _EnhancedServicesScreenState extends State<EnhancedServicesScreen> {
     );
   }
 
-  Widget _buildServiceCard(Map<String, dynamic> service, AppLocalizations? localizations) {
+  Widget _buildServiceCard(
+    Map<String, dynamic> service,
+    AppLocalizations? localizations,
+  ) {
     final serviceType = service['serviceType'] ?? 'Service';
     final status = service['status'] ?? 'pending';
     final requestId = service['requestId'] ?? service['id'] ?? 'N/A';
     final vehicleNumber = service['vehicleNumber'] ?? 'Not Specified';
     final createdAt = _parseTimestamp(service['createdAt']);
     final dateFormat = DateFormat('MMM dd, yyyy • hh:mm a');
-    
+
     // Get service-specific details
     String? providerName;
     String? serviceDescription;
-    
+
     if (serviceType == 'Garage Service') {
-      providerName = service['garageName'] ?? service['assignedGarage'] ?? 'Not Assigned';
-      serviceDescription = service['problemDescription'] ?? 
-                          service['description'] ?? 
-                          service['serviceType'] ?? 
-                          'Garage Service';
+      providerName =
+          service['garageName'] ?? service['assignedGarage'] ?? 'Not Assigned';
+      serviceDescription =
+          service['problemDescription'] ??
+          service['description'] ??
+          service['serviceType'] ??
+          'Garage Service';
     } else if (serviceType == 'Tow Service') {
-      providerName = service['providerName'] ?? service['towProviderName'] ?? 'Not Assigned';
-      serviceDescription = service['description'] ?? 
-                          service['issue'] ?? 
-                          'Tow Service';
+      providerName =
+          service['providerName'] ??
+          service['towProviderName'] ??
+          'Not Assigned';
+      serviceDescription =
+          service['description'] ?? service['issue'] ?? 'Tow Service';
     }
 
     // Parse payment information
@@ -6782,150 +6837,161 @@ class _EnhancedServicesScreenState extends State<EnhancedServicesScreen> {
     final serviceAmount = _parseDouble(service['serviceAmount']);
     final totalAmount = _parseDouble(service['totalAmount']);
     final providerUpiId = service['providerUpiId']?.toString() ?? '';
-    final providerEmail = (service['garageEmail'] ?? service['providerEmail'] ?? '').toString();
-    
+    final providerEmail =
+        (service['garageEmail'] ?? service['providerEmail'] ?? '').toString();
+
     // Check if payment button should be shown
-    final shouldShowPayButton = (status.toLowerCase() == 'completed' || status == 'Completed') &&
+    final shouldShowPayButton =
+        (status.toLowerCase() == 'completed' || status == 'Completed') &&
         paymentStatus.toString().toLowerCase() == 'pending' &&
         serviceAmount != null &&
         serviceAmount! > 0 &&
         providerUpiId.isNotEmpty;
 
-    return Card(
-      margin: EdgeInsets.only(bottom: 12, left: 16, right: 16),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
+    return AppAnimations.fadeIn(
+      child: ServiceTypeCard(
+        serviceType: serviceType,
         onTap: () {
-          // Navigate to detailed service view
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (context) => CurrentServiceDetailScreen(
+            AppAnimations.slideRoute(
+              CurrentServiceDetailScreen(
                 service: service,
                 userEmail: widget.userEmail ?? '',
               ),
             ),
           );
         },
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Service Type and Status Tags
-              Row(
-                children: [
-                  _buildServiceTypeTag(serviceType),
-                  SizedBox(width: 8),
-                  _buildStatusTag(status),
-                  Spacer(),
-                  Text(
-                    dateFormat.format(createdAt),
-                    style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                  ),
-                ],
-              ),
-              SizedBox(height: 12),
-              // Request ID
-              Text(
-                'Request ID: $requestId',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.grey[700],
-                ),
-              ),
-              SizedBox(height: 8),
-              // Vehicle Number
-              Row(
-                children: [
-                  Icon(Icons.directions_car, size: 16, color: Colors.grey[600]),
-                  SizedBox(width: 4),
-                  Text(
-                    vehicleNumber,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 8),
-              // Service Description
-              if (serviceDescription != null)
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Service Type and Status Tags
+            Row(
+              children: [
+                _buildServiceTypeTag(serviceType),
+                SizedBox(width: 8),
+                StatusTag(status: status),
+                Spacer(),
                 Text(
-                  serviceDescription,
-                  style: TextStyle(fontSize: 13, color: Colors.grey[700]),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                  dateFormat.format(createdAt),
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
-              SizedBox(height: 8),
-              // Provider Name
-              if (providerName != null)
-                Row(
-                  children: [
-                    Icon(Icons.business, size: 16, color: Colors.grey[600]),
-                    SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        providerName,
-                        style: TextStyle(fontSize: 13, color: Colors.grey[700]),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
+              ],
+            ),
+            SizedBox(height: 16),
+            // Request ID
+            Text(
+              'Request ID: $requestId',
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+            ),
+            SizedBox(height: 12),
+            // Vehicle Number
+            Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryBlue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.directions_car,
+                    size: 16,
+                    color: AppTheme.primaryBlue,
+                  ),
                 ),
-              // Pay Now Button - Show when service is completed with pending payment
-              if (shouldShowPayButton) ...[
-                SizedBox(height: 12),
-                Divider(height: 1),
-                SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      // Navigate to payment options
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => PaymentOptionsScreen(
-                            requestId: requestId,
-                            serviceType: serviceType == 'Garage Service' ? 'garage' : 'tow',
-                            amount: serviceAmount!,
-                            providerUpiId: providerUpiId,
-                            providerEmail: providerEmail,
-                            customerEmail: widget.userEmail ?? '',
-                            providerName: providerName,
-                          ),
-                        ),
-                      );
-                    },
-                    icon: Icon(Icons.payment, color: Colors.white, size: 20),
-                    label: Text(
-                      'Pay Now ₹${totalAmount?.toStringAsFixed(2) ?? serviceAmount!.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      elevation: 2,
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    vehicleNumber,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
               ],
+            ),
+            SizedBox(height: 12),
+            // Service Description
+            if (serviceDescription != null)
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardColor,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppTheme.borderLight, width: 1),
+                ),
+                child: Text(
+                  serviceDescription,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            SizedBox(height: 12),
+            // Provider Name
+            if (providerName != null)
+              Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryTeal.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      Icons.business,
+                      size: 16,
+                      color: AppTheme.primaryTeal,
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      providerName,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            // Pay Now Button - Show when service is completed with pending payment
+            if (shouldShowPayButton) ...[
+              SizedBox(height: 16),
+              Divider(height: 1),
+              SizedBox(height: 16),
+              GradientButton(
+                text:
+                    'Pay Now ₹${totalAmount?.toStringAsFixed(2) ?? serviceAmount!.toStringAsFixed(2)}',
+                icon: Icons.payment,
+                gradient: AppTheme.successGradient,
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    AppAnimations.slideRoute(
+                      PaymentOptionsScreen(
+                        requestId: requestId,
+                        serviceType: serviceType == 'Garage Service'
+                            ? 'garage'
+                            : 'tow',
+                        amount: serviceAmount!,
+                        providerUpiId: providerUpiId,
+                        providerEmail: providerEmail,
+                        customerEmail: widget.userEmail ?? '',
+                        providerName: providerName,
+                      ),
+                    ),
+                  );
+                },
+                fullWidth: true,
+              ),
             ],
-          ),
+          ],
         ),
       ),
     );
@@ -6936,7 +7002,9 @@ class _EnhancedServicesScreenState extends State<EnhancedServicesScreen> {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: isGarage ? Color(0xFFF59E0B).withOpacity(0.15) : Color(0xFF6D28D9).withOpacity(0.15),
+        color: isGarage
+            ? Color(0xFFF59E0B).withOpacity(0.15)
+            : Color(0xFF6D28D9).withOpacity(0.15),
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
           color: isGarage ? Color(0xFFF59E0B) : Color(0xFF6D28D9),
@@ -7029,7 +7097,6 @@ class _EnhancedServicesScreenState extends State<EnhancedServicesScreen> {
   }
 }
 
-
 // Current Service Detail Screen
 class CurrentServiceDetailScreen extends StatelessWidget {
   final Map<String, dynamic> service;
@@ -7082,28 +7149,32 @@ class CurrentServiceDetailScreen extends StatelessWidget {
     final vehicleNumber = service['vehicleNumber'] ?? 'Not Specified';
     final createdAt = _parseTimestamp(service['createdAt']);
     final dateFormat = DateFormat('MMM dd, yyyy • hh:mm a');
-    
+
     String? providerName;
     String? serviceDescription;
     double? estimatedPrice;
     double? serviceAmount;
     double? taxAmount;
     double? totalAmount;
-    
+
     if (serviceType == 'Garage Service') {
-      providerName = service['garageName'] ?? service['assignedGarage'] ?? 'Not Assigned';
-      serviceDescription = service['problemDescription'] ?? 
-                          service['description'] ?? 
-                          'Garage Service';
+      providerName =
+          service['garageName'] ?? service['assignedGarage'] ?? 'Not Assigned';
+      serviceDescription =
+          service['problemDescription'] ??
+          service['description'] ??
+          'Garage Service';
       estimatedPrice = _parseDouble(service['estimatedPrice']);
       serviceAmount = _parseDouble(service['serviceAmount']);
       taxAmount = _parseDouble(service['taxAmount']);
       totalAmount = _parseDouble(service['totalAmount']);
     } else if (serviceType == 'Tow Service') {
-      providerName = service['providerName'] ?? service['towProviderName'] ?? 'Not Assigned';
-      serviceDescription = service['description'] ?? 
-                          service['issue'] ?? 
-                          'Tow Service';
+      providerName =
+          service['providerName'] ??
+          service['towProviderName'] ??
+          'Not Assigned';
+      serviceDescription =
+          service['description'] ?? service['issue'] ?? 'Tow Service';
       estimatedPrice = _parseDouble(service['estimatedPrice']);
       serviceAmount = _parseDouble(service['serviceAmount']);
       taxAmount = _parseDouble(service['taxAmount']);
@@ -7115,7 +7186,9 @@ class CurrentServiceDetailScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text('Service Details'),
-        backgroundColor: serviceType == 'Garage Service' ? Color(0xFFF59E0B) : Color(0xFF6D28D9),
+        backgroundColor: serviceType == 'Garage Service'
+            ? Color(0xFFF59E0B)
+            : Color(0xFF6D28D9),
         foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
@@ -7140,9 +7213,18 @@ class CurrentServiceDetailScreen extends StatelessWidget {
             SizedBox(height: 16),
             _buildDetailCard('Vehicle Information', [
               _buildDetailRow('Vehicle Number', vehicleNumber),
-              _buildDetailRow('Vehicle Model', service['vehicleModel'] ?? 'Not Specified'),
-              _buildDetailRow('Vehicle Type', service['vehicleType'] ?? 'Not Specified'),
-              _buildDetailRow('Fuel Type', service['fuelType'] ?? 'Not Specified'),
+              _buildDetailRow(
+                'Vehicle Model',
+                service['vehicleModel'] ?? 'Not Specified',
+              ),
+              _buildDetailRow(
+                'Vehicle Type',
+                service['vehicleType'] ?? 'Not Specified',
+              ),
+              _buildDetailRow(
+                'Fuel Type',
+                service['fuelType'] ?? 'Not Specified',
+              ),
             ]),
             SizedBox(height: 16),
             _buildDetailCard('Provider Information', [
@@ -7157,35 +7239,73 @@ class CurrentServiceDetailScreen extends StatelessWidget {
               _buildDetailCard('Service Description', [
                 Padding(
                   padding: EdgeInsets.symmetric(vertical: 8),
-                  child: Text(serviceDescription, style: TextStyle(fontSize: 14, color: Colors.grey[700])),
+                  child: Text(
+                    serviceDescription,
+                    style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                  ),
                 ),
               ]),
             if (serviceDescription != null) SizedBox(height: 16),
             _buildDetailCard('Pricing Information', [
               if (estimatedPrice != null && estimatedPrice! > 0)
-                _buildDetailRow('Estimated Price', '₹${estimatedPrice!.toStringAsFixed(2)}', isHighlight: true),
+                _buildDetailRow(
+                  'Estimated Price',
+                  '₹${estimatedPrice!.toStringAsFixed(2)}',
+                  isHighlight: true,
+                ),
               if (serviceAmount != null && serviceAmount! > 0) ...[
-                _buildDetailRow('Service Amount', '₹${serviceAmount!.toStringAsFixed(2)}'),
+                _buildDetailRow(
+                  'Service Amount',
+                  '₹${serviceAmount!.toStringAsFixed(2)}',
+                ),
                 if (taxAmount != null && taxAmount! > 0)
-                  _buildDetailRow('GST (18%)', '₹${taxAmount!.toStringAsFixed(2)}'),
+                  _buildDetailRow(
+                    'GST (18%)',
+                    '₹${taxAmount!.toStringAsFixed(2)}',
+                  ),
                 if (totalAmount != null && totalAmount! > 0)
-                  _buildDetailRow('Total Amount', '₹${totalAmount!.toStringAsFixed(2)}', isHighlight: true),
+                  _buildDetailRow(
+                    'Total Amount',
+                    '₹${totalAmount!.toStringAsFixed(2)}',
+                    isHighlight: true,
+                  ),
               ] else if (estimatedPrice == null || estimatedPrice! == 0) ...[
-                _buildDetailRow('Estimated Price', 'Will be updated by provider', isHighlight: false),
+                _buildDetailRow(
+                  'Estimated Price',
+                  'Will be updated by provider',
+                  isHighlight: false,
+                ),
               ],
-              if (paymentStatus != null && paymentStatus.toString() != 'pending')
-                _buildDetailRow('Payment Status', _capitalizeFirst(paymentStatus.toString())),
+              if (paymentStatus != null &&
+                  paymentStatus.toString() != 'pending')
+                _buildDetailRow(
+                  'Payment Status',
+                  _capitalizeFirst(paymentStatus.toString()),
+                ),
             ]),
             SizedBox(height: 16),
-            if (service['preferredDate'] != null || service['preferredTime'] != null)
+            if (service['preferredDate'] != null ||
+                service['preferredTime'] != null)
               _buildDetailCard('Schedule', [
                 if (service['preferredDate'] != null)
-                  _buildDetailRow('Preferred Date', service['preferredDate'].toString()),
+                  _buildDetailRow(
+                    'Preferred Date',
+                    service['preferredDate'].toString(),
+                  ),
                 if (service['preferredTime'] != null)
-                  _buildDetailRow('Preferred Time', service['preferredTime'].toString()),
+                  _buildDetailRow(
+                    'Preferred Time',
+                    service['preferredTime'].toString(),
+                  ),
               ]),
-            if (service['preferredDate'] != null || service['preferredTime'] != null) SizedBox(height: 16),
-            if ((status.toLowerCase() == 'completed' || status == 'Completed') && paymentStatus.toString().toLowerCase() == 'pending' && serviceAmount != null && serviceAmount! > 0)
+            if (service['preferredDate'] != null ||
+                service['preferredTime'] != null)
+              SizedBox(height: 16),
+            if ((status.toLowerCase() == 'completed' ||
+                    status == 'Completed') &&
+                paymentStatus.toString().toLowerCase() == 'pending' &&
+                serviceAmount != null &&
+                serviceAmount! > 0)
               Padding(
                 padding: EdgeInsets.symmetric(vertical: 8),
                 child: SizedBox(
@@ -7197,10 +7317,17 @@ class CurrentServiceDetailScreen extends StatelessWidget {
                         MaterialPageRoute(
                           builder: (context) => PaymentOptionsScreen(
                             requestId: requestId,
-                            serviceType: serviceType == 'Garage Service' ? 'garage' : 'tow',
+                            serviceType: serviceType == 'Garage Service'
+                                ? 'garage'
+                                : 'tow',
                             amount: serviceAmount!,
-                            providerUpiId: service['providerUpiId']?.toString() ?? '',
-                            providerEmail: (service['garageEmail'] ?? service['providerEmail'] ?? '').toString(),
+                            providerUpiId:
+                                service['providerUpiId']?.toString() ?? '',
+                            providerEmail:
+                                (service['garageEmail'] ??
+                                        service['providerEmail'] ??
+                                        '')
+                                    .toString(),
                             customerEmail: userEmail,
                             providerName: providerName,
                           ),
@@ -7208,12 +7335,16 @@ class CurrentServiceDetailScreen extends StatelessWidget {
                       );
                     },
                     icon: Icon(Icons.payment),
-                    label: Text('Pay ₹${totalAmount?.toStringAsFixed(2) ?? serviceAmount!.toStringAsFixed(2)}'),
+                    label: Text(
+                      'Pay ₹${totalAmount?.toStringAsFixed(2) ?? serviceAmount!.toStringAsFixed(2)}',
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
                       foregroundColor: Colors.white,
                       padding: EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
                 ),
@@ -7233,7 +7364,14 @@ class CurrentServiceDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF6D28D9))),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF6D28D9),
+              ),
+            ),
             SizedBox(height: 12),
             ...children,
           ],
@@ -7242,7 +7380,11 @@ class CurrentServiceDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailRow(String label, String value, {bool isHighlight = false}) {
+  Widget _buildDetailRow(
+    String label,
+    String value, {
+    bool isHighlight = false,
+  }) {
     return Padding(
       padding: EdgeInsets.only(bottom: 8),
       child: Row(
@@ -7250,10 +7392,24 @@ class CurrentServiceDetailScreen extends StatelessWidget {
         children: [
           SizedBox(
             width: 120,
-            child: Text('$label:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.grey[700])),
+            child: Text(
+              '$label:',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey[700],
+              ),
+            ),
           ),
           Expanded(
-            child: Text(value, style: TextStyle(fontSize: 14, fontWeight: isHighlight ? FontWeight.bold : FontWeight.normal, color: isHighlight ? Color(0xFF6D28D9) : Colors.black87)),
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: isHighlight ? FontWeight.bold : FontWeight.normal,
+                color: isHighlight ? Color(0xFF6D28D9) : Colors.black87,
+              ),
+            ),
           ),
         ],
       ),
@@ -7265,16 +7421,32 @@ class CurrentServiceDetailScreen extends StatelessWidget {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: isGarage ? Color(0xFFF59E0B).withOpacity(0.15) : Color(0xFF6D28D9).withOpacity(0.15),
+        color: isGarage
+            ? Color(0xFFF59E0B).withOpacity(0.15)
+            : Color(0xFF6D28D9).withOpacity(0.15),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: isGarage ? Color(0xFFF59E0B) : Color(0xFF6D28D9), width: 1.5),
+        border: Border.all(
+          color: isGarage ? Color(0xFFF59E0B) : Color(0xFF6D28D9),
+          width: 1.5,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(isGarage ? Icons.build_circle : Icons.local_shipping, size: 16, color: isGarage ? Color(0xFFF59E0B) : Color(0xFF6D28D9)),
+          Icon(
+            isGarage ? Icons.build_circle : Icons.local_shipping,
+            size: 16,
+            color: isGarage ? Color(0xFFF59E0B) : Color(0xFF6D28D9),
+          ),
           SizedBox(width: 6),
-          Text(serviceType, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: isGarage ? Color(0xFFF59E0B) : Color(0xFF6D28D9))),
+          Text(
+            serviceType,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: isGarage ? Color(0xFFF59E0B) : Color(0xFF6D28D9),
+            ),
+          ),
         ],
       ),
     );
@@ -7318,7 +7490,14 @@ class CurrentServiceDetailScreen extends StatelessWidget {
         children: [
           Icon(icon, size: 16, color: textColor),
           SizedBox(width: 6),
-          Text(displayText, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textColor)),
+          Text(
+            displayText,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: textColor,
+            ),
+          ),
         ],
       ),
     );

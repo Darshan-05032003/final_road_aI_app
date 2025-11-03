@@ -90,6 +90,37 @@ class VoiceAssistantApp extends StatelessWidget {
               Locale('hi', 'IN'),
               Locale('fr', 'FR'),
             ],
+            // Enhanced page transitions
+            onGenerateRoute: (settings) {
+              // Use custom transitions for better UX
+              if (settings.name == '/role-selection') {
+                return PageRouteBuilder(
+                  pageBuilder: (context, animation, secondaryAnimation) =>
+                      const RoleSelectionScreen(),
+                  transitionsBuilder:
+                      (context, animation, secondaryAnimation, child) {
+                        return FadeTransition(
+                          opacity: animation,
+                          child: SlideTransition(
+                            position:
+                                Tween<Offset>(
+                                  begin: const Offset(0.0, 0.1),
+                                  end: Offset.zero,
+                                ).animate(
+                                  CurvedAnimation(
+                                    parent: animation,
+                                    curve: Curves.easeOutCubic,
+                                  ),
+                                ),
+                            child: child,
+                          ),
+                        );
+                      },
+                  transitionDuration: const Duration(milliseconds: 300),
+                );
+              }
+              return null;
+            },
             builder: (context, child) {
               return MediaQuery(
                 data: MediaQuery.of(

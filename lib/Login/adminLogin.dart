@@ -885,10 +885,24 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
       // Check if user is admin and logged in
       if (isLoggedIn && userRole == 'admin' && mounted) {
         // Auto-navigate to admin dashboard if already logged in
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => VehicleAssistAdminApp()),
-          (route) => false,
-        );
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(
+                builder: (context) => MaterialApp(
+                  title: 'Smart Road Admin',
+                  theme: Theme.of(context).copyWith(
+                    primaryColor: const Color(0xFF6366F1),
+                    colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6366F1)),
+                  ),
+                  home: const VehicleAssistAdminApp(),
+                  debugShowCheckedModeBanner: false,
+                ),
+              ),
+              (route) => false,
+            );
+          }
+        });
       }
     } catch (e) {
       print('Error checking admin login status: $e');
@@ -924,10 +938,23 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
         context,
       ).showSnackBar(const SnackBar(content: Text("Sign in successful")));
 
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => VehicleAssistAdminApp()),
-        (route) => false,
-      );
+      // Navigate to admin dashboard
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (context) => MaterialApp(
+              title: 'Smart Road Admin',
+              theme: Theme.of(context).copyWith(
+                primaryColor: const Color(0xFF6366F1),
+                colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6366F1)),
+              ),
+              home: const VehicleAssistAdminApp(),
+              debugShowCheckedModeBanner: false,
+            ),
+          ),
+          (route) => false,
+        );
+      }
     } catch (e) {
       ScaffoldMessenger.of(
         context,
@@ -1141,7 +1168,17 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
           );
 
           Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (context) => VehicleAssistAdminApp()),
+            MaterialPageRoute(
+              builder: (context) => MaterialApp(
+                title: 'Smart Road Admin',
+                theme: Theme.of(context).copyWith(
+                  primaryColor: const Color(0xFF6366F1),
+                  colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6366F1)),
+                ),
+                home: const VehicleAssistAdminApp(),
+                debugShowCheckedModeBanner: false,
+              ),
+            ),
             (route) => false,
           );
         }

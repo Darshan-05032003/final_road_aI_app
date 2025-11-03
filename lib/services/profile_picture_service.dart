@@ -151,35 +151,41 @@ class ProfilePictureService {
   /// Get profile picture URL from Firestore
   Future<String?> getProfilePictureUrl(String userRole, String userEmail) async {
     try {
-      DocumentReference docRef;
+      DocumentSnapshot doc;
 
       switch (userRole.toLowerCase()) {
         case 'vehicle_owner':
         case 'owner':
-          final doc = await _firestore
+          doc = await _firestore
               .collection('owner')
               .doc(userEmail)
               .collection('profile')
               .doc('user_details')
               .get();
-          return doc.data()?['profilePictureUrl'] as String?;
+          final data = doc.data() as Map<String, dynamic>?;
+          return data?['profilePictureUrl'] as String?;
         case 'garage':
-          final doc = await _firestore.collection('garages').doc(userEmail).get();
-          return doc.data()?['profilePictureUrl'] as String?;
+          doc = await _firestore.collection('garages').doc(userEmail).get();
+          final data = doc.data() as Map<String, dynamic>?;
+          return data?['profilePictureUrl'] as String?;
         case 'toe_provider':
         case 'tow_provider':
         case 'provider':
-          final doc = await _firestore.collection('providers').doc(userEmail).get();
-          return doc.data()?['profilePictureUrl'] as String?;
+          doc = await _firestore.collection('providers').doc(userEmail).get();
+          final data = doc.data() as Map<String, dynamic>?;
+          return data?['profilePictureUrl'] as String?;
         case 'insurance':
-          final doc = await _firestore.collection('insurance_companies').doc(userEmail).get();
-          return doc.data()?['profilePictureUrl'] as String?;
+          doc = await _firestore.collection('insurance_companies').doc(userEmail).get();
+          final data = doc.data() as Map<String, dynamic>?;
+          return data?['profilePictureUrl'] as String?;
         case 'admin':
-          final doc = await _firestore.collection('admins').doc(userEmail).get();
-          return doc.data()?['profilePictureUrl'] as String?;
+          doc = await _firestore.collection('admins').doc(userEmail).get();
+          final data = doc.data() as Map<String, dynamic>?;
+          return data?['profilePictureUrl'] as String?;
         default:
-          final doc = await _firestore.collection('users').doc(userEmail).get();
-          return doc.data()?['profilePictureUrl'] as String?;
+          doc = await _firestore.collection('users').doc(userEmail).get();
+          final data = doc.data() as Map<String, dynamic>?;
+          return data?['profilePictureUrl'] as String?;
       }
     } catch (e) {
       print('Error getting profile picture URL: $e');

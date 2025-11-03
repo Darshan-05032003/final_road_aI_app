@@ -5007,13 +5007,13 @@
 // }  
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:smart_road_app/admin/analytics.dart';
 import 'package:smart_road_app/admin/home.dart';
 import 'package:smart_road_app/admin/livemonitoring.dart';
 import 'package:smart_road_app/admin/revenue.dart';
 import 'package:smart_road_app/admin/service_provider.dart';
 import 'package:smart_road_app/admin/usermanagement.dart';
+<<<<<<< HEAD
 //import 'package:smart_road_app/services/auth_service.dart';
 import 'package:smart_road_app/Login/adminLogin.dart';
 import 'package:smart_road_app/shared_prefrences.dart';
@@ -5021,6 +5021,12 @@ import 'package:smart_road_app/shared_prefrences.dart';
 void main() {
   runApp(const VehicleAssistAdminApp());
 }
+=======
+import 'package:smart_road_app/core/theme/app_theme.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:smart_road_app/Login/adminLogin.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+>>>>>>> 5f19259 (done admin sync)
 
 class VehicleAssistAdminApp extends StatelessWidget {
   const VehicleAssistAdminApp({super.key});
@@ -5028,13 +5034,11 @@ class VehicleAssistAdminApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Vehicle Assist Admin',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        fontFamily: GoogleFonts.poppins().fontFamily,
-        useMaterial3: true,
-      ),
-      home: const AdminDashboard(),
+      title: 'Smart Road Admin',
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.light,
+      home: const AdminDashboard(), // This will check auth and redirect if needed
       debugShowCheckedModeBanner: false,
     );
   }
@@ -5047,15 +5051,28 @@ class AdminDashboard extends StatefulWidget {
   State<AdminDashboard> createState() => _AdminDashboardState();
 }
 
-class _AdminDashboardState extends State<AdminDashboard> {
+class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProviderStateMixin {
   int _currentIndex = 0;
+  late TabController _tabController;
+  bool _isCheckingAuth = true;
+  bool _isAuthenticated = false;
+  
   final List<Widget> _pages = [
     const DashboardHomePage(),
     const UserManagementPage(),
     const LiveMonitoringPage(),
     const AnalyticsPage(),
     const RevenuePage(),
-    const ServiceProvidersPage(), // New page added
+    const ServiceProvidersPage(),
+  ];
+
+  final List<String> _titles = [
+    'Dashboard',
+    'User Management',
+    'Live Monitoring',
+    'Analytics',
+    'Revenue',
+    'Providers',
   ];
 
   // Logout function
@@ -5106,39 +5123,336 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _checkAuthentication();
+    _tabController = TabController(length: _pages.length, vsync: this);
+    _tabController.addListener(() {
+      if (_tabController.indexIsChanging) {
+        setState(() {
+          _currentIndex = _tabController.index;
+        });
+      }
+    });
+  }
+
+  Future<void> _checkAuthentication() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final isLoggedIn = prefs.getBool('adminIsLoggedIn') ?? false;
+      final userEmail = prefs.getString('adminUserEmail');
+
+      if (!isLoggedIn || userEmail == null) {
+        // Not authenticated, redirect to login
+        if (mounted) {
+          setState(() {
+            _isCheckingAuth = false;
+            _isAuthenticated = false;
+          });
+          
+          // Navigate to login screen
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (context) => const AdminLoginPage()),
+                (route) => false,
+              );
+            }
+          });
+        }
+      } else {
+        // Authenticated, show dashboard
+        if (mounted) {
+          setState(() {
+            _isCheckingAuth = false;
+            _isAuthenticated = true;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error checking admin authentication: $e');
+      if (mounted) {
+        setState(() {
+          _isCheckingAuth = false;
+          _isAuthenticated = false;
+        });
+        
+        // On error, redirect to login
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (context) => const AdminLoginPage()),
+              (route) => false,
+            );
+          }
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Show loading while checking authentication
+    if (_isCheckingAuth) {
+      return Scaffold(
+        backgroundColor: AppTheme.lightBackground,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryPurple),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Checking authentication...',
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // If not authenticated, show nothing (navigation will happen in initState)
+    if (!_isAuthenticated) {
+      return const SizedBox.shrink();
+    }
+
+    // Show dashboard if authenticated
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: AppTheme.lightBackground,
       appBar: AppBar(
-        title: const Text('Vehicle Assist Admin'),
-        backgroundColor: Colors.blue[700],
+        title: Text(_titles[_currentIndex]),
+        backgroundColor: AppTheme.primaryPurple,
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
+<<<<<<< HEAD
           IconButton(icon: const Icon(Icons.notifications), onPressed: () {}),
           IconButton(icon: const Icon(Icons.account_circle), onPressed: () {}),
           IconButton(
             icon: const Icon(Icons.logout), 
             onPressed: _logout,
             tooltip: 'Logout',
+=======
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              // Trigger refresh on current page
+              setState(() {});
+            },
+            tooltip: 'Refresh',
+          ),
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined),
+            onPressed: () {},
+            tooltip: 'Notifications',
+          ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.account_circle),
+            onSelected: (value) async {
+              if (value == 'logout') {
+                // Show confirmation dialog
+                final shouldLogout = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Logout'),
+                    content: const Text('Are you sure you want to logout?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        child: const Text('Cancel'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(true),
+                        child: const Text('Logout', style: TextStyle(color: Colors.red)),
+                      ),
+                    ],
+                  ),
+                );
+
+                if (shouldLogout == true && mounted) {
+                  // Clear admin login state
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setBool('adminIsLoggedIn', false);
+                  await prefs.remove('adminUserEmail');
+                  // Sign out from Firebase
+                  try {
+                    await FirebaseAuth.instance.signOut();
+                  } catch (e) {
+                    print('Error signing out from Firebase: $e');
+                  }
+
+                  // Navigate back to login
+                  if (mounted) {
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (context) => const AdminLoginPage()),
+                      (route) => false,
+                    );
+                  }
+                }
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'logout',
+                child: Row(
+                  children: [
+                    Icon(Icons.logout, color: Colors.red),
+                    SizedBox(width: 8),
+                    Text('Logout', style: TextStyle(color: Colors.red)),
+                  ],
+                ),
+              ),
+            ],
+>>>>>>> 5f19259 (done admin sync)
           ),
         ],
       ),
-      body: _pages[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.blue[700],
-        unselectedItemColor: Colors.grey[600],
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Dashboard'),
-          BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Users'),
-          BottomNavigationBarItem(icon: Icon(Icons.map), label: 'Live Map'),
-          BottomNavigationBarItem(icon: Icon(Icons.analytics), label: 'Analytics'),
-          BottomNavigationBarItem(icon: Icon(Icons.attach_money), label: 'Revenue'),
-          BottomNavigationBarItem(icon: Icon(Icons.business), label: 'Providers'),
-        ],
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        transitionBuilder: (Widget child, Animation<double> animation) {
+          return FadeTransition(
+            opacity: animation,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0.1, 0.0),
+                end: Offset.zero,
+              ).animate(animation),
+              child: child,
+            ),
+          );
+        },
+        child: Container(
+          key: ValueKey<int>(_currentIndex),
+          child: _pages[_currentIndex],
+        ),
+      ),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 10,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _currentIndex,
+          onTap: (index) {
+            setState(() {
+              _currentIndex = index;
+              _tabController.index = index;
+            });
+          },
+          type: BottomNavigationBarType.fixed,
+          selectedItemColor: AppTheme.primaryPurple,
+          unselectedItemColor: Colors.grey[600],
+          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+          unselectedLabelStyle: const TextStyle(fontSize: 11),
+          backgroundColor: Colors.white,
+          elevation: 0,
+          items: [
+            BottomNavigationBarItem(
+              icon: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _currentIndex == 0
+                      ? AppTheme.primaryPurple.withValues(alpha: 0.1)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  _currentIndex == 0 ? Icons.dashboard : Icons.dashboard_outlined,
+                ),
+              ),
+              label: 'Dashboard',
+            ),
+            BottomNavigationBarItem(
+              icon: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _currentIndex == 1
+                      ? AppTheme.primaryPurple.withValues(alpha: 0.1)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  _currentIndex == 1 ? Icons.people : Icons.people_outline,
+                ),
+              ),
+              label: 'Users',
+            ),
+            BottomNavigationBarItem(
+              icon: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _currentIndex == 2
+                      ? AppTheme.primaryPurple.withValues(alpha: 0.1)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  _currentIndex == 2 ? Icons.map : Icons.map_outlined,
+                ),
+              ),
+              label: 'Live',
+            ),
+            BottomNavigationBarItem(
+              icon: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _currentIndex == 3
+                      ? AppTheme.primaryPurple.withValues(alpha: 0.1)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  _currentIndex == 3 ? Icons.analytics : Icons.analytics_outlined,
+                ),
+              ),
+              label: 'Analytics',
+            ),
+            BottomNavigationBarItem(
+              icon: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _currentIndex == 4
+                      ? AppTheme.primaryPurple.withValues(alpha: 0.1)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  _currentIndex == 4 ? Icons.attach_money : Icons.attach_money_outlined,
+                ),
+              ),
+              label: 'Revenue',
+            ),
+            BottomNavigationBarItem(
+              icon: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _currentIndex == 5
+                      ? AppTheme.primaryPurple.withValues(alpha: 0.1)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  _currentIndex == 5 ? Icons.business : Icons.business_outlined,
+                ),
+              ),
+              label: 'Providers',
+            ),
+          ],
+        ),
       ),
     );
   }
