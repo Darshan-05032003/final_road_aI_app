@@ -3,14 +3,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:permission_handler/permission_handler.dart';
-
 import 'package:smart_road_app/Splashscreen.dart';
 import 'package:smart_road_app/Roleselection.dart';
-import 'package:smart_road_app/ToeProvider/notificatinservice.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:provider/provider.dart';
+import 'package:smart_road_app/services/enhanced_notification_service.dart';
 import 'package:smart_road_app/core/language/language_service.dart';
 import 'package:smart_road_app/core/language/app_localizations.dart';
 import 'package:smart_road_app/services/theme_service.dart';
@@ -40,8 +35,8 @@ void main() async {
     print('Firebase initialization error: $e');
   }
 
-  // Initialize Firebase Messaging after Firebase is ready
-  await FirebaseMessagingHandler.initialize();
+  // Initialize Enhanced Notification Service after Firebase is ready
+  await EnhancedNotificationService.initialize();
 
   // Request storage, camera, and location permissions
   await _requestPermissions();
@@ -67,6 +62,7 @@ class VoiceAssistantApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (context) => LanguageService()),
+        ChangeNotifierProvider(create: (context) => ThemeService()),
       ],
       child: Consumer2<LanguageService, ThemeService>(
         builder: (context, languageService, themeService, child) {
@@ -75,7 +71,14 @@ class VoiceAssistantApp extends StatelessWidget {
             home: const SplashScreen(),
             debugShowCheckedModeBanner: false,
             locale: languageService.currentLocale,
-            localizationsDelegates: [
+            theme: themeService.getLightTheme(),
+            darkTheme: themeService.getDarkTheme(),
+            themeMode: themeService.themeMode,
+            routes: {
+              '/role-selection': (context) => const RoleSelectionScreen(),
+              '/notifications': (context) => const NotificationHistoryScreen(),
+            },
+            localizationsDelegates: const [
               AppLocalizationsDelegate(),
               GlobalMaterialLocalizations.delegate,
               GlobalWidgetsLocalizations.delegate,
@@ -89,7 +92,9 @@ class VoiceAssistantApp extends StatelessWidget {
             ],
             builder: (context, child) {
               return MediaQuery(
-                data: MediaQuery.of(context).copyWith(textScaleFactor: 1.0),
+                data: MediaQuery.of(
+                  context,
+                ).copyWith(textScaler: const TextScaler.linear(1.0)),
                 child: child!,
               );
             },

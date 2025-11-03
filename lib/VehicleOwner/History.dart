@@ -50,96 +50,217 @@ class _EnhancedHistoryScreenState extends State<EnhancedHistoryScreen> {
         return;
       }
 
-      // Query to get ALL service requests first
-      final QuerySnapshot querySnapshot = await _firestore
-          .collection('owner')
-          .doc(widget.userEmail)
-          .collection('garagerequest')
-          .orderBy('createdAt', descending: true)
-          .get();
-
-      print('📥 Found ${querySnapshot.docs.length} total service requests');
-
-      if (querySnapshot.docs.isEmpty) {
-        if (mounted) {
-          setState(() {
-            _serviceHistory = [];
-            _isLoading = false;
-            _hasError = false;
-          });
-        }
-        return;
-      }
-
       List<ServiceHistory> history = [];
       
-      for (var doc in querySnapshot.docs) {
-        try {
-          final Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-          
-          // Get status and only include completed/cancelled requests
-          String status = _getField(data, 'status', 'pending').toLowerCase();
-          
-          if (status != 'completed' && status != 'cancelled') {
-            continue; // Skip non-completed/cancelled requests
-          }
-          
-          // Parse dates safely
-          DateTime createdAt = _parseTimestamp(data['createdAt']);
-          DateTime updatedAt = _parseTimestamp(data['updatedAt']);
-          
-          // Extract all possible fields with proper fallbacks
-          String requestId = _getField(data, 'requestId', 'GRG-${DateTime.now().millisecondsSinceEpoch}');
-          String vehicleNumber = _getField(data, 'vehicleNumber', 'Not Specified');
-          String serviceType = _getField(data, 'serviceType', 'General Service');
-          String garageName = _getField(data, 'assignedGarage', 
-                            _getField(data, 'garageName', 'AutoCare Garage'));
-          String cost = _getField(data, 'cost', 
-                      _getField(data, 'amount', 
-                      _getField(data, 'price', '\$0.00')));
-          String rating = _getField(data, 'rating', '4.5');
-          
-          // Get date and time - prefer preferredDate/preferredTime, fallback to createdAt
-          String preferredDate = _getField(data, 'preferredDate', _formatDate(createdAt));
-          String preferredTime = _getField(data, 'preferredTime', _formatTime(createdAt));
-          
-          // Handle problem description from multiple possible fields
-          String problemDescription = _getField(data, 'problemDescription', 
-                                  _getField(data, 'description', 
-                                  _getField(data, 'additionalDetails', 
-                                  _getField(data, 'issueDescription', 'No description provided'))));
+      // Load Garage Requests
+      try {
+        final garageRequestsSnapshot = await _firestore
+            .collection('owner')
+            .doc(widget.userEmail)
+            .collection('garagerequest')
+            .orderBy('createdAt', descending: true)
+            .get();
 
-          ServiceHistory service = ServiceHistory(
-            id: doc.id,
-            requestId: requestId,
-            vehicleNumber: vehicleNumber,
-            serviceType: serviceType,
-            preferredDate: preferredDate,
-            preferredTime: preferredTime,
-            name: _getField(data, 'name', 'Customer'),
-            phone: _getField(data, 'phone', 'Not Provided'),
-            location: _getField(data, 'location', 'Not Provided'),
-            problemDescription: problemDescription,
-            userEmail: widget.userEmail,
-            status: status,
-            createdAt: createdAt,
-            updatedAt: updatedAt,
-            cost: cost,
-            garageName: garageName,
-            rating: rating,
-            vehicleModel: _getField(data, 'vehicleModel', 'Not Specified'),
-            fuelType: _getField(data, 'fuelType', 'Not Specified'),
-            vehicleType: _getField(data, 'vehicleType', 'Car'),
-          );
-          
-          history.add(service);
-          print('✅ Added to history: ${service.requestId} - ${service.serviceType} - ${service.status}');
-          
-        } catch (e) {
-          print('⚠️ Skipping document ${doc.id} due to error: $e');
-          print('📄 Document data: ${doc.data()}');
+        print('📥 Found ${garageRequestsSnapshot.docs.length} garage requests');
+
+        for (var doc in garageRequestsSnapshot.docs) {
+          try {
+            final Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+            
+            // Get status and only include completed/rejected requests
+            String status = _getField(data, 'status', 'pending').toLowerCase();
+            String normalizedStatus = _normalizeStatus(status);
+            
+            if (normalizedStatus != 'completed' && normalizedStatus != 'rejected') {
+              continue; // Skip non-completed/rejected requests
+            }
+            
+            // Parse dates safely
+            DateTime createdAt = _parseTimestamp(data['createdAt']);
+            DateTime updatedAt = _parseTimestamp(data['updatedAt']);
+            DateTime? completedAt = data['completedAt'] != null ? _parseTimestamp(data['completedAt']) : null;
+            DateTime? paidAt = data['paidAt'] != null ? _parseTimestamp(data['paidAt']) : null;
+            
+            // Extract all possible fields with proper fallbacks
+            String requestId = _getField(data, 'requestId', 'GRG-${DateTime.now().millisecondsSinceEpoch}');
+            String vehicleNumber = _getField(data, 'vehicleNumber', 'Not Specified');
+            String serviceType = 'Garage Service';
+            String garageName = _getField(data, 'assignedGarage', 
+                              _getField(data, 'garageName', 'AutoCare Garage'));
+            
+            // Get pricing information
+            double? serviceAmount = _parseDouble(data['serviceAmount']);
+            double? taxAmount = _parseDouble(data['taxAmount']);
+            double? totalAmount = _parseDouble(data['totalAmount']);
+            String cost = totalAmount != null && totalAmount! > 0 
+                ? '₹${totalAmount!.toStringAsFixed(2)}' 
+                : (serviceAmount != null && serviceAmount! > 0 
+                    ? '₹${serviceAmount!.toStringAsFixed(2)}' 
+                    : _getField(data, 'cost', _getField(data, 'amount', _getField(data, 'price', '₹0.00'))));
+            
+            String rating = _getField(data, 'rating', 'N/A');
+            
+            // Get date and time - prefer preferredDate/preferredTime, fallback to createdAt
+            String preferredDate = _getField(data, 'preferredDate', _formatDate(createdAt));
+            String preferredTime = _getField(data, 'preferredTime', _formatTime(createdAt));
+            
+            // Handle problem description from multiple possible fields
+            String problemDescription = _getField(data, 'problemDescription', 
+                                    _getField(data, 'description', 
+                                    _getField(data, 'additionalDetails', 
+                                    _getField(data, 'issueDescription', 'No description provided'))));
+
+            ServiceHistory service = ServiceHistory(
+              id: doc.id,
+              requestId: requestId,
+              vehicleNumber: vehicleNumber,
+              serviceType: serviceType,
+              preferredDate: preferredDate,
+              preferredTime: preferredTime,
+              name: _getField(data, 'name', 'Customer'),
+              phone: _getField(data, 'phone', 'Not Provided'),
+              location: _getField(data, 'location', 'Not Provided'),
+              problemDescription: problemDescription,
+              userEmail: widget.userEmail,
+              status: normalizedStatus,
+              createdAt: createdAt,
+              updatedAt: updatedAt,
+              cost: cost,
+              garageName: garageName,
+              rating: rating,
+              vehicleModel: _getField(data, 'vehicleModel', 'Not Specified'),
+              fuelType: _getField(data, 'fuelType', 'Not Specified'),
+              vehicleType: _getField(data, 'vehicleType', 'Car'),
+              additionalData: {
+                'serviceAmount': serviceAmount,
+                'taxAmount': taxAmount,
+                'totalAmount': totalAmount,
+                'paymentStatus': data['paymentStatus'] ?? 'pending',
+                'paymentMethod': data['paymentMethod'],
+                'transactionId': data['paymentTransactionId'] ?? data['transactionId'],
+                'upiTransactionId': data['upiTransactionId'],
+                'completedAt': completedAt,
+                'paidAt': paidAt,
+                'providerUpiId': data['providerUpiId'],
+              },
+            );
+            
+            history.add(service);
+            print('✅ Added to history: ${service.requestId} - ${service.serviceType} - ${service.status}');
+            
+          } catch (e) {
+            print('⚠️ Skipping garage document ${doc.id} due to error: $e');
+          }
         }
+      } catch (e) {
+        print('❌ Error loading garage requests: $e');
       }
+
+      // Load Tow Requests
+      try {
+        final towRequestsSnapshot = await _firestore
+            .collection('owner')
+            .doc(widget.userEmail)
+            .collection('towrequest')
+            .orderBy('createdAt', descending: true)
+            .get();
+
+        print('📥 Found ${towRequestsSnapshot.docs.length} tow requests');
+
+        for (var doc in towRequestsSnapshot.docs) {
+          try {
+            final Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+            
+            // Get status and only include completed/rejected requests
+            String status = _getField(data, 'status', 'pending').toLowerCase();
+            String normalizedStatus = _normalizeStatus(status);
+            
+            if (normalizedStatus != 'completed' && normalizedStatus != 'rejected') {
+              continue; // Skip non-completed/rejected requests
+            }
+            
+            // Parse dates safely
+            DateTime createdAt = _parseTimestamp(data['createdAt']);
+            DateTime updatedAt = _parseTimestamp(data['updatedAt']);
+            DateTime? completedAt = data['completedAt'] != null ? _parseTimestamp(data['completedAt']) : null;
+            DateTime? paidAt = data['paidAt'] != null ? _parseTimestamp(data['paidAt']) : null;
+            
+            // Extract all possible fields with proper fallbacks
+            String requestId = _getField(data, 'requestId', 'TOW-${DateTime.now().millisecondsSinceEpoch}');
+            String vehicleNumber = _getField(data, 'vehicleNumber', 'Not Specified');
+            String serviceType = 'Tow Service';
+            String providerName = _getField(data, 'providerName', 
+                            _getField(data, 'towProviderName', 'Tow Provider'));
+            
+            // Get pricing information
+            double? serviceAmount = _parseDouble(data['serviceAmount']);
+            double? taxAmount = _parseDouble(data['taxAmount']);
+            double? totalAmount = _parseDouble(data['totalAmount']);
+            String cost = totalAmount != null && totalAmount! > 0 
+                ? '₹${totalAmount!.toStringAsFixed(2)}' 
+                : (serviceAmount != null && serviceAmount! > 0 
+                    ? '₹${serviceAmount!.toStringAsFixed(2)}' 
+                    : _getField(data, 'cost', _getField(data, 'amount', _getField(data, 'price', '₹0.00'))));
+            
+            String rating = _getField(data, 'rating', 'N/A');
+            
+            // Get date and time
+            String preferredDate = _getField(data, 'preferredDate', _formatDate(createdAt));
+            String preferredTime = _getField(data, 'preferredTime', _formatTime(createdAt));
+            
+            // Handle description
+            String problemDescription = _getField(data, 'description', 
+                                    _getField(data, 'issue', 
+                                    _getField(data, 'problemDescription', 'No description provided')));
+
+            ServiceHistory service = ServiceHistory(
+              id: doc.id,
+              requestId: requestId,
+              vehicleNumber: vehicleNumber,
+              serviceType: serviceType,
+              preferredDate: preferredDate,
+              preferredTime: preferredTime,
+              name: _getField(data, 'name', 'Customer'),
+              phone: _getField(data, 'phone', 'Not Provided'),
+              location: _getField(data, 'location', 'Not Provided'),
+              problemDescription: problemDescription,
+              userEmail: widget.userEmail,
+              status: normalizedStatus,
+              createdAt: createdAt,
+              updatedAt: updatedAt,
+              cost: cost,
+              garageName: providerName, // Reusing garageName field for provider name
+              rating: rating,
+              vehicleModel: _getField(data, 'vehicleModel', 'Not Specified'),
+              fuelType: _getField(data, 'fuelType', 'Not Specified'),
+              vehicleType: _getField(data, 'vehicleType', 'Car'),
+              additionalData: {
+                'serviceAmount': serviceAmount,
+                'taxAmount': taxAmount,
+                'totalAmount': totalAmount,
+                'paymentStatus': data['paymentStatus'] ?? 'pending',
+                'paymentMethod': data['paymentMethod'],
+                'transactionId': data['paymentTransactionId'] ?? data['transactionId'],
+                'upiTransactionId': data['upiTransactionId'],
+                'completedAt': completedAt,
+                'paidAt': paidAt,
+                'providerUpiId': data['providerUpiId'],
+              },
+            );
+            
+            history.add(service);
+            print('✅ Added to history: ${service.requestId} - ${service.serviceType} - ${service.status}');
+            
+          } catch (e) {
+            print('⚠️ Skipping tow document ${doc.id} due to error: $e');
+          }
+        }
+      } catch (e) {
+        print('❌ Error loading tow requests: $e');
+      }
+
+      // Sort by creation date (newest first)
+      history.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
       if (mounted) {
         setState(() {
@@ -149,7 +270,7 @@ class _EnhancedHistoryScreenState extends State<EnhancedHistoryScreen> {
         });
       }
 
-      print('🎉 Service History loaded successfully: ${_serviceHistory.length} completed/cancelled requests');
+      print('🎉 Service History loaded successfully: ${_serviceHistory.length} completed/rejected requests');
 
     } catch (e, stackTrace) {
       print('❌ Error loading service history: $e');
@@ -192,6 +313,34 @@ class _EnhancedHistoryScreenState extends State<EnhancedHistoryScreen> {
       print('⚠️ Error getting field "$field": $e');
       return defaultValue;
     }
+  }
+
+  String _normalizeStatus(String status) {
+    final normalized = status.toLowerCase().trim();
+    if (normalized.contains('pending') || normalized == 'pending') {
+      return 'pending';
+    } else if (normalized.contains('process') || normalized == 'in process' || normalized == 'accepted' || normalized == 'confirmed') {
+      return 'in process';
+    } else if (normalized.contains('complete') || normalized == 'completed') {
+      return 'completed';
+    } else if (normalized.contains('reject') || normalized == 'rejected' || normalized == 'cancelled') {
+      return 'rejected';
+    }
+    return normalized;
+  }
+
+  double? _parseDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) {
+      try {
+        return double.parse(value);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
   }
 
   DateTime _parseTimestamp(dynamic timestamp) {
@@ -715,15 +864,43 @@ class ServiceDetailsBottomSheet extends StatelessWidget {
                       _buildDetailRow('Request ID', service.requestId),
                       _buildDetailRow('Service Type', service.serviceType),
                       _buildDetailRow('Status', _getStatusText(service.status)),
-                      _buildDetailRow('Garage', service.garageName),
-                      _buildDetailRow('Cost', service.cost),
-                      _buildDetailRow('Rating', '${service.rating} ⭐'),
+                      _buildDetailRow('Provider', service.garageName),
+                      _buildDetailRow('Rating', service.rating != 'N/A' ? '${service.rating} ⭐' : 'Not Rated'),
+                    ]),
+                    
+                    const SizedBox(height: 20),
+                    _buildDetailSection('Timeline', [
+                      _buildDetailRow('Requested On', DateFormat('MMM dd, yyyy • hh:mm a').format(service.createdAt)),
+                      if (service.additionalData['completedAt'] != null)
+                        _buildDetailRow('Completed On', DateFormat('MMM dd, yyyy • hh:mm a').format(service.additionalData['completedAt'] as DateTime)),
+                      if (service.additionalData['paidAt'] != null)
+                        _buildDetailRow('Paid On', DateFormat('MMM dd, yyyy • hh:mm a').format(service.additionalData['paidAt'] as DateTime)),
+                    ]),
+                    
+                    const SizedBox(height: 20),
+                    _buildDetailSection('Payment & Pricing', [
+                      if (service.additionalData['serviceAmount'] != null && service.additionalData['serviceAmount'] > 0)
+                        _buildDetailRow('Service Amount', '₹${(service.additionalData['serviceAmount'] as double).toStringAsFixed(2)}'),
+                      if (service.additionalData['taxAmount'] != null && service.additionalData['taxAmount'] > 0)
+                        _buildDetailRow('GST (18%)', '₹${(service.additionalData['taxAmount'] as double).toStringAsFixed(2)}'),
+                      if (service.additionalData['totalAmount'] != null && service.additionalData['totalAmount'] > 0)
+                        _buildDetailRow('Total Amount', '₹${(service.additionalData['totalAmount'] as double).toStringAsFixed(2)}', isHighlight: true)
+                      else
+                        _buildDetailRow('Total Amount', service.cost, isHighlight: true),
+                      if (service.additionalData['paymentStatus'] != null)
+                        _buildDetailRow('Payment Status', _capitalizeFirst(service.additionalData['paymentStatus'].toString())),
+                      if (service.additionalData['paymentMethod'] != null)
+                        _buildDetailRow('Payment Method', service.additionalData['paymentMethod'].toString()),
+                      if (service.additionalData['transactionId'] != null)
+                        _buildDetailRow('Transaction ID', service.additionalData['transactionId'].toString()),
+                      if (service.additionalData['upiTransactionId'] != null)
+                        _buildDetailRow('UPI Transaction ID', service.additionalData['upiTransactionId'].toString()),
                     ]),
                     
                     const SizedBox(height: 20),
                     _buildDetailSection('Schedule & Location', [
-                      _buildDetailRow('Date', service.preferredDate),
-                      _buildDetailRow('Time', service.preferredTime),
+                      _buildDetailRow('Preferred Date', service.preferredDate),
+                      _buildDetailRow('Preferred Time', service.preferredTime),
                       _buildDetailRow('Location', service.location),
                     ]),
                     
@@ -850,7 +1027,7 @@ class ServiceDetailsBottomSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
+  Widget _buildDetailRow(String label, String value, {bool isHighlight = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
@@ -888,10 +1065,10 @@ class ServiceDetailsBottomSheet extends StatelessWidget {
     
     if (statusLower == 'completed') {
       return 'Completed';
-    } else if (statusLower == 'cancelled') {
-      return 'Cancelled';
-    } else if (statusLower.contains('progress')) {
-      return 'In Progress';
+    } else if (statusLower == 'cancelled' || statusLower == 'rejected') {
+      return 'Rejected';
+    } else if (statusLower.contains('progress') || statusLower == 'in process') {
+      return 'In Process';
     } else if (statusLower.contains('confirm')) {
       return 'Confirmed';
     } else if (statusLower == 'pending') {
@@ -899,6 +1076,11 @@ class ServiceDetailsBottomSheet extends StatelessWidget {
     } else {
       return status;
     }
+  }
+
+  String _capitalizeFirst(String text) {
+    if (text.isEmpty) return text;
+    return text[0].toUpperCase() + text.substring(1);
   }
 }
 
@@ -923,6 +1105,7 @@ class ServiceHistory {
   final String vehicleModel;
   final String fuelType;
   final String vehicleType;
+  Map<String, dynamic> additionalData;
 
   ServiceHistory({
     required this.id,
@@ -945,5 +1128,6 @@ class ServiceHistory {
     required this.vehicleModel,
     required this.fuelType,
     required this.vehicleType,
-  });
+    Map<String, dynamic>? additionalData,
+  }) : additionalData = additionalData ?? {};
 }

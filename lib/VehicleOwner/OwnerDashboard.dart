@@ -4968,9 +4968,13 @@ import 'package:smart_road_app/VehicleOwner/InsuranceRequest.dart';
 import 'package:smart_road_app/VehicleOwner/ProfilePage.dart';
 import 'package:smart_road_app/VehicleOwner/SpareParts.dart';
 import 'package:smart_road_app/VehicleOwner/ai.dart';
+import 'package:smart_road_app/VehicleOwner/TowRequest.dart';
+import 'package:smart_road_app/screens/payment/payment_options_screen.dart';
 import 'package:smart_road_app/controller/sharedprefrence.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:smart_road_app/VehicleOwner/nearby_tow_provider_screen.dart';
@@ -6294,7 +6298,7 @@ class EnhancedHomeScreenWithInsurance extends StatelessWidget {
 }
 
 // Enhanced Services Screen
-class EnhancedServicesScreen extends StatelessWidget {
+class EnhancedServicesScreen extends StatefulWidget {
   final Position? currentPosition;
   final String currentLocation;
   final String locationAddress;
@@ -6321,6 +6325,135 @@ class EnhancedServicesScreen extends StatelessWidget {
   });
 
   @override
+  State<EnhancedServicesScreen> createState() => _EnhancedServicesScreenState();
+}
+
+class _EnhancedServicesScreenState extends State<EnhancedServicesScreen> {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  List<Map<String, dynamic>> _allServices = [];
+  bool _isLoadingServices = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAllServices();
+  }
+
+  Future<void> _loadAllServices() async {
+    if (widget.userEmail == null || widget.userEmail!.isEmpty) {
+      setState(() {
+        _isLoadingServices = false;
+      });
+      return;
+    }
+
+    try {
+      setState(() {
+        _isLoadingServices = true;
+      });
+
+      List<Map<String, dynamic>> allServices = [];
+
+      // Load Garage Requests
+      try {
+        final garageRequestsSnapshot = await _firestore
+            .collection('owner')
+            .doc(widget.userEmail!)
+            .collection('garagerequest')
+            .orderBy('createdAt', descending: true)
+            .get();
+
+        for (var doc in garageRequestsSnapshot.docs) {
+          final data = doc.data();
+          allServices.add({
+            ...data,
+            'id': doc.id,
+            'serviceType': 'Garage Service',
+            'requestId': data['requestId'] ?? doc.id,
+            'status': _normalizeStatus(data['status'] ?? 'pending'),
+          });
+        }
+      } catch (e) {
+        print('Error loading garage requests: $e');
+      }
+
+      // Load Tow Requests
+      try {
+        final towRequestsSnapshot = await _firestore
+            .collection('owner')
+            .doc(widget.userEmail!)
+            .collection('towrequest')
+            .orderBy('createdAt', descending: true)
+            .get();
+
+        for (var doc in towRequestsSnapshot.docs) {
+          final data = doc.data();
+          allServices.add({
+            ...data,
+            'id': doc.id,
+            'serviceType': 'Tow Service',
+            'requestId': data['requestId'] ?? doc.id,
+            'status': _normalizeStatus(data['status'] ?? 'pending'),
+          });
+        }
+      } catch (e) {
+        print('Error loading tow requests: $e');
+      }
+
+      // Filter to show only current services (pending or in process)
+      final currentServices = allServices.where((service) {
+        final status = service['status'] as String;
+        return status == 'pending' || status == 'in process';
+      }).toList();
+
+      // Sort by creation date (newest first)
+      currentServices.sort((a, b) {
+        final aDate = _parseTimestamp(a['createdAt']);
+        final bDate = _parseTimestamp(b['createdAt']);
+        return bDate.compareTo(aDate);
+      });
+
+      setState(() {
+        _allServices = currentServices;
+        _isLoadingServices = false;
+      });
+    } catch (e) {
+      print('Error loading all services: $e');
+      setState(() {
+        _isLoadingServices = false;
+      });
+    }
+  }
+
+  String _normalizeStatus(String status) {
+    final normalized = status.toLowerCase().trim();
+    if (normalized.contains('pending') || normalized == 'pending') {
+      return 'pending';
+    } else if (normalized.contains('process') || normalized == 'in process' || normalized == 'accepted' || normalized == 'confirmed') {
+      return 'in process';
+    } else if (normalized.contains('complete') || normalized == 'completed') {
+      return 'completed';
+    } else if (normalized.contains('reject') || normalized == 'rejected' || normalized == 'cancelled') {
+      return 'rejected';
+    }
+    return normalized;
+  }
+
+  DateTime _parseTimestamp(dynamic timestamp) {
+    if (timestamp == null) return DateTime.now();
+    if (timestamp is Timestamp) return timestamp.toDate();
+    if (timestamp is DateTime) return timestamp;
+    if (timestamp is String) {
+      try {
+        return DateTime.parse(timestamp);
+      } catch (e) {
+        return DateTime.now();
+      }
+    }
+    return DateTime.now();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
     
@@ -6335,14 +6468,64 @@ class EnhancedServicesScreen extends StatelessWidget {
                 SizedBox(height: 20),
                 _buildEmergencyServices(context, localizations),
                 SizedBox(height: 20),
-                Text(
-                  localizations?.translate('all_services') ?? 'All Services',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      localizations?.translate('current_service') ?? 'Current Service',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.refresh),
+                      onPressed: _loadAllServices,
+                      tooltip: 'Refresh',
+                    ),
+                  ],
                 ),
+                SizedBox(height: 12),
               ],
             ),
           ),
         ),
+        if (_isLoadingServices)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.all(32),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          )
+        else if (_allServices.isEmpty)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.all(32),
+              child: Center(
+                child: Column(
+                  children: [
+                    Icon(Icons.inbox, size: 64, color: Colors.grey[400]),
+                    SizedBox(height: 16),
+                    Text(
+                      'No active services',
+                      style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'All completed services are shown in History',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          )
+        else
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                return _buildServiceCard(_allServices[index], localizations);
+              },
+              childCount: _allServices.length,
+            ),
+          ),
       ],
     );
   }
@@ -6374,7 +6557,7 @@ class EnhancedServicesScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (currentPosition != null)
+                if (widget.currentPosition != null)
                   Icon(
                     Icons.check_circle,
                     color: Colors.green,
@@ -6383,7 +6566,7 @@ class EnhancedServicesScreen extends StatelessWidget {
               ],
             ),
             SizedBox(height: 8),
-            locationLoading
+            widget.locationLoading
                 ? Row(
                     children: [
                       SizedBox(
@@ -6405,18 +6588,18 @@ class EnhancedServicesScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        currentLocation,
+                        widget.currentLocation,
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.grey[600],
                           fontFamily: 'Monospace',
                         ),
                       ),
-                      if (locationAddress.isNotEmpty)
+                      if (widget.locationAddress.isNotEmpty)
                         Padding(
                           padding: EdgeInsets.only(top: 4),
                           child: Text(
-                            locationAddress,
+                            widget.locationAddress,
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.grey[700],
@@ -6430,7 +6613,7 @@ class EnhancedServicesScreen extends StatelessWidget {
                   ),
             SizedBox(height: 8),
             ElevatedButton.icon(
-              onPressed: onRefreshLocation,
+              onPressed: widget.onRefreshLocation,
               icon: Icon(Icons.refresh, size: 16),
               label: Text(localizations?.translate('refresh_location') ?? 'Refresh Location'),
               style: ElevatedButton.styleFrom(
@@ -6468,7 +6651,7 @@ class EnhancedServicesScreen extends StatelessWidget {
                     title: localizations?.translate('tow_service') ?? 'Tow Service',
                     subtitle: localizations?.translate('vehicle_towing') ?? 'Vehicle towing',
                     color: Color(0xFF6D28D9),
-                    onTap: onTowServiceTap,
+                    onTap: widget.onTowServiceTap,
                   ),
                 ),
                 SizedBox(width: 12),
@@ -6478,7 +6661,7 @@ class EnhancedServicesScreen extends StatelessWidget {
                     title: localizations?.translate('garage_service') ?? 'Garage Service',
                     subtitle: localizations?.translate('mechanic_repair') ?? 'Mechanic & repair',
                     color: Color(0xFFF59E0B),
-                    onTap: onGarageServiceTap,
+                    onTap: widget.onGarageServiceTap,
                   ),
                 ),
               ],
@@ -6535,6 +6718,518 @@ class EnhancedServicesScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildServiceCard(Map<String, dynamic> service, AppLocalizations? localizations) {
+    final serviceType = service['serviceType'] ?? 'Service';
+    final status = service['status'] ?? 'pending';
+    final requestId = service['requestId'] ?? service['id'] ?? 'N/A';
+    final vehicleNumber = service['vehicleNumber'] ?? 'Not Specified';
+    final createdAt = _parseTimestamp(service['createdAt']);
+    final dateFormat = DateFormat('MMM dd, yyyy • hh:mm a');
+    
+    // Get service-specific details
+    String? providerName;
+    String? serviceDescription;
+    
+    if (serviceType == 'Garage Service') {
+      providerName = service['garageName'] ?? service['assignedGarage'] ?? 'Not Assigned';
+      serviceDescription = service['problemDescription'] ?? 
+                          service['description'] ?? 
+                          service['serviceType'] ?? 
+                          'Garage Service';
+    } else if (serviceType == 'Tow Service') {
+      providerName = service['providerName'] ?? service['towProviderName'] ?? 'Not Assigned';
+      serviceDescription = service['description'] ?? 
+                          service['issue'] ?? 
+                          'Tow Service';
+    }
+
+    return Card(
+      margin: EdgeInsets.only(bottom: 12, left: 16, right: 16),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        onTap: () {
+          // Navigate to detailed service view
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => CurrentServiceDetailScreen(
+                service: service,
+                userEmail: widget.userEmail ?? '',
+              ),
+            ),
+          );
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Service Type and Status Tags
+              Row(
+                children: [
+                  _buildServiceTypeTag(serviceType),
+                  SizedBox(width: 8),
+                  _buildStatusTag(status),
+                  Spacer(),
+                  Text(
+                    dateFormat.format(createdAt),
+                    style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+              SizedBox(height: 12),
+              // Request ID
+              Text(
+                'Request ID: $requestId',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey[700],
+                ),
+              ),
+              SizedBox(height: 8),
+              // Vehicle Number
+              Row(
+                children: [
+                  Icon(Icons.directions_car, size: 16, color: Colors.grey[600]),
+                  SizedBox(width: 4),
+                  Text(
+                    vehicleNumber,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 8),
+              // Service Description
+              if (serviceDescription != null)
+                Text(
+                  serviceDescription,
+                  style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              SizedBox(height: 8),
+              // Provider Name
+              if (providerName != null)
+                Row(
+                  children: [
+                    Icon(Icons.business, size: 16, color: Colors.grey[600]),
+                    SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        providerName,
+                        style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildServiceTypeTag(String serviceType) {
+    final isGarage = serviceType == 'Garage Service';
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: isGarage ? Color(0xFFF59E0B).withOpacity(0.15) : Color(0xFF6D28D9).withOpacity(0.15),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: isGarage ? Color(0xFFF59E0B) : Color(0xFF6D28D9),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isGarage ? Icons.build_circle : Icons.local_shipping,
+            size: 14,
+            color: isGarage ? Color(0xFFF59E0B) : Color(0xFF6D28D9),
+          ),
+          SizedBox(width: 4),
+          Text(
+            serviceType,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: isGarage ? Color(0xFFF59E0B) : Color(0xFF6D28D9),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusTag(String status) {
+    Color backgroundColor;
+    Color textColor;
+    IconData icon;
+    String displayText;
+
+    switch (status.toLowerCase()) {
+      case 'pending':
+        backgroundColor = Colors.orange.withOpacity(0.15);
+        textColor = Colors.orange[800]!;
+        icon = Icons.pending;
+        displayText = 'Pending';
+        break;
+      case 'in process':
+        backgroundColor = Colors.blue.withOpacity(0.15);
+        textColor = Colors.blue[800]!;
+        icon = Icons.hourglass_empty;
+        displayText = 'In Process';
+        break;
+      case 'completed':
+        backgroundColor = Colors.green.withOpacity(0.15);
+        textColor = Colors.green[800]!;
+        icon = Icons.check_circle;
+        displayText = 'Completed';
+        break;
+      case 'rejected':
+        backgroundColor = Colors.red.withOpacity(0.15);
+        textColor = Colors.red[800]!;
+        icon = Icons.cancel;
+        displayText = 'Rejected';
+        break;
+      default:
+        backgroundColor = Colors.grey.withOpacity(0.15);
+        textColor = Colors.grey[800]!;
+        icon = Icons.help_outline;
+        displayText = status.toUpperCase();
+    }
+
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: textColor, width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: textColor),
+          SizedBox(width: 4),
+          Text(
+            displayText,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: textColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+// Current Service Detail Screen
+class CurrentServiceDetailScreen extends StatelessWidget {
+  final Map<String, dynamic> service;
+  final String userEmail;
+
+  const CurrentServiceDetailScreen({
+    super.key,
+    required this.service,
+    required this.userEmail,
+  });
+
+  DateTime _parseTimestamp(dynamic timestamp) {
+    if (timestamp == null) return DateTime.now();
+    if (timestamp is Timestamp) return timestamp.toDate();
+    if (timestamp is DateTime) return timestamp;
+    if (timestamp is String) {
+      try {
+        return DateTime.parse(timestamp);
+      } catch (e) {
+        return DateTime.now();
+      }
+    }
+    return DateTime.now();
+  }
+
+  double? _parseDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) {
+      try {
+        return double.parse(value);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  String _capitalizeFirst(String text) {
+    if (text.isEmpty) return text;
+    return text[0].toUpperCase() + text.substring(1);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final serviceType = service['serviceType'] ?? 'Service';
+    final status = service['status'] ?? 'pending';
+    final requestId = service['requestId'] ?? service['id'] ?? 'N/A';
+    final vehicleNumber = service['vehicleNumber'] ?? 'Not Specified';
+    final createdAt = _parseTimestamp(service['createdAt']);
+    final dateFormat = DateFormat('MMM dd, yyyy • hh:mm a');
+    
+    String? providerName;
+    String? serviceDescription;
+    double? estimatedPrice;
+    double? serviceAmount;
+    double? taxAmount;
+    double? totalAmount;
+    
+    if (serviceType == 'Garage Service') {
+      providerName = service['garageName'] ?? service['assignedGarage'] ?? 'Not Assigned';
+      serviceDescription = service['problemDescription'] ?? 
+                          service['description'] ?? 
+                          'Garage Service';
+      estimatedPrice = _parseDouble(service['estimatedPrice']);
+      serviceAmount = _parseDouble(service['serviceAmount']);
+      taxAmount = _parseDouble(service['taxAmount']);
+      totalAmount = _parseDouble(service['totalAmount']);
+    } else if (serviceType == 'Tow Service') {
+      providerName = service['providerName'] ?? service['towProviderName'] ?? 'Not Assigned';
+      serviceDescription = service['description'] ?? 
+                          service['issue'] ?? 
+                          'Tow Service';
+      estimatedPrice = _parseDouble(service['estimatedPrice']);
+      serviceAmount = _parseDouble(service['serviceAmount']);
+      taxAmount = _parseDouble(service['taxAmount']);
+      totalAmount = _parseDouble(service['totalAmount']);
+    }
+
+    final paymentStatus = service['paymentStatus'] ?? 'pending';
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Service Details'),
+        backgroundColor: serviceType == 'Garage Service' ? Color(0xFFF59E0B) : Color(0xFF6D28D9),
+        foregroundColor: Colors.white,
+      ),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                _buildServiceTypeTag(serviceType),
+                SizedBox(width: 8),
+                _buildStatusTag(status),
+              ],
+            ),
+            SizedBox(height: 24),
+            _buildDetailCard('Request Information', [
+              _buildDetailRow('Request ID', requestId),
+              _buildDetailRow('Service Type', serviceType),
+              _buildDetailRow('Status', _capitalizeFirst(status)),
+              _buildDetailRow('Requested On', dateFormat.format(createdAt)),
+            ]),
+            SizedBox(height: 16),
+            _buildDetailCard('Vehicle Information', [
+              _buildDetailRow('Vehicle Number', vehicleNumber),
+              _buildDetailRow('Vehicle Model', service['vehicleModel'] ?? 'Not Specified'),
+              _buildDetailRow('Vehicle Type', service['vehicleType'] ?? 'Not Specified'),
+              _buildDetailRow('Fuel Type', service['fuelType'] ?? 'Not Specified'),
+            ]),
+            SizedBox(height: 16),
+            _buildDetailCard('Provider Information', [
+              _buildDetailRow('Provider Name', providerName ?? 'Not Assigned'),
+              if (service['phone'] != null)
+                _buildDetailRow('Contact', service['phone'].toString()),
+              if (service['location'] != null)
+                _buildDetailRow('Location', service['location'].toString()),
+            ]),
+            SizedBox(height: 16),
+            if (serviceDescription != null)
+              _buildDetailCard('Service Description', [
+                Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: Text(serviceDescription, style: TextStyle(fontSize: 14, color: Colors.grey[700])),
+                ),
+              ]),
+            if (serviceDescription != null) SizedBox(height: 16),
+            _buildDetailCard('Pricing Information', [
+              if (estimatedPrice != null && estimatedPrice! > 0)
+                _buildDetailRow('Estimated Price', '₹${estimatedPrice!.toStringAsFixed(2)}', isHighlight: true),
+              if (serviceAmount != null && serviceAmount! > 0) ...[
+                _buildDetailRow('Service Amount', '₹${serviceAmount!.toStringAsFixed(2)}'),
+                if (taxAmount != null && taxAmount! > 0)
+                  _buildDetailRow('GST (18%)', '₹${taxAmount!.toStringAsFixed(2)}'),
+                if (totalAmount != null && totalAmount! > 0)
+                  _buildDetailRow('Total Amount', '₹${totalAmount!.toStringAsFixed(2)}', isHighlight: true),
+              ] else if (estimatedPrice == null || estimatedPrice! == 0) ...[
+                _buildDetailRow('Estimated Price', 'Will be updated by provider', isHighlight: false),
+              ],
+              if (paymentStatus != null && paymentStatus.toString() != 'pending')
+                _buildDetailRow('Payment Status', _capitalizeFirst(paymentStatus.toString())),
+            ]),
+            SizedBox(height: 16),
+            if (service['preferredDate'] != null || service['preferredTime'] != null)
+              _buildDetailCard('Schedule', [
+                if (service['preferredDate'] != null)
+                  _buildDetailRow('Preferred Date', service['preferredDate'].toString()),
+                if (service['preferredTime'] != null)
+                  _buildDetailRow('Preferred Time', service['preferredTime'].toString()),
+              ]),
+            if (service['preferredDate'] != null || service['preferredTime'] != null) SizedBox(height: 16),
+            if (status == 'completed' && paymentStatus.toString() == 'pending' && serviceAmount != null && serviceAmount! > 0)
+              Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => PaymentOptionsScreen(
+                            requestId: requestId,
+                            serviceType: serviceType == 'Garage Service' ? 'garage' : 'tow',
+                            amount: serviceAmount!,
+                            providerUpiId: service['providerUpiId']?.toString() ?? '',
+                            providerEmail: (service['garageEmail'] ?? service['providerEmail'] ?? '').toString(),
+                            customerEmail: userEmail,
+                            providerName: providerName,
+                          ),
+                        ),
+                      );
+                    },
+                    icon: Icon(Icons.payment),
+                    label: Text('Pay ₹${totalAmount?.toStringAsFixed(2) ?? serviceAmount!.toStringAsFixed(2)}'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailCard(String title, List<Widget> children) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF6D28D9))),
+            SizedBox(height: 12),
+            ...children,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value, {bool isHighlight = false}) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text('$label:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.grey[700])),
+          ),
+          Expanded(
+            child: Text(value, style: TextStyle(fontSize: 14, fontWeight: isHighlight ? FontWeight.bold : FontWeight.normal, color: isHighlight ? Color(0xFF6D28D9) : Colors.black87)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildServiceTypeTag(String serviceType) {
+    final isGarage = serviceType == 'Garage Service';
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: isGarage ? Color(0xFFF59E0B).withOpacity(0.15) : Color(0xFF6D28D9).withOpacity(0.15),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: isGarage ? Color(0xFFF59E0B) : Color(0xFF6D28D9), width: 1.5),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(isGarage ? Icons.build_circle : Icons.local_shipping, size: 16, color: isGarage ? Color(0xFFF59E0B) : Color(0xFF6D28D9)),
+          SizedBox(width: 6),
+          Text(serviceType, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: isGarage ? Color(0xFFF59E0B) : Color(0xFF6D28D9))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusTag(String status) {
+    Color backgroundColor;
+    Color textColor;
+    IconData icon;
+    String displayText;
+
+    switch (status.toLowerCase()) {
+      case 'pending':
+        backgroundColor = Colors.orange.withOpacity(0.15);
+        textColor = Colors.orange[800]!;
+        icon = Icons.pending;
+        displayText = 'Pending';
+        break;
+      case 'in process':
+        backgroundColor = Colors.blue.withOpacity(0.15);
+        textColor = Colors.blue[800]!;
+        icon = Icons.hourglass_empty;
+        displayText = 'In Process';
+        break;
+      default:
+        backgroundColor = Colors.grey.withOpacity(0.15);
+        textColor = Colors.grey[800]!;
+        icon = Icons.help_outline;
+        displayText = _capitalizeFirst(status);
+    }
+
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: textColor, width: 1.5),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: textColor),
+          SizedBox(width: 6),
+          Text(displayText, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textColor)),
+        ],
       ),
     );
   }

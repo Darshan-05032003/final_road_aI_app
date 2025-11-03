@@ -1317,7 +1317,7 @@ class _GarageDashboardState extends State<GarageDashboard> {
     'Spare Parts',
     'Bookings',
     'Inventory',
-    'Garage Request'
+    'Request'
   ];
 
   @override
@@ -1571,7 +1571,7 @@ class _GarageDashboardState extends State<GarageDashboard> {
       case 3:
         return localizations?.translate('inventory') ?? 'Inventory';
       case 4:
-        return localizations?.translate('garage_request') ?? 'Garage Request';
+        return localizations?.translate('request') ?? 'Request';
       default:
         return _screenTitles[index];
     }
@@ -1655,7 +1655,7 @@ class _GarageDashboardState extends State<GarageDashboard> {
                   _buildDrawerItem(Icons.inventory_2, localizations?.translate('spare_parts') ?? 'Spare Parts', 1, localizations),
                   _buildDrawerItem(Icons.book_online, localizations?.translate('bookings') ?? 'Bookings', 2, localizations, badgeCount: pendingBookings),
                   _buildDrawerItem(Icons.warehouse, localizations?.translate('inventory') ?? 'Inventory', 3, localizations),
-                  _buildDrawerItem(Icons.build_circle, localizations?.translate('garage_request') ?? 'Garage Request', -1, localizations, onTap: _navigateToServiceRequest),
+                  _buildDrawerItem(Icons.build_circle, localizations?.translate('request') ?? 'Request', -1, localizations, onTap: _navigateToServiceRequest),
                   _buildDrawerItem(Icons.person, localizations?.profile ?? 'Profile', -1, localizations, onTap: _navigateToProfile),
                   _buildDrawerItem(Icons.analytics, localizations?.translate('sales_reports') ?? 'Sales Reports', -1, localizations, onTap: _navigateToSalesReports),
                   _buildDrawerItem(Icons.document_scanner, localizations?.translate('documents') ?? 'Documents', -1, localizations, onTap: _navigateToDocuments),
@@ -1812,7 +1812,7 @@ class _GarageDashboardState extends State<GarageDashboard> {
             ),
             BottomNavigationBarItem(
               icon: const Icon(Icons.person),
-              label: localizations?.translate('garage_request') ?? 'Garage Request',
+              label: localizations?.translate('request') ?? 'Request',
             ),
           ],
         ),
