@@ -1,11 +1,15 @@
 import 'package:smart_road_app/Splashscreen.dart';
+import 'package:smart_road_app/Roleselection.dart';
 import 'package:smart_road_app/ToeProvider/notificatinservice.dart';
+import 'package:smart_road_app/services/enhanced_notification_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_road_app/core/language/language_service.dart';
 import 'package:smart_road_app/core/language/app_localizations.dart';
+import 'package:smart_road_app/services/theme_service.dart';
+import 'package:smart_road_app/screens/notifications/notification_history_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,8 +37,8 @@ void main() async {
     // Continue even if there's an error (Firebase might be auto-initialized)
   }
 
-  // Initialize Firebase Messaging after Firebase is ready
-  await FirebaseMessagingHandler.initialize();
+  // Initialize Enhanced Notification Service (includes background handler)
+  await EnhancedNotificationService.initialize();
 
   runApp(VoiceAssistantApp());
 }
@@ -47,14 +51,22 @@ class VoiceAssistantApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (context) => LanguageService()),
+        ChangeNotifierProvider(create: (context) => ThemeService()),
       ],
-      child: Consumer<LanguageService>(
-        builder: (context, languageService, child) {
+      child: Consumer2<LanguageService, ThemeService>(
+        builder: (context, languageService, themeService, child) {
           return MaterialApp(
-            title: 'Personal AI Agent',
-            home: SplashScreen(),
+            title: 'Smart Road App',
+            home: const SplashScreen(),
             debugShowCheckedModeBanner: false,
             locale: languageService.currentLocale,
+            theme: themeService.getLightTheme(),
+            darkTheme: themeService.getDarkTheme(),
+            themeMode: themeService.themeMode,
+            routes: {
+              '/role-selection': (context) => const RoleSelectionScreen(),
+              '/notifications': (context) => const NotificationHistoryScreen(),
+            },
             localizationsDelegates: [
               AppLocalizationsDelegate(),
               GlobalMaterialLocalizations.delegate,

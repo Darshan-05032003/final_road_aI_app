@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:smart_road_app/services/profile_picture_service.dart';
+import 'dart:io';
 
 class ProfileDataFetcher {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -138,6 +140,7 @@ class EnhancedProfileScreen extends StatefulWidget {
 
 class _EnhancedProfileScreenState extends State<EnhancedProfileScreen> {
   final ProfileDataFetcher _dataFetcher = ProfileDataFetcher();
+  final ProfilePictureService _profilePictureService = ProfilePictureService();
   final List<String> _emergencyContacts = [];
   
   late TextEditingController _nameController;
@@ -150,6 +153,8 @@ class _EnhancedProfileScreenState extends State<EnhancedProfileScreen> {
   Map<String, dynamic> _userData = {};
   bool _isLoading = true;
   bool _isEditing = false;
+  String? _profilePictureUrl;
+  File? _selectedImage;
 
   @override
   void initState() {
@@ -174,9 +179,16 @@ class _EnhancedProfileScreenState extends State<EnhancedProfileScreen> {
       });
 
       Map<String, dynamic> userData = await _dataFetcher.fetchUserProfileData();
+      final User? user = FirebaseAuth.instance.currentUser;
+      String? profileUrl;
+      
+      if (user != null) {
+        profileUrl = await _profilePictureService.getProfilePictureUrl('owner', user.email ?? '');
+      }
       
       setState(() {
         _userData = userData;
+        _profilePictureUrl = profileUrl;
         _updateControllersWithUserData();
         _isLoading = false;
       });
@@ -187,6 +199,42 @@ class _EnhancedProfileScreenState extends State<EnhancedProfileScreen> {
         _isLoading = false;
       });
       _showErrorSnackBar('Failed to load profile data');
+    }
+  }
+
+  Future<void> _uploadProfilePicture() async {
+    try {
+      final File? imageFile = await _profilePictureService.showImageSourceDialog(context);
+      if (imageFile == null) return;
+
+      setState(() {
+        _isLoading = true;
+        _selectedImage = imageFile;
+      });
+
+      final User? user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw Exception('User not logged in');
+      }
+
+      final String? url = await _profilePictureService.uploadProfilePicture(
+        imageFile,
+        'owner',
+        user.email ?? '',
+      );
+
+      if (url != null) {
+        setState(() {
+          _profilePictureUrl = url;
+          _isLoading = false;
+        });
+        _showSuccessSnackBar('Profile picture uploaded successfully!');
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      _showErrorSnackBar('Failed to upload profile picture: $e');
     }
   }
 
@@ -256,38 +304,70 @@ class _EnhancedProfileScreenState extends State<EnhancedProfileScreen> {
           Stack(
             alignment: Alignment.bottomRight,
             children: [
-              Container(
-                width: 100,
-                height: 100,
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF6D28D9), Color(0xFF8B5CF6)],
+              GestureDetector(
+                onTap: _uploadProfilePicture,
+                child: Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    gradient: _profilePictureUrl == null
+                        ? const LinearGradient(
+                            colors: [Color(0xFF6D28D9), Color(0xFF8B5CF6)],
+                          )
+                        : null,
+                    color: _profilePictureUrl != null ? null : Colors.transparent,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.3),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color(0xFF6D28D9),
-                      blurRadius: 10,
-                      offset: Offset(0, 4),
-                    ),
-                  ],
+                  child: _profilePictureUrl != null
+                      ? ClipOval(
+                          child: Image.network(
+                            _profilePictureUrl!,
+                            fit: BoxFit.cover,
+                            width: 100,
+                            height: 100,
+                            errorBuilder: (context, error, stackTrace) => const Icon(
+                              Icons.person_rounded,
+                              size: 50,
+                              color: Colors.white,
+                            ),
+                          ),
+                        )
+                      : _selectedImage != null
+                          ? ClipOval(
+                              child: Image.file(
+                                _selectedImage!,
+                                fit: BoxFit.cover,
+                                width: 100,
+                                height: 100,
+                              ),
+                            )
+                          : const Icon(Icons.person_rounded, size: 50, color: Colors.white),
                 ),
-                child: const Icon(Icons.person_rounded, size: 50, color: Colors.white),
               ),
-              Container(
-                width: 30,
-                height: 30,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.3),
-                      blurRadius: 5,
-                    ),
-                  ],
+              GestureDetector(
+                onTap: _uploadProfilePicture,
+                child: Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.3),
+                        blurRadius: 5,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.camera_alt_rounded, size: 16, color: Color(0xFF6D28D9)),
                 ),
-                child: const Icon(Icons.camera_alt_rounded, size: 16, color: Color(0xFF6D28D9)),
               ),
             ],
           ),

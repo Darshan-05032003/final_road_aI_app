@@ -472,6 +472,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:smart_road_app/services/account_service.dart';
+import 'package:smart_road_app/services/theme_service.dart';
+import 'package:provider/provider.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -489,13 +492,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // Settings states
   bool _notificationsEnabled = true;
+  bool _pushNotificationsEnabled = true;
+  bool _emailNotificationsEnabled = true;
+  bool _smsNotificationsEnabled = false;
+  bool _orderNotificationsEnabled = true;
+  bool _promotionalNotificationsEnabled = false;
   bool _biometricEnabled = false;
   bool _darkModeEnabled = false;
   String _language = 'English';
   String _currency = 'INR - Indian Rupee';
 
-  final List<String> _languages = ['English', 'Hindi', 'Spanish', 'French', 'German'];
+  final List<Map<String, String>> _languages = [
+    {'name': 'English', 'code': 'en', 'flag': '🇬🇧'},
+    {'name': 'Hindi', 'code': 'hi', 'flag': '🇮🇳'},
+    {'name': 'Spanish', 'code': 'es', 'flag': '🇪🇸'},
+    {'name': 'French', 'code': 'fr', 'flag': '🇫🇷'},
+    {'name': 'German', 'code': 'de', 'flag': '🇩🇪'},
+  ];
   final List<String> _currencies = ['INR - Indian Rupee', 'USD - US Dollar', 'EUR - Euro', 'GBP - British Pound'];
+  
+  final AccountService _accountService = AccountService();
 
   @override
   void initState() {
@@ -534,6 +550,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
+      _pushNotificationsEnabled = prefs.getBool('push_notifications_enabled') ?? true;
+      _emailNotificationsEnabled = prefs.getBool('email_notifications_enabled') ?? true;
+      _smsNotificationsEnabled = prefs.getBool('sms_notifications_enabled') ?? false;
+      _orderNotificationsEnabled = prefs.getBool('order_notifications_enabled') ?? true;
+      _promotionalNotificationsEnabled = prefs.getBool('promotional_notifications_enabled') ?? false;
       _biometricEnabled = prefs.getBool('biometric_enabled') ?? false;
       _darkModeEnabled = prefs.getBool('dark_mode_enabled') ?? false;
       _language = prefs.getString('language') ?? 'English';
@@ -571,18 +592,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
             itemCount: _languages.length,
             itemBuilder: (context, index) {
               final language = _languages[index];
-              return RadioListTile<String>(
-                title: Text(language),
-                value: language,
-                groupValue: _language,
-                onChanged: (value) {
+              final isSelected = _language == language['name'];
+              return InkWell(
+                onTap: () {
                   setState(() {
-                    _language = value!;
+                    _language = language['name']!;
                   });
-                  _saveSetting('language', value);
+                  _saveSetting('language', language['name']);
                   Navigator.pop(context);
-                  _showSnackBar('Language changed to $value');
+                  _showSnackBar('Language changed to ${language['name']}');
                 },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: isSelected ? const Color(0xFF6D28D9).withOpacity(0.1) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        language['flag']!,
+                        style: const TextStyle(fontSize: 24),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          language['name']!,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            color: isSelected ? const Color(0xFF6D28D9) : null,
+                          ),
+                        ),
+                      ),
+                      if (isSelected)
+                        const Icon(Icons.check_circle, color: Color(0xFF6D28D9)),
+                    ],
+                  ),
+                ),
               );
             },
           ),
@@ -644,6 +691,186 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('Reset'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showChangePasswordDialog() {
+    final currentPasswordController = TextEditingController();
+    final newPasswordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+    bool isObscuredCurrent = true;
+    bool isObscuredNew = true;
+    bool isObscuredConfirm = true;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Change Password'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: currentPasswordController,
+                  obscureText: isObscuredCurrent,
+                  decoration: InputDecoration(
+                    labelText: 'Current Password',
+                    prefixIcon: const Icon(Icons.lock),
+                    suffixIcon: IconButton(
+                      icon: Icon(isObscuredCurrent ? Icons.visibility : Icons.visibility_off),
+                      onPressed: () {
+                        setDialogState(() {
+                          isObscuredCurrent = !isObscuredCurrent;
+                        });
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: newPasswordController,
+                  obscureText: isObscuredNew,
+                  decoration: InputDecoration(
+                    labelText: 'New Password',
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    suffixIcon: IconButton(
+                      icon: Icon(isObscuredNew ? Icons.visibility : Icons.visibility_off),
+                      onPressed: () {
+                        setDialogState(() {
+                          isObscuredNew = !isObscuredNew;
+                        });
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: confirmPasswordController,
+                  obscureText: isObscuredConfirm,
+                  decoration: InputDecoration(
+                    labelText: 'Confirm New Password',
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    suffixIcon: IconButton(
+                      icon: Icon(isObscuredConfirm ? Icons.visibility : Icons.visibility_off),
+                      onPressed: () {
+                        setDialogState(() {
+                          isObscuredConfirm = !isObscuredConfirm;
+                        });
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                currentPasswordController.dispose();
+                newPasswordController.dispose();
+                confirmPasswordController.dispose();
+                Navigator.pop(context);
+              },
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                if (newPasswordController.text != confirmPasswordController.text) {
+                  _showSnackBar('New passwords do not match');
+                  return;
+                }
+                if (newPasswordController.text.length < 6) {
+                  _showSnackBar('Password must be at least 6 characters');
+                  return;
+                }
+
+                try {
+                  await _accountService.changePassword(
+                    currentPasswordController.text,
+                    newPasswordController.text,
+                  );
+                  currentPasswordController.dispose();
+                  newPasswordController.dispose();
+                  confirmPasswordController.dispose();
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    _showSnackBar('Password changed successfully');
+                  }
+                } catch (e) {
+                  _showSnackBar('Failed to change password: ${e.toString()}');
+                }
+              },
+              child: const Text('Change Password'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showDeleteAccountDialog() {
+    final confirmTextController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Account', style: TextStyle(color: Colors.red)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'This action cannot be undone. All your data will be permanently deleted.',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            const Text('Type "DELETE" to confirm:'),
+            const SizedBox(height: 8),
+            TextField(
+              controller: confirmTextController,
+              decoration: const InputDecoration(
+                hintText: 'DELETE',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              confirmTextController.dispose();
+              Navigator.pop(context);
+            },
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              if (confirmTextController.text != 'DELETE') {
+                _showSnackBar('Please type DELETE to confirm');
+                return;
+              }
+
+              try {
+                final userRole = await _accountService.getUserRole() ?? 'user';
+                await _accountService.deleteAccount(_user?.email ?? '', userRole);
+                confirmTextController.dispose();
+                
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  // Navigate to login screen or show success message
+                  Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+                  _showSnackBar('Account deleted successfully');
+                }
+              } catch (e) {
+                _showSnackBar('Failed to delete account: ${e.toString()}');
+              }
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete Account'),
           ),
         ],
       ),
@@ -732,35 +959,88 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 16),
             SwitchListTile(
-              title: const Text('Push Notifications'),
-              subtitle: const Text('Receive alerts and updates'),
+              title: const Text('Enable All Notifications'),
+              subtitle: const Text('Master switch for all notifications'),
               value: _notificationsEnabled,
               onChanged: (value) {
                 setState(() {
                   _notificationsEnabled = value;
+                  if (!value) {
+                    _pushNotificationsEnabled = false;
+                    _emailNotificationsEnabled = false;
+                    _smsNotificationsEnabled = false;
+                    _orderNotificationsEnabled = false;
+                    _promotionalNotificationsEnabled = false;
+                  }
                 });
                 _saveSetting('notifications_enabled', value);
               },
               activeThumbColor: const Color(0xFF6D28D9),
             ),
-            SwitchListTile(
-              title: const Text('Email Notifications'),
-              subtitle: const Text('Receive policy updates via email'),
-              value: true,
-              onChanged: (value) {
-                _showSnackBar('Email notifications $value');
-              },
-              activeThumbColor: const Color(0xFF6D28D9),
-            ),
-            SwitchListTile(
-              title: const Text('SMS Notifications'),
-              subtitle: const Text('Receive important alerts via SMS'),
-              value: false,
-              onChanged: (value) {
-                _showSnackBar('SMS notifications $value');
-              },
-              activeThumbColor: const Color(0xFF6D28D9),
-            ),
+            if (_notificationsEnabled) ...[
+              const Divider(),
+              SwitchListTile(
+                title: const Text('Push Notifications'),
+                subtitle: const Text('Receive alerts and updates'),
+                value: _pushNotificationsEnabled,
+                onChanged: (value) {
+                  setState(() {
+                    _pushNotificationsEnabled = value;
+                  });
+                  _saveSetting('push_notifications_enabled', value);
+                },
+                activeThumbColor: const Color(0xFF6D28D9),
+              ),
+              SwitchListTile(
+                title: const Text('Email Notifications'),
+                subtitle: const Text('Receive policy updates via email'),
+                value: _emailNotificationsEnabled,
+                onChanged: (value) {
+                  setState(() {
+                    _emailNotificationsEnabled = value;
+                  });
+                  _saveSetting('email_notifications_enabled', value);
+                },
+                activeThumbColor: const Color(0xFF6D28D9),
+              ),
+              SwitchListTile(
+                title: const Text('SMS Notifications'),
+                subtitle: const Text('Receive important alerts via SMS'),
+                value: _smsNotificationsEnabled,
+                onChanged: (value) {
+                  setState(() {
+                    _smsNotificationsEnabled = value;
+                  });
+                  _saveSetting('sms_notifications_enabled', value);
+                },
+                activeThumbColor: const Color(0xFF6D28D9),
+              ),
+              const Divider(),
+              SwitchListTile(
+                title: const Text('Order Notifications'),
+                subtitle: const Text('Get notified about your orders'),
+                value: _orderNotificationsEnabled,
+                onChanged: (value) {
+                  setState(() {
+                    _orderNotificationsEnabled = value;
+                  });
+                  _saveSetting('order_notifications_enabled', value);
+                },
+                activeThumbColor: const Color(0xFF6D28D9),
+              ),
+              SwitchListTile(
+                title: const Text('Promotional Notifications'),
+                subtitle: const Text('Receive offers and promotions'),
+                value: _promotionalNotificationsEnabled,
+                onChanged: (value) {
+                  setState(() {
+                    _promotionalNotificationsEnabled = value;
+                  });
+                  _saveSetting('promotional_notifications_enabled', value);
+                },
+                activeThumbColor: const Color(0xFF6D28D9),
+              ),
+            ],
           ],
         ),
       ),
@@ -796,7 +1076,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onTap: _showCurrencyDialog,
             ),
             const Divider(),
-            // FIXED: Use ListTile with custom trailing switch for Dark Mode
+            // Theme Toggle with Provider integration
             ListTile(
               leading: const Icon(Icons.dark_mode, color: Color(0xFF6D28D9)),
               title: const Text('Dark Mode'),
@@ -808,6 +1088,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _darkModeEnabled = value;
                   });
                   _saveSetting('dark_mode_enabled', value);
+                  // Update ThemeService
+                  final themeService = Provider.of<ThemeService>(context, listen: false);
+                  themeService.setThemeMode(value ? ThemeMode.dark : ThemeMode.light);
                   _showSnackBar('Dark mode ${value ? 'enabled' : 'disabled'}');
                 },
                 activeThumbColor: const Color(0xFF6D28D9),
@@ -853,9 +1136,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               leading: const Icon(Icons.lock, color: Color(0xFF6D28D9)),
               title: const Text('Change Password'),
               trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-              onTap: () {
-                _showSnackBar('Password change feature coming soon');
-              },
+              onTap: _showChangePasswordDialog,
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.delete_forever, color: Colors.red),
+              title: const Text('Delete Account', style: TextStyle(color: Colors.red)),
+              subtitle: const Text('Permanently delete your account and all data'),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: _showDeleteAccountDialog,
             ),
             const Divider(),
             ListTile(
