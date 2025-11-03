@@ -85,28 +85,34 @@ class _InventoryScreenState extends State<InventoryScreen> {
     try {
       final user = _auth.currentUser;
       if (user != null) {
-        setState(() {
-          _userEmail = user.email;
-        });
+        if (mounted) {
+          setState(() {
+            _userEmail = user.email;
+          });
+        }
         print('User email loaded: $_userEmail');
       } else {
         throw Exception('No user logged in');
       }
     } catch (e) {
       print('Error loading user data: $e');
-      setState(() {
-        _errorMessage = 'Failed to load user data: $e';
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Failed to load user data: $e';
+        });
+      }
     }
   }
 
   // Fetch inventory parts for the specific user email only
   Future<void> _loadInventoryParts() async {
     try {
-      setState(() {
-        _isLoading = true;
-        _errorMessage = null;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = true;
+          _errorMessage = null;
+        });
+      }
 
       if (_userEmail == null) {
         await _loadUserData();
@@ -130,10 +136,12 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
       if (querySnapshot.docs.isEmpty) {
         print('No inventory parts found for this user');
-        setState(() {
-          inventoryParts = [];
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            inventoryParts = [];
+            _isLoading = false;
+          });
+        }
         return;
       }
 
@@ -170,12 +178,14 @@ class _InventoryScreenState extends State<InventoryScreen> {
         }
       }
 
-      setState(() {
-        inventoryParts = loadedParts;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          inventoryParts = loadedParts;
+          _isLoading = false;
+        });
+      }
 
-      print('Successfully loaded ${inventoryParts.length} inventory parts');
+      print('Successfully loaded ${loadedParts.length} inventory parts');
     } on FirebaseException catch (e) {
       print('Firestore error loading inventory: ${e.code} - ${e.message}');
       if (mounted) {
@@ -237,14 +247,16 @@ class _InventoryScreenState extends State<InventoryScreen> {
           });
 
       // Update local state
-      setState(() {
-        final index = inventoryParts.indexWhere((part) => part.id == partId);
-        if (index != -1) {
-          inventoryParts[index] = inventoryParts[index].copyWith(
-            stock: newStock,
-          );
-        }
-      });
+      if (mounted) {
+        setState(() {
+          final index = inventoryParts.indexWhere((part) => part.id == partId);
+          if (index != -1) {
+            inventoryParts[index] = inventoryParts[index].copyWith(
+              stock: newStock,
+            );
+          }
+        });
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -294,14 +306,16 @@ class _InventoryScreenState extends State<InventoryScreen> {
           });
 
       // Update local state
-      setState(() {
-        final index = inventoryParts.indexWhere((part) => part.id == partId);
-        if (index != -1) {
-          inventoryParts[index] = inventoryParts[index].copyWith(
-            isAvailable: newStatus,
-          );
-        }
-      });
+      if (mounted) {
+        setState(() {
+          final index = inventoryParts.indexWhere((part) => part.id == partId);
+          if (index != -1) {
+            inventoryParts[index] = inventoryParts[index].copyWith(
+              isAvailable: newStatus,
+            );
+          }
+        });
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

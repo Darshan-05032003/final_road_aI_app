@@ -27,7 +27,7 @@ class BookingsScreen extends StatefulWidget {
   _BookingsScreenState createState() => _BookingsScreenState();
 }
 
-class _BookingsScreenState extends State<BookingsScreen> with SingleTickerProviderStateMixin {
+class _BookingsScreenState extends State<BookingsScreen> with TickerProviderStateMixin {
   late TabController _mainTabController; // For Spare Parts vs Service Requests
   late TabController _partsTabController; // For spare parts status tabs
   late TabController _serviceTabController; // For service requests status tabs
@@ -1102,9 +1102,10 @@ class _BookingsScreenState extends State<BookingsScreen> with SingleTickerProvid
             .collection('service_requests')
             .doc(request.id)
             .update({
-          'status': 'Completed',
+          'status': 'completed',
           'serviceAmount': amount,
           'providerUpiId': upiId,
+          'paymentStatus': 'pending',
           'notes': notes,
           'completedAt': FieldValue.serverTimestamp(),
           'updatedAt': FieldValue.serverTimestamp(),
@@ -1121,9 +1122,10 @@ class _BookingsScreenState extends State<BookingsScreen> with SingleTickerProvid
 
         if (userRequestQuery.docs.isNotEmpty) {
           await userRequestQuery.docs.first.reference.update({
-            'status': 'Completed',
+            'status': 'completed',
             'serviceAmount': amount,
             'providerUpiId': upiId,
+            'paymentStatus': 'pending',
             'notes': notes,
             'completedAt': FieldValue.serverTimestamp(),
             'updatedAt': FieldValue.serverTimestamp(),

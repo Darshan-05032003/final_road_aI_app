@@ -6400,10 +6400,26 @@ class _EnhancedServicesScreenState extends State<EnhancedServicesScreen> {
         print('Error loading tow requests: $e');
       }
 
-      // Filter to show only current services (pending or in process)
+      // Filter to show only current services (pending, in process, or completed with pending payment)
       final currentServices = allServices.where((service) {
-        final status = service['status'] as String;
-        return status == 'pending' || status == 'in process';
+        final status = (service['status'] as String?)?.toLowerCase() ?? '';
+        final paymentStatus = (service['paymentStatus'] as String?)?.toLowerCase() ?? 'pending';
+        final serviceAmount = service['serviceAmount'];
+        
+        // Include pending or in process services
+        if (status == 'pending' || status == 'in process' || status.contains('pending') || status.contains('process')) {
+          return true;
+        }
+        
+        // Also include completed services with pending payment
+        if ((status == 'completed' || status.contains('complete')) && 
+            paymentStatus == 'pending' && 
+            serviceAmount != null && 
+            (serviceAmount is num && serviceAmount > 0)) {
+          return true;
+        }
+        
+        return false;
       }).toList();
 
       // Sort by creation date (newest first)
@@ -6451,6 +6467,20 @@ class _EnhancedServicesScreenState extends State<EnhancedServicesScreen> {
       }
     }
     return DateTime.now();
+  }
+
+  double? _parseDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) {
+      try {
+        return double.parse(value);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
   }
 
   @override
@@ -6747,6 +6777,20 @@ class _EnhancedServicesScreenState extends State<EnhancedServicesScreen> {
                           'Tow Service';
     }
 
+    // Parse payment information
+    final paymentStatus = service['paymentStatus'] ?? 'pending';
+    final serviceAmount = _parseDouble(service['serviceAmount']);
+    final totalAmount = _parseDouble(service['totalAmount']);
+    final providerUpiId = service['providerUpiId']?.toString() ?? '';
+    final providerEmail = (service['garageEmail'] ?? service['providerEmail'] ?? '').toString();
+    
+    // Check if payment button should be shown
+    final shouldShowPayButton = (status.toLowerCase() == 'completed' || status == 'Completed') &&
+        paymentStatus.toString().toLowerCase() == 'pending' &&
+        serviceAmount != null &&
+        serviceAmount! > 0 &&
+        providerUpiId.isNotEmpty;
+
     return Card(
       margin: EdgeInsets.only(bottom: 12, left: 16, right: 16),
       elevation: 2,
@@ -6834,6 +6878,52 @@ class _EnhancedServicesScreenState extends State<EnhancedServicesScreen> {
                     ),
                   ],
                 ),
+              // Pay Now Button - Show when service is completed with pending payment
+              if (shouldShowPayButton) ...[
+                SizedBox(height: 12),
+                Divider(height: 1),
+                SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      // Navigate to payment options
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => PaymentOptionsScreen(
+                            requestId: requestId,
+                            serviceType: serviceType == 'Garage Service' ? 'garage' : 'tow',
+                            amount: serviceAmount!,
+                            providerUpiId: providerUpiId,
+                            providerEmail: providerEmail,
+                            customerEmail: widget.userEmail ?? '',
+                            providerName: providerName,
+                          ),
+                        ),
+                      );
+                    },
+                    icon: Icon(Icons.payment, color: Colors.white, size: 20),
+                    label: Text(
+                      'Pay Now ₹${totalAmount?.toStringAsFixed(2) ?? serviceAmount!.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      elevation: 2,
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -7095,7 +7185,7 @@ class CurrentServiceDetailScreen extends StatelessWidget {
                   _buildDetailRow('Preferred Time', service['preferredTime'].toString()),
               ]),
             if (service['preferredDate'] != null || service['preferredTime'] != null) SizedBox(height: 16),
-            if (status == 'completed' && paymentStatus.toString() == 'pending' && serviceAmount != null && serviceAmount! > 0)
+            if ((status.toLowerCase() == 'completed' || status == 'Completed') && paymentStatus.toString().toLowerCase() == 'pending' && serviceAmount != null && serviceAmount! > 0)
               Padding(
                 padding: EdgeInsets.symmetric(vertical: 8),
                 child: SizedBox(
