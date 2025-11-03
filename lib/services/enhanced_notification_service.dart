@@ -28,7 +28,10 @@ class EnhancedNotificationService {
   // Background message handler must be top-level or static
   @pragma('vm:entry-point')
   static Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-    await Firebase.initializeApp();
+    // Check if Firebase is already initialized before initializing
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp();
+    }
     print("Background message received: ${message.messageId}");
     await _handleBackgroundNotification(message);
   }

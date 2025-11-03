@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 // Mock AuthService since it wasn't provided
 class AuthService {
@@ -25,28 +27,48 @@ class BookingsScreen extends StatefulWidget {
   _BookingsScreenState createState() => _BookingsScreenState();
 }
 
-class _BookingsScreenState extends State<BookingsScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _BookingsScreenState extends State<BookingsScreen> with TickerProviderStateMixin {
+  late TabController _mainTabController; // For Spare Parts vs Service Requests
+  late TabController _partsTabController; // For spare parts status tabs
+  late TabController _serviceTabController; // For service requests status tabs
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   String? _userEmail;
+  String? _garageId;
   bool _isLoading = true;
   bool _hasError = false;
   String _errorMessage = '';
 
-  List<Booking> bookings = [];
+  // Spare Parts Bookings
+  List<Booking> sparePartsBookings = [];
+  
+  // Service Requests
+  List<ServiceRequest> serviceRequests = [];
+  List<ServiceRequest> _pendingServiceRequests = [];
+  List<ServiceRequest> _confirmedServiceRequests = [];
+  List<ServiceRequest> _completedServiceRequests = [];
+  List<ServiceRequest> _cancelledServiceRequests = [];
+
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _mainTabController = TabController(length: 2, vsync: this);
+    _partsTabController = TabController(length: 4, vsync: this);
+    _serviceTabController = TabController(length: 4, vsync: this);
+    
+    
     _initializeData();
   }
 
   Future<void> _initializeData() async {
     await _loadUserData();
     if (_userEmail != null) {
-      await _loadBookings();
+      await _loadGarageProfile();
+      await Future.wait([
+        _loadBookings(),
+        _loadServiceRequests(),
+      ]);
     } else {
       _handleNoUser();
     }
@@ -86,11 +108,172 @@ class _BookingsScreenState extends State<BookingsScreen> with SingleTickerProvid
     }
   }
 
+  Future<void> _loadGarageProfile() async {
+    try {
+      if (_userEmail == null) return;
+      
+      final garageSnapshot = await _firestore
+          .collection('garages')
+          .where('email', isEqualTo: _userEmail)
+          .limit(1)
+          .get();
+
+      if (garageSnapshot.docs.isNotEmpty) {
+        setState(() {
+          _garageId = garageSnapshot.docs.first.id;
+        });
+        print('✅ Found garage ID: $_garageId');
+      } else {
+        print('⚠️ No garage profile found for email: $_userEmail');
+      }
+    } catch (e) {
+      print('❌ Error loading garage profile: $e');
+    }
+  }
+
   void _handleNoUser() {
     setState(() {
       _hasError = true;
       _errorMessage = 'Please login again to access bookings';
       _isLoading = false;
+    });
+  }
+
+  // Load service requests
+  Future<void> _loadServiceRequests() async {
+    try {
+      if (_garageId == null) {
+        print('⚠️ No garage ID, skipping service requests');
+        return;
+      }
+
+      print('📡 Fetching service requests for garage: $_garageId');
+
+      final serviceRequestsSnapshot = await _firestore
+          .collection('garages')
+          .doc(_garageId!)
+          .collection('service_requests')
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      print('📊 Documents found in service_requests: ${serviceRequestsSnapshot.docs.length}');
+
+      List<ServiceRequest> requests = [];
+
+      for (var doc in serviceRequestsSnapshot.docs) {
+        try {
+          final data = doc.data();
+          ServiceRequest request = _parseServiceRequest(doc.id, data);
+          requests.add(request);
+        } catch (e) {
+          print('❌ Error parsing service request ${doc.id}: $e');
+        }
+      }
+
+      _categorizeServiceRequests(requests);
+      
+      setState(() {
+        serviceRequests = requests;
+      });
+
+      print('🎉 Successfully loaded ${serviceRequests.length} service requests');
+    } catch (e) {
+      print('❌ Error loading service requests: $e');
+    }
+  }
+
+  ServiceRequest _parseServiceRequest(String docId, Map<String, dynamic> data) {
+    return ServiceRequest(
+      id: docId,
+      requestId: data['requestId']?.toString() ?? 'GRG-$docId',
+      vehicleNumber: data['vehicleNumber']?.toString() ?? 'Not specified',
+      serviceType: data['serviceType']?.toString() ?? 'General Service',
+      preferredDate: _parsePreferredDate(data),
+      preferredTime: data['preferredTime']?.toString() ?? 'Not specified',
+      name: data['name']?.toString() ?? 'Customer',
+      phone: data['phone']?.toString() ?? 'Not provided',
+      location: data['location']?.toString() ?? 'Not provided',
+      problemDescription: data['description']?.toString() ?? 'No description provided',
+      userEmail: data['userEmail']?.toString() ?? 'Unknown',
+      status: data['status']?.toString() ?? 'Pending',
+      createdAt: _parseTimestamp(data['createdAt']),
+      updatedAt: _parseTimestamp(data['updatedAt']),
+      vehicleModel: data['vehicleModel']?.toString() ?? 'Not specified',
+      vehicleType: data['vehicleType']?.toString() ?? 'Car',
+      fuelType: data['fuelType']?.toString() ?? 'Petrol',
+      selectedIssues: _parseIssues(data['selectedIssues']),
+      userLatitude: data['userLatitude']?.toDouble(),
+      userLongitude: data['userLongitude']?.toDouble(),
+      garageLatitude: data['garageLatitude']?.toDouble(),
+      garageLongitude: data['garageLongitude']?.toDouble(),
+      distance: data['distance']?.toDouble() ?? 0.0,
+      liveLocationEnabled: data['liveLocationEnabled'] ?? false,
+      garageName: data['garageName']?.toString() ?? 'Our Garage',
+      garageAddress: data['garageAddress']?.toString() ?? '',
+      garageEmail: data['garageEmail']?.toString() ?? _userEmail ?? 'Unknown',
+    );
+  }
+
+  String _parsePreferredDate(Map<String, dynamic> data) {
+    try {
+      if (data['preferredDate'] != null) {
+        if (data['preferredDate'] is Timestamp) {
+          final date = (data['preferredDate'] as Timestamp).toDate();
+          return DateFormat('MMM dd, yyyy').format(date);
+        } else if (data['preferredDate'] is String) {
+          return data['preferredDate'];
+        }
+      }
+
+      if (data['createdAt'] != null && data['createdAt'] is Timestamp) {
+        final date = (data['createdAt'] as Timestamp).toDate();
+        return DateFormat('MMM dd, yyyy').format(date);
+      }
+
+      return 'Not specified';
+    } catch (e) {
+      return 'Not specified';
+    }
+  }
+
+  List<String> _parseIssues(dynamic issuesField) {
+    try {
+      if (issuesField == null) return [];
+      if (issuesField is List) {
+        return issuesField.map((item) => item.toString()).toList();
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  DateTime _parseTimestamp(dynamic timestamp) {
+    try {
+      if (timestamp is Timestamp) {
+        return timestamp.toDate();
+      } else if (timestamp is String) {
+        return DateTime.parse(timestamp);
+      } else {
+        return DateTime.now();
+      }
+    } catch (e) {
+      return DateTime.now();
+    }
+  }
+
+  void _categorizeServiceRequests(List<ServiceRequest> requests) {
+    setState(() {
+      _pendingServiceRequests = requests.where((request) =>
+        request.status.toLowerCase() == 'pending').toList();
+      _confirmedServiceRequests = requests.where((request) =>
+        request.status.toLowerCase() == 'confirmed' ||
+        request.status.toLowerCase() == 'accepted').toList();
+      _completedServiceRequests = requests.where((request) =>
+        request.status.toLowerCase() == 'completed').toList();
+      _cancelledServiceRequests = requests.where((request) =>
+        request.status.toLowerCase() == 'cancelled' ||
+        request.status.toLowerCase() == 'rejected').toList();
     });
   }
 
@@ -176,6 +359,7 @@ class _BookingsScreenState extends State<BookingsScreen> with SingleTickerProvid
             paymentMethod: _getField(data, 'paymentMethod', 'Unknown'),
             email: _getField(data, 'email', ''),
             cartItems: cartItems,
+            docId: doc.id, // Store document ID for updates
           );
           
           loadedBookings.add(booking);
@@ -190,12 +374,12 @@ class _BookingsScreenState extends State<BookingsScreen> with SingleTickerProvid
       loadedBookings.sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
       setState(() {
-        bookings = loadedBookings;
+        sparePartsBookings = loadedBookings;
         _isLoading = false;
         _hasError = false;
       });
 
-      print('🎉 Successfully loaded ${bookings.length} bookings');
+      print('🎉 Successfully loaded ${sparePartsBookings.length} spare parts bookings');
 
     } catch (e) {
       print('❌ Error loading bookings: $e');
@@ -354,9 +538,9 @@ class _BookingsScreenState extends State<BookingsScreen> with SingleTickerProvid
 
       // Update local state
       setState(() {
-        int index = bookings.indexWhere((booking) => booking.id == bookingId);
+        int index = sparePartsBookings.indexWhere((booking) => booking.id == bookingId);
         if (index != -1) {
-          bookings[index] = bookings[index].copyWith(status: newStatus);
+          sparePartsBookings[index] = sparePartsBookings[index].copyWith(status: newStatus);
         }
         _isLoading = false;
       });
@@ -382,7 +566,8 @@ class _BookingsScreenState extends State<BookingsScreen> with SingleTickerProvid
 
   void _showNoDataState() {
     setState(() {
-      bookings = [];
+      sparePartsBookings = [];
+      serviceRequests = [];
       _isLoading = false;
       _hasError = false;
     });
@@ -408,12 +593,566 @@ class _BookingsScreenState extends State<BookingsScreen> with SingleTickerProvid
     );
   }
 
-  void _handleRetry() {
+  Future<void> _handleRetry() async {
     setState(() {
       _isLoading = true;
       _hasError = false;
     });
-    _initializeData();
+    await _initializeData();
+  }
+
+  // Service Request Methods
+  Widget _buildServiceRequestsList(List<ServiceRequest> requests) {
+    if (requests.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.check_circle_outline, size: 64, color: Colors.grey[300]),
+            SizedBox(height: 16),
+            Text(
+              'No Requests',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.grey[600]),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        await _loadServiceRequests();
+      },
+      child: ListView.builder(
+        padding: EdgeInsets.all(16),
+        itemCount: requests.length,
+        itemBuilder: (context, index) {
+          return _buildServiceRequestCard(requests[index]);
+        },
+      ),
+    );
+  }
+
+  Widget _buildServiceRequestCard(ServiceRequest request) {
+    Color statusColor = _getServiceRequestStatusColor(request.status);
+
+    return Card(
+      elevation: 3,
+      margin: EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        onTap: () {
+          // Navigate to detailed view or show bottom sheet
+          _showServiceRequestDetails(request);
+        },
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          request.requestId,
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                        SizedBox(height: 4),
+                        if (request.distance > 0)
+                          Text(
+                            '${request.distance.toStringAsFixed(1)} km away',
+                            style: TextStyle(fontSize: 12, color: Colors.blue[600]),
+                          ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: statusColor.withOpacity(0.3)),
+                    ),
+                    child: Text(
+                      request.status.toUpperCase(),
+                      style: TextStyle(
+                        color: statusColor,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 12),
+              _buildInfoRow(Icons.directions_car, 'Vehicle', '${request.vehicleNumber} (${request.vehicleModel})'),
+              _buildInfoRow(Icons.build, 'Service', request.serviceType),
+              _buildInfoRow(Icons.calendar_today, 'Date', request.preferredDate),
+              _buildInfoRow(Icons.access_time, 'Time', request.preferredTime),
+              Divider(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(request.name, style: TextStyle(fontWeight: FontWeight.w600)),
+                        SizedBox(height: 2),
+                        Text(request.phone, style: TextStyle(color: Colors.grey[600])),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => _callCustomer(request.phone),
+                    icon: Icon(Icons.phone, color: Colors.green),
+                    tooltip: 'Call Customer',
+                  ),
+                  if (request.status.toLowerCase() == 'pending') ...[
+                    IconButton(
+                      onPressed: () => _updateServiceRequestStatus(request, 'Confirmed'),
+                      icon: Icon(Icons.check_circle, color: Colors.green),
+                      tooltip: 'Confirm Request',
+                    ),
+                    IconButton(
+                      onPressed: () => _updateServiceRequestStatus(request, 'Cancelled'),
+                      icon: Icon(Icons.cancel, color: Colors.red),
+                      tooltip: 'Cancel Request',
+                    ),
+                  ],
+                  if (request.status.toLowerCase() == 'confirmed') ...[
+                    IconButton(
+                      onPressed: () => _showCompleteServiceDialog(request),
+                      icon: Icon(Icons.done_all, color: Colors.blue),
+                      tooltip: 'Mark as Completed',
+                    ),
+                  ],
+                ],
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Requested: ${DateFormat('MMM dd, yyyy - hh:mm a').format(request.createdAt)}',
+                style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Color _getServiceRequestStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return Colors.orange;
+      case 'confirmed':
+      case 'accepted':
+        return Colors.blue;
+      case 'completed':
+        return Colors.green;
+      case 'cancelled':
+      case 'rejected':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  Future<void> _callCustomer(String phone) async {
+    try {
+      final url = 'tel:$phone';
+      if (await canLaunch(url)) {
+        await launch(url);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not launch phone app')),
+        );
+      }
+    } catch (e) {
+      print('❌ Error making call: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error making call: $e')),
+      );
+    }
+  }
+
+  Future<void> _updateServiceRequestStatus(ServiceRequest request, String newStatus) async {
+    try {
+      print('🔄 Updating service request ${request.requestId} to $newStatus');
+
+      // Update in garage's service_requests collection
+      if (_garageId != null) {
+        await _firestore
+            .collection('garages')
+            .doc(_garageId!)
+            .collection('service_requests')
+            .doc(request.id)
+            .update({
+          'status': newStatus,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+        print('✅ Updated in garage collection');
+      }
+
+      // Also update in user's garagerequest collection if possible
+      try {
+        final userRequestQuery = await _firestore
+            .collectionGroup('garagerequest')
+            .where('requestId', isEqualTo: request.requestId)
+            .limit(1)
+            .get();
+
+        if (userRequestQuery.docs.isNotEmpty) {
+          await userRequestQuery.docs.first.reference.update({
+            'status': newStatus,
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+          print('✅ Updated in user collection');
+        }
+      } catch (e) {
+        print('⚠️ Could not update user collection: $e');
+      }
+
+      // Reload requests to reflect changes
+      await _loadServiceRequests();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Request ${newStatus.toLowerCase()} successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      print('❌ Error updating service request status: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to update status: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _showServiceRequestDetails(ServiceRequest request) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.9,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (context, scrollController) => SingleChildScrollView(
+          controller: scrollController,
+          padding: EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Text(
+                'Service Request Details',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 16),
+              _buildDetailRow('Request ID', request.requestId),
+              _buildDetailRow('Status', request.status),
+              _buildDetailRow('Vehicle Number', request.vehicleNumber),
+              _buildDetailRow('Vehicle Model', request.vehicleModel),
+              _buildDetailRow('Service Type', request.serviceType),
+              _buildDetailRow('Preferred Date', request.preferredDate),
+              _buildDetailRow('Preferred Time', request.preferredTime),
+              _buildDetailRow('Customer Name', request.name),
+              _buildDetailRow('Phone', request.phone),
+              _buildDetailRow('Location', request.location),
+              if (request.problemDescription.isNotEmpty)
+                Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Problem Description:', style: TextStyle(fontWeight: FontWeight.w600)),
+                      SizedBox(height: 4),
+                      Text(request.problemDescription),
+                    ],
+                  ),
+                ),
+              SizedBox(height: 16),
+              if (request.status.toLowerCase() == 'pending')
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _updateServiceRequestStatus(request, 'Cancelled');
+                        },
+                        child: Text('Reject'),
+                        style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _updateServiceRequestStatus(request, 'Confirmed');
+                        },
+                        child: Text('Confirm'),
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                      ),
+                    ),
+                  ],
+                ),
+              if (request.status.toLowerCase() == 'confirmed')
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _showCompleteServiceDialog(request);
+                    },
+                    child: Text('Mark as Completed'),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              '$label:',
+              style: TextStyle(fontWeight: FontWeight.w500, color: Colors.grey[600]),
+            ),
+          ),
+          Expanded(
+            child: Text(value),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showCompleteServiceDialog(ServiceRequest request) async {
+    final amountController = TextEditingController();
+    final upiIdController = TextEditingController();
+    final notesController = TextEditingController();
+
+    // Try to load saved UPI ID
+    bool hasSavedUpiId = false;
+    if (_userEmail != null) {
+      try {
+        final profileDoc = await _firestore
+            .collection('garages')
+            .doc(_userEmail!)
+            .get();
+        
+        if (profileDoc.exists && profileDoc.data()?['upiId'] != null) {
+          final savedUpiId = profileDoc.data()!['upiId'].toString().trim();
+          if (savedUpiId.isNotEmpty) {
+            upiIdController.text = savedUpiId;
+            hasSavedUpiId = true;
+          }
+        }
+      } catch (e) {
+        print('⚠️ Could not load saved UPI ID: $e');
+      }
+    }
+
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Text('Complete Service'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: amountController,
+                decoration: InputDecoration(
+                  labelText: 'Service Amount *',
+                  hintText: 'Enter amount in ₹',
+                  prefixIcon: Icon(Icons.currency_rupee),
+                ),
+                keyboardType: TextInputType.numberWithOptions(decimal: true),
+              ),
+              SizedBox(height: 16),
+              TextField(
+                controller: upiIdController,
+                decoration: InputDecoration(
+                  labelText: 'Your UPI ID *',
+                  hintText: hasSavedUpiId ? null : 'yourname@paytm',
+                  prefixIcon: Icon(Icons.payment),
+                  helperText: hasSavedUpiId
+                      ? 'Pre-filled from your profile'
+                      : 'This will be used to receive payment',
+                ),
+              ),
+              SizedBox(height: 16),
+              TextField(
+                controller: notesController,
+                decoration: InputDecoration(
+                  labelText: 'Service Notes (Optional)',
+                  hintText: 'Any additional notes...',
+                  prefixIcon: Icon(Icons.note),
+                ),
+                maxLines: 3,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (amountController.text.trim().isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Please enter service amount')),
+                );
+                return;
+              }
+              if (double.tryParse(amountController.text.trim()) == null ||
+                  double.parse(amountController.text.trim()) <= 0) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Please enter valid amount')),
+                );
+                return;
+              }
+              if (upiIdController.text.trim().isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Please enter UPI ID')),
+                );
+                return;
+              }
+              Navigator.pop(context, true);
+            },
+            child: Text('Mark Complete'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      final amount = double.parse(amountController.text.trim());
+      final upiId = upiIdController.text.trim();
+      final notes = notesController.text.trim();
+
+      await _completeServiceWithPayment(request, amount, upiId, notes);
+    }
+
+    amountController.dispose();
+    upiIdController.dispose();
+    notesController.dispose();
+  }
+
+  Future<void> _completeServiceWithPayment(
+    ServiceRequest request,
+    double amount,
+    String upiId,
+    String notes,
+  ) async {
+    try {
+      // Save UPI ID to profile
+      if (_userEmail != null) {
+        try {
+          await _firestore.collection('garages').doc(_userEmail!).set({
+            'upiId': upiId,
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+        } catch (e) {
+          print('⚠️ Could not save UPI ID: $e');
+        }
+      }
+
+      // Update request with completion and payment info
+      if (_garageId != null) {
+        await _firestore
+            .collection('garages')
+            .doc(_garageId!)
+            .collection('service_requests')
+            .doc(request.id)
+            .update({
+          'status': 'completed',
+          'serviceAmount': amount,
+          'providerUpiId': upiId,
+          'paymentStatus': 'pending',
+          'notes': notes,
+          'completedAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      // Also update in user's collection
+      try {
+        final userRequestQuery = await _firestore
+            .collectionGroup('garagerequest')
+            .where('requestId', isEqualTo: request.requestId)
+            .limit(1)
+            .get();
+
+        if (userRequestQuery.docs.isNotEmpty) {
+          await userRequestQuery.docs.first.reference.update({
+            'status': 'completed',
+            'serviceAmount': amount,
+            'providerUpiId': upiId,
+            'paymentStatus': 'pending',
+            'notes': notes,
+            'completedAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        }
+      } catch (e) {
+        print('⚠️ Could not update user collection: $e');
+      }
+
+      // Reload requests
+      await _loadServiceRequests();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Service marked as completed successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      print('❌ Error completing service: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to complete service: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   void _handleLogout() {
@@ -426,7 +1165,7 @@ class _BookingsScreenState extends State<BookingsScreen> with SingleTickerProvid
   }
 
   List<Booking> getBookingsByStatus(String status) {
-    return bookings.where((booking) => booking.status == status).toList();
+    return sparePartsBookings.where((booking) => booking.status == status).toList();
   }
 
   @override
@@ -436,17 +1175,15 @@ class _BookingsScreenState extends State<BookingsScreen> with SingleTickerProvid
         title: Text('Bookings'),
         backgroundColor: Color(0xFF2563EB),
         foregroundColor: Colors.white,
-        bottom: !_hasError && bookings.isNotEmpty
+        bottom: !_hasError
             ? TabBar(
-                controller: _tabController,
+                controller: _mainTabController,
                 labelColor: Colors.white,
                 unselectedLabelColor: Colors.white70,
                 indicatorColor: Colors.white,
                 tabs: [
-                  Tab(text: 'Pending (${getBookingsByStatus("Pending").length})'),
-                  Tab(text: 'Confirmed (${getBookingsByStatus("Confirmed").length})'),
-                  Tab(text: 'Dispatched (${getBookingsByStatus("Dispatched").length})'),
-                  Tab(text: 'Completed (${getBookingsByStatus("Completed").length})'),
+                  Tab(text: 'Spare Parts (${sparePartsBookings.length})'),
+                  Tab(text: 'Service Requests (${serviceRequests.length})'),
                 ],
               )
             : null,
@@ -470,18 +1207,122 @@ class _BookingsScreenState extends State<BookingsScreen> with SingleTickerProvid
       return _buildErrorState();
     }
 
-    if (bookings.isEmpty) {
-      return _buildNoDataState();
+    return TabBarView(
+      controller: _mainTabController,
+      children: [
+        _buildSparePartsView(),
+        _buildServiceRequestsView(),
+      ],
+    );
+  }
+
+  Widget _buildSparePartsView() {
+    if (sparePartsBookings.isEmpty) {
+      return _buildNoSparePartsState();
     }
 
-    return TabBarView(
-      controller: _tabController,
+    return Column(
       children: [
-        _buildBookingsList('Pending'),
-        _buildBookingsList('Confirmed'),
-        _buildBookingsList('Dispatched'),
-        _buildBookingsList('Completed'),
+        TabBar(
+          controller: _partsTabController,
+          labelColor: Color(0xFF2563EB),
+          unselectedLabelColor: Colors.grey,
+          indicatorColor: Color(0xFF2563EB),
+          tabs: [
+            Tab(text: 'Pending (${getBookingsByStatus("Pending").length})'),
+            Tab(text: 'Confirmed (${getBookingsByStatus("Confirmed").length})'),
+            Tab(text: 'Dispatched (${getBookingsByStatus("Dispatched").length})'),
+            Tab(text: 'Completed (${getBookingsByStatus("Completed").length})'),
+          ],
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: _partsTabController,
+            children: [
+              _buildBookingsList('Pending'),
+              _buildBookingsList('Confirmed'),
+              _buildBookingsList('Dispatched'),
+              _buildBookingsList('Completed'),
+            ],
+          ),
+        ),
       ],
+    );
+  }
+
+  Widget _buildServiceRequestsView() {
+    if (serviceRequests.isEmpty) {
+      return _buildNoServiceRequestsState();
+    }
+
+    return Column(
+      children: [
+        TabBar(
+          controller: _serviceTabController,
+          labelColor: Color(0xFF2563EB),
+          unselectedLabelColor: Colors.grey,
+          indicatorColor: Color(0xFF2563EB),
+          tabs: [
+            Tab(text: 'Pending (${_pendingServiceRequests.length})'),
+            Tab(text: 'Confirmed (${_confirmedServiceRequests.length})'),
+            Tab(text: 'Completed (${_completedServiceRequests.length})'),
+            Tab(text: 'Cancelled (${_cancelledServiceRequests.length})'),
+          ],
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: _serviceTabController,
+            children: [
+              _buildServiceRequestsList(_pendingServiceRequests),
+              _buildServiceRequestsList(_confirmedServiceRequests),
+              _buildServiceRequestsList(_completedServiceRequests),
+              _buildServiceRequestsList(_cancelledServiceRequests),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNoSparePartsState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.shopping_cart_outlined, size: 80, color: Colors.grey[300]),
+          SizedBox(height: 16),
+          Text(
+            'No Spare Parts Bookings',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.grey[600]),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'Your spare parts bookings will appear here',
+            style: TextStyle(color: Colors.grey[500]),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoServiceRequestsState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.build_circle_outlined, size: 80, color: Colors.grey[300]),
+          SizedBox(height: 16),
+          Text(
+            'No Service Requests',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.grey[600]),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'Service requests from customers will appear here',
+            style: TextStyle(color: Colors.grey[500]),
+          ),
+        ],
+      ),
     );
   }
 
@@ -552,42 +1393,6 @@ class _BookingsScreenState extends State<BookingsScreen> with SingleTickerProvid
     );
   }
 
-  Widget _buildNoDataState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.shopping_cart_outlined, size: 80, color: Colors.grey[300]),
-          SizedBox(height: 16),
-          Text(
-            'No Bookings Found',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.grey[600]),
-          ),
-          SizedBox(height: 8),
-          Text(
-            'Your customer bookings will appear here',
-            style: TextStyle(color: Colors.grey[500]),
-          ),
-          SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: _handleRetry,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Color(0xFF2563EB),
-              foregroundColor: Colors.white,
-            ),
-            child: Text('Refresh'),
-          ),
-          if (_userEmail != null) ...[
-            SizedBox(height: 16),
-            Text(
-              'Logged in as: $_userEmail',
-              style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
 
   Widget _buildBookingsList(String status) {
     List<Booking> statusBookings = getBookingsByStatus(status);
@@ -865,7 +1670,9 @@ class _BookingsScreenState extends State<BookingsScreen> with SingleTickerProvid
 
   @override
   void dispose() {
-    _tabController.dispose();
+    _mainTabController.dispose();
+    _partsTabController.dispose();
+    _serviceTabController.dispose();
     super.dispose();
   }
 }
@@ -885,6 +1692,7 @@ class Booking {
   final String paymentMethod;
   final String email;
   final List<Map<String, dynamic>> cartItems;
+  final String? docId;
 
   Booking({
     required this.id,
@@ -901,6 +1709,7 @@ class Booking {
     required this.paymentMethod,
     required this.email,
     required this.cartItems,
+    this.docId,
   });
 
   Booking copyWith({
@@ -918,6 +1727,7 @@ class Booking {
     String? paymentMethod,
     String? email,
     List<Map<String, dynamic>>? cartItems,
+    String? docId,
   }) {
     return Booking(
       id: id ?? this.id,
@@ -934,6 +1744,67 @@ class Booking {
       paymentMethod: paymentMethod ?? this.paymentMethod,
       email: email ?? this.email,
       cartItems: cartItems ?? this.cartItems,
+      docId: docId ?? this.docId,
     );
   }
+}
+
+class ServiceRequest {
+  final String id;
+  final String requestId;
+  final String vehicleNumber;
+  final String serviceType;
+  final String preferredDate;
+  final String preferredTime;
+  final String name;
+  final String phone;
+  final String location;
+  final String problemDescription;
+  final String userEmail;
+  final String status;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final String vehicleModel;
+  final String vehicleType;
+  final String fuelType;
+  final List<String> selectedIssues;
+  final double? userLatitude;
+  final double? userLongitude;
+  final double? garageLatitude;
+  final double? garageLongitude;
+  final double distance;
+  final bool liveLocationEnabled;
+  final String garageName;
+  final String garageAddress;
+  final String garageEmail;
+
+  ServiceRequest({
+    required this.id,
+    required this.requestId,
+    required this.vehicleNumber,
+    required this.serviceType,
+    required this.preferredDate,
+    required this.preferredTime,
+    required this.name,
+    required this.phone,
+    required this.location,
+    required this.problemDescription,
+    required this.userEmail,
+    required this.status,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.vehicleModel,
+    required this.vehicleType,
+    required this.fuelType,
+    required this.selectedIssues,
+    this.userLatitude,
+    this.userLongitude,
+    this.garageLatitude,
+    this.garageLongitude,
+    required this.distance,
+    required this.liveLocationEnabled,
+    required this.garageName,
+    required this.garageAddress,
+    required this.garageEmail,
+  });
 }

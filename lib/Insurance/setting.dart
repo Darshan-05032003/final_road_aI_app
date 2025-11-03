@@ -988,26 +988,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _pushNotificationsEnabled = value;
                   });
                   _saveSetting('push_notifications_enabled', value);
-                },
-                activeThumbColor: const Color(0xFF6D28D9),
-              ),
-              SwitchListTile(
-                title: const Text('Email Notifications'),
-                subtitle: const Text('Receive policy updates via email'),
+              },
+              activeThumbColor: const Color(0xFF6D28D9),
+            ),
+            SwitchListTile(
+              title: const Text('Email Notifications'),
+              subtitle: const Text('Receive policy updates via email'),
                 value: _emailNotificationsEnabled,
-                onChanged: (value) {
+              onChanged: (value) {
                   setState(() {
                     _emailNotificationsEnabled = value;
                   });
                   _saveSetting('email_notifications_enabled', value);
-                },
-                activeThumbColor: const Color(0xFF6D28D9),
-              ),
-              SwitchListTile(
-                title: const Text('SMS Notifications'),
-                subtitle: const Text('Receive important alerts via SMS'),
+              },
+              activeThumbColor: const Color(0xFF6D28D9),
+            ),
+            SwitchListTile(
+              title: const Text('SMS Notifications'),
+              subtitle: const Text('Receive important alerts via SMS'),
                 value: _smsNotificationsEnabled,
-                onChanged: (value) {
+              onChanged: (value) {
                   setState(() {
                     _smsNotificationsEnabled = value;
                   });
@@ -1037,9 +1037,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _promotionalNotificationsEnabled = value;
                   });
                   _saveSetting('promotional_notifications_enabled', value);
-                },
-                activeThumbColor: const Color(0xFF6D28D9),
-              ),
+              },
+              activeThumbColor: const Color(0xFF6D28D9),
+            ),
             ],
           ],
         ),

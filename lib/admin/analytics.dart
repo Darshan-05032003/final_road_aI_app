@@ -1,5 +1,8 @@
-// analytics.dart
 import 'package:flutter/material.dart';
+import 'package:smart_road_app/admin/services/admin_data_service.dart';
+import 'package:smart_road_app/core/theme/app_theme.dart';
+import 'package:smart_road_app/core/animations/app_animations.dart';
+import 'package:smart_road_app/widgets/enhanced_card.dart';
 
 class AnalyticsPage extends StatefulWidget {
   const AnalyticsPage({super.key});
@@ -9,52 +12,17 @@ class AnalyticsPage extends StatefulWidget {
 }
 
 class _AnalyticsPageState extends State<AnalyticsPage> with SingleTickerProviderStateMixin {
+  final AdminDataService _dataService = AdminDataService();
   late TabController _tabController;
-  String _timeRange = 'Monthly';
-  final String _selectedMetric = 'All Services';
-
-  final List<String> _timeRanges = ['Daily', 'Weekly', 'Monthly', 'Quarterly'];
-  final List<String> _metrics = ['All Services', 'Tow', 'Mechanic', 'Emergency', 'Fuel'];
-
-  // Sample data
-  final Map<String, dynamic> _analyticsData = {
-    'kpis': {
-      'totalServices': 1847,
-      'responseTime': 12.4,
-      'satisfactionRate': 94.2,
-      'revenue': 45200,
-      'activeUsers': 1247,
-      'completionRate': 92.5,
-      'emergencyResponse': 6.5,
-      'revenueGrowth': 12,
-    },
-    'serviceDistribution': {
-      'Tow Service': 45,
-      'Mechanic': 30,
-      'Emergency': 15,
-      'Fuel Delivery': 8,
-      'Insurance': 2,
-    },
-    'topProviders': [
-      {'name': 'City Tow Services', 'rating': 4.9, 'services': 247, 'revenue': 12500},
-      {'name': 'Mobile Mechanics', 'rating': 4.8, 'services': 198, 'revenue': 9800},
-      {'name': 'Quick Fuel Co.', 'rating': 4.7, 'services': 156, 'revenue': 6200},
-      {'name': 'Emergency Assist', 'rating': 4.9, 'services': 132, 'revenue': 8500},
-      {'name': 'Pro Auto Care', 'rating': 4.6, 'services': 121, 'revenue': 5800},
-    ],
-    'performanceTrends': [
-      {'month': 'Jan', 'services': 420, 'revenue': 9800, 'satisfaction': 92},
-      {'month': 'Feb', 'services': 380, 'revenue': 8900, 'satisfaction': 91},
-      {'month': 'Mar', 'services': 450, 'revenue': 10500, 'satisfaction': 93},
-      {'month': 'Apr', 'services': 520, 'revenue': 12200, 'satisfaction': 94},
-      {'month': 'May', 'services': 580, 'revenue': 13500, 'satisfaction': 95},
-    ],
-  };
+  bool _isLoading = true;
+  
+  Map<String, dynamic> _analyticsData = {};
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _loadAnalytics();
   }
 
   @override
@@ -63,44 +31,84 @@ class _AnalyticsPageState extends State<AnalyticsPage> with SingleTickerProvider
     super.dispose();
   }
 
+  Future<void> _loadAnalytics() async {
+    setState(() => _isLoading = true);
+    
+    try {
+      final data = await _dataService.getAnalyticsData();
+      if (mounted) {
+        setState(() {
+          _analyticsData = data;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading analytics: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryPurple),
+        ),
+      );
+    }
+
     return Column(
       children: [
-        // Header with Time Range Selector
-        Container(
-          padding: const EdgeInsets.all(16),
-          color: Colors.white,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Analytics Dashboard',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
+        // Header
+        AppAnimations.fadeIn(
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: AppTheme.primaryGradient,
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.primaryPurple.withValues(alpha: 0.3),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
                 ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: Colors.grey[50],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey[300]!),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _timeRange,
-                    onChanged: (String? value) => setState(() => _timeRange = value!),
-                    items: _timeRanges.map((String range) {
-                      return DropdownMenuItem<String>(
-                        value: range,
-                        child: Text(range),
-                      );
-                    }).toList(),
+              ],
+            ),
+            child: SafeArea(
+              bottom: false,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(Icons.analytics, color: Colors.white, size: 24),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        'Analytics Dashboard',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
+                  IconButton(
+                    icon: const Icon(Icons.refresh, color: Colors.white),
+                    onPressed: _loadAnalytics,
+                    tooltip: 'Refresh',
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
 
@@ -110,61 +118,46 @@ class _AnalyticsPageState extends State<AnalyticsPage> with SingleTickerProvider
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // KPI Cards Grid
-                _buildKPISection(),
-
-                const SizedBox(height: 24),
-
-                // Tabs for different analytics views
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.withOpacity(0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      TabBar(
-                        controller: _tabController,
-                        labelColor: Colors.blue,
-                        unselectedLabelColor: Colors.grey[600],
-                        indicatorColor: Colors.blue,
-                        tabs: const [
-                          Tab(text: 'Overview'),
-                          Tab(text: 'Performance'),
-                          Tab(text: 'Providers'),
-                        ],
-                      ),
-                      SizedBox(
-                        height: 400,
-                        child: TabBarView(
-                          controller: _tabController,
-                          children: [
-                            _buildOverviewTab(),
-                            _buildPerformanceTab(),
-                            _buildProvidersTab(),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+                // KPI Cards
+                AppAnimations.fadeIn(
+                  delay: 50,
+                  child: _buildKPISection(),
                 ),
 
                 const SizedBox(height: 24),
 
-                // Quick Metrics
-                _buildQuickMetrics(),
-
-                const SizedBox(height: 24),
-
-                // Export & Actions
-                _buildExportSection(),
+                // Tabs
+                AppAnimations.fadeIn(
+                  delay: 100,
+                  child: EnhancedCard(
+                    child: Column(
+                      children: [
+                        TabBar(
+                          controller: _tabController,
+                          labelColor: AppTheme.primaryPurple,
+                          unselectedLabelColor: Colors.grey[600],
+                          indicatorColor: AppTheme.primaryPurple,
+                          tabs: const [
+                            Tab(text: 'Overview'),
+                            Tab(text: 'Services'),
+                            Tab(text: 'Users'),
+                          ],
+                        ),
+                        SizedBox(
+                          height: 400,
+                          child: TabBarView(
+                            controller: _tabController,
+                            children: [
+                              _buildOverviewTab(),
+                              _buildServicesTab(),
+                              _buildUsersTab(),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -174,390 +167,328 @@ class _AnalyticsPageState extends State<AnalyticsPage> with SingleTickerProvider
   }
 
   Widget _buildKPISection() {
+    final kpis = _analyticsData['kpis'] ?? {};
+    final totalServices = kpis['totalServices'] ?? 0;
+    final activeUsers = kpis['activeUsers'] ?? 0;
+    final revenue = kpis['revenue'] ?? 0.0;
+    final completionRate = kpis['completionRate'] ?? 0.0;
+
     return GridView.count(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: _getCrossAxisCount(context),
+      crossAxisCount: 2,
       crossAxisSpacing: 16,
       mainAxisSpacing: 16,
-      childAspectRatio: _getChildAspectRatio(context),
+      childAspectRatio: 1.1,
       children: [
         _buildKPICard(
           'Total Services',
-          '${_analyticsData['kpis']['totalServices']}',
-          Icons.assignment_turned_in,
-          Colors.blue,
-          '+15%',
-          'vs last month',
+          '$totalServices',
+          Icons.assignment_turned_in_rounded,
+          AppTheme.primaryBlue,
         ),
         _buildKPICard(
-          'Avg Response Time',
-          '${_analyticsData['kpis']['responseTime']} min',
-          Icons.timer,
-          Colors.green,
-          '-8%',
-          'faster response',
+          'Active Users',
+          '$activeUsers',
+          Icons.people_rounded,
+          AppTheme.primaryTeal,
         ),
         _buildKPICard(
-          'Satisfaction Rate',
-          '${_analyticsData['kpis']['satisfactionRate']}%',
-          Icons.thumb_up,
-          Colors.orange,
-          '+2%',
-          'improvement',
+          'Total Revenue',
+          '₹${revenue.toStringAsFixed(0)}',
+          Icons.attach_money_rounded,
+          AppTheme.successGradient.colors[0],
         ),
         _buildKPICard(
-          'Revenue',
-          '\$${(_analyticsData['kpis']['revenue'] / 1000).toStringAsFixed(1)}K',
-          Icons.attach_money,
-          Colors.purple,
-          '+${_analyticsData['kpis']['revenueGrowth']}%',
-          'growth',
+          'Completion Rate',
+          '${completionRate.toStringAsFixed(1)}%',
+          Icons.check_circle_rounded,
+          AppTheme.primaryPurple,
         ),
-        if (MediaQuery.of(context).size.width > 600) ...[
-          _buildKPICard(
-            'Active Users',
-            '${_analyticsData['kpis']['activeUsers']}',
-            Icons.people,
-            Colors.teal,
-            '+12%',
-            'more users',
-          ),
-          _buildKPICard(
-            'Completion Rate',
-            '${_analyticsData['kpis']['completionRate']}%',
-            Icons.check_circle,
-            Colors.pink,
-            '+5%',
-            'better completion',
-          ),
-        ],
       ],
     );
   }
 
-  Widget _buildKPICard(String title, String value, IconData icon, Color color, String change, String changeLabel) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 15,
-            offset: const Offset(0, 6),
-          ),
-        ],
-        border: Border.all(color: Colors.grey[100]!),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
+  Widget _buildKPICard(String title, String value, IconData icon, Color color) {
+    return AppAnimations.scaleIn(
+      child: EnhancedCard(
+        backgroundColor: Colors.white,
+        elevation: 4,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [color, color.withValues(alpha: 0.7)],
                 ),
-                child: Icon(icon, color: color, size: 24),
+                borderRadius: BorderRadius.circular(12),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: change.contains('+') ? Colors.green[50] : Colors.red[50],
-                  borderRadius: BorderRadius.circular(12),
+              child: Icon(icon, color: Colors.white, size: 24),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      change.contains('+') ? Icons.trending_up : Icons.trending_down,
-                      size: 14,
-                      color: change.contains('+') ? Colors.green : Colors.red,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      change,
-                      style: TextStyle(
-                        color: change.contains('+') ? Colors.green : Colors.red,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 4),
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              height: 1.2,
+              ],
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            title,
-            style: TextStyle(
-              color: Colors.grey[600],
-              fontSize: 14,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            changeLabel,
-            style: TextStyle(
-              color: Colors.grey[500],
-              fontSize: 12,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildOverviewTab() {
-    return const Padding(
-      padding: EdgeInsets.all(20),
-      child: Column(
-        children: [
-          // Service Distribution and Trend Chart would go here
-          // Implementation details would be similar to your original code
-          Text('Overview Content'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPerformanceTab() {
-    return const Padding(
-      padding: EdgeInsets.all(20),
-      child: Column(
-        children: [
-          Text('Performance Content'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProvidersTab() {
-    final List<dynamic> providers = _analyticsData['topProviders'];
+    final serviceDistribution = _analyticsData['serviceDistribution'] ?? {};
     
-    return Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        children: [
-          Text(
-            'Top Performing Providers',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey[800],
-            ),
-          ),
-          const SizedBox(height: 16),
-          ...providers.map((provider) => _buildProviderCard(provider)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProviderCard(Map<String, dynamic> provider) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
-        leading: Container(
-          width: 50,
-          height: 50,
-          decoration: BoxDecoration(
-            color: Colors.blue.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(25),
-          ),
-          child: const Icon(Icons.business, color: Colors.blue),
-        ),
-        title: Text(provider['name'].toString(), style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                const Icon(Icons.star, size: 16, color: Colors.orange),
-                const SizedBox(width: 4),
-                Text(provider['rating'].toString()),
-                const SizedBox(width: 16),
-                const Icon(Icons.assignment, size: 16, color: Colors.blue),
-                const SizedBox(width: 4),
-                Text('${provider['services']} services'),
-              ],
-            ),
-          ],
-        ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              '\$${provider['revenue']}',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green),
-            ),
-            Text(
-              'revenue',
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuickMetrics() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+    return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Quick Insights',
-            style: TextStyle(
-              fontSize: 18,
+            'Service Distribution',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
-              color: Colors.grey[800],
             ),
           ),
           const SizedBox(height: 16),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              _buildInsightChip('Peak Hours: 8-10 AM', Icons.access_time, Colors.orange),
-              _buildInsightChip('Top Region: Downtown', Icons.location_on, Colors.blue),
-              _buildInsightChip('Best Rating: 4.9/5', Icons.star, Colors.amber),
-              _buildInsightChip('Fastest: Emergency', Icons.flash_on, Colors.green),
-              _buildInsightChip('Growth: +38% MoM', Icons.trending_up, Colors.purple),
-            ],
-          ),
+          ...serviceDistribution.entries.map((entry) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _buildDistributionBar(entry.key, entry.value as int),
+            );
+          }).toList(),
         ],
       ),
     );
   }
 
-  Widget _buildInsightChip(String text, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+  Widget _buildDistributionBar(String label, int percentage) {
+    final color = label.contains('Garage') ? AppTheme.garageServiceColor : AppTheme.towServiceColor;
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            Text(
+              '$percentage%',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: LinearProgressIndicator(
+            value: percentage / 100,
+            minHeight: 8,
+            backgroundColor: Colors.grey[200],
+            valueColor: AlwaysStoppedAnimation<Color>(color),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildServicesTab() {
+    final serviceDistribution = _analyticsData['serviceDistribution'] ?? {};
+    final kpis = _analyticsData['kpis'] ?? {};
+    
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: 6),
+          _buildMetricCard(
+            'Total Services',
+            '${kpis['totalServices'] ?? 0}',
+            Icons.assignment,
+            AppTheme.primaryBlue,
+          ),
+          const SizedBox(height: 12),
+          _buildMetricCard(
+            'Completion Rate',
+            '${(kpis['completionRate'] ?? 0.0).toStringAsFixed(1)}%',
+            Icons.check_circle,
+            AppTheme.completedColor,
+          ),
+          const SizedBox(height: 12),
           Text(
-            text,
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: color),
+            'By Service Type',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ...serviceDistribution.entries.map((entry) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _buildServiceTypeCard(entry.key, entry.value as int),
+            );
+          }).toList(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUsersTab() {
+    final usersCount = _analyticsData['usersCount'] ?? {};
+    
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildMetricCard(
+            'Total Users',
+            '${usersCount['total'] ?? 0}',
+            Icons.people,
+            AppTheme.primaryPurple,
+          ),
+          const SizedBox(height: 12),
+          _buildMetricCard(
+            'Vehicle Owners',
+            '${usersCount['vehicleOwners'] ?? 0}',
+            Icons.directions_car,
+            AppTheme.primaryBlue,
+          ),
+          const SizedBox(height: 12),
+          _buildMetricCard(
+            'Garages',
+            '${usersCount['garages'] ?? 0}',
+            Icons.build_circle,
+            AppTheme.garageServiceColor,
+          ),
+          const SizedBox(height: 12),
+          _buildMetricCard(
+            'Tow Providers',
+            '${usersCount['towProviders'] ?? 0}',
+            Icons.local_shipping,
+            AppTheme.towServiceColor,
+          ),
+          const SizedBox(height: 12),
+          _buildMetricCard(
+            'Insurance',
+            '${usersCount['insurance'] ?? 0}',
+            Icons.shield,
+            AppTheme.insuranceColor,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildExportSection() {
+  Widget _buildMetricCard(String title, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: Colors.white, size: 20),
+          ),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Export Analytics',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey[800],
+                  title,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Colors.grey[600],
                   ),
                 ),
-                const SizedBox(height: 4),
                 Text(
-                  'Download detailed reports in multiple formats',
-                  style: TextStyle(color: Colors.grey[600]),
+                  value,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(width: 16),
-          Wrap(
-            spacing: 8,
-            children: [
-              OutlinedButton.icon(
-                onPressed: () {},
-                icon: const Icon(Icons.picture_as_pdf, size: 16),
-                label: const Text('PDF'),
-              ),
-              OutlinedButton.icon(
-                onPressed: () {},
-                icon: const Icon(Icons.table_chart, size: 16),
-                label: const Text('CSV'),
-              ),
-              ElevatedButton.icon(
-                onPressed: () {},
-                icon: const Icon(Icons.share, size: 16),
-                label: const Text('Share'),
-              ),
-            ],
           ),
         ],
       ),
     );
   }
 
-  int _getCrossAxisCount(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    if (width > 1200) return 4;
-    if (width > 800) return 3;
-    if (width > 600) return 2;
-    return 2;
-  }
-
-  double _getChildAspectRatio(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    if (width > 1200) return 1.5;
-    if (width > 800) return 1.3;
-    return 1.1;
+  Widget _buildServiceTypeCard(String type, int percentage) {
+    final color = type.contains('Garage') ? AppTheme.garageServiceColor : AppTheme.towServiceColor;
+    
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              type.contains('Garage') ? Icons.build_circle : Icons.local_shipping,
+              color: color,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              type,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Text(
+            '$percentage%',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

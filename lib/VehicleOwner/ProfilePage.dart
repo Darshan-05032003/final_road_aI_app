@@ -18,7 +18,7 @@ class ProfileDataFetcher {
       }
 
       String userEmail = currentUser.email!;
-      
+
       DocumentSnapshot profileSnapshot = await _firestore
           .collection('owner')
           .doc(userEmail)
@@ -31,11 +31,11 @@ class ProfileDataFetcher {
         return _getDefaultUserData(currentUser);
       }
 
-      Map<String, dynamic> userData = profileSnapshot.data() as Map<String, dynamic>;
-      
+      Map<String, dynamic> userData =
+          profileSnapshot.data() as Map<String, dynamic>;
+
       // Enhance with additional calculated fields
       return _enhanceUserData(userData, currentUser);
-      
     } catch (e) {
       print('Error fetching profile data: $e');
       // Return default data in case of error
@@ -53,17 +53,13 @@ class ProfileDataFetcher {
       }
 
       String userEmail = currentUser.email!;
-      
+
       await _firestore
           .collection('owner')
           .doc(userEmail)
           .collection('profile')
           .doc('user_details')
-          .update({
-            ...updatedData,
-            'updatedAt': FieldValue.serverTimestamp(),
-          });
-
+          .update({...updatedData, 'updatedAt': FieldValue.serverTimestamp()});
     } catch (e) {
       print('Error updating profile data: $e');
       rethrow;
@@ -86,11 +82,17 @@ class ProfileDataFetcher {
     };
   }
 
-  Map<String, dynamic> _enhanceUserData(Map<String, dynamic> userData, User user) {
+  Map<String, dynamic> _enhanceUserData(
+    Map<String, dynamic> userData,
+    User user,
+  ) {
     // Calculate additional fields for the profile screen
-    DateTime memberSince = (userData['createdAt'] as Timestamp?)?.toDate() ?? user.metadata.creationTime ?? DateTime.now();
+    DateTime memberSince =
+        (userData['createdAt'] as Timestamp?)?.toDate() ??
+        user.metadata.creationTime ??
+        DateTime.now();
     int points = _calculateRewardPoints(memberSince);
-    
+
     return {
       'name': userData['name'] ?? user.displayName ?? 'User',
       'email': userData['email'] ?? user.email ?? 'No email',
@@ -132,7 +134,11 @@ class ProfileDataFetcher {
 class EnhancedProfileScreen extends StatefulWidget {
   final String userEmail;
 
-  const EnhancedProfileScreen({super.key, required this.userEmail, required List serviceHistory});
+  const EnhancedProfileScreen({
+    super.key,
+    required this.userEmail,
+    required List serviceHistory,
+  });
 
   @override
   _EnhancedProfileScreenState createState() => _EnhancedProfileScreenState();
@@ -142,7 +148,7 @@ class _EnhancedProfileScreenState extends State<EnhancedProfileScreen> {
   final ProfileDataFetcher _dataFetcher = ProfileDataFetcher();
   final ProfilePictureService _profilePictureService = ProfilePictureService();
   final List<String> _emergencyContacts = [];
-  
+
   late TextEditingController _nameController;
   late TextEditingController _emailController;
   late TextEditingController _vehicleController;
@@ -181,18 +187,20 @@ class _EnhancedProfileScreenState extends State<EnhancedProfileScreen> {
       Map<String, dynamic> userData = await _dataFetcher.fetchUserProfileData();
       final User? user = FirebaseAuth.instance.currentUser;
       String? profileUrl;
-      
+
       if (user != null) {
-        profileUrl = await _profilePictureService.getProfilePictureUrl('owner', user.email ?? '');
+        profileUrl = await _profilePictureService.getProfilePictureUrl(
+          'owner',
+          user.email ?? '',
+        );
       }
-      
+
       setState(() {
         _userData = userData;
         _profilePictureUrl = profileUrl;
         _updateControllersWithUserData();
         _isLoading = false;
       });
-      
     } catch (e) {
       print('Error loading user data: $e');
       setState(() {
@@ -204,7 +212,8 @@ class _EnhancedProfileScreenState extends State<EnhancedProfileScreen> {
 
   Future<void> _uploadProfilePicture() async {
     try {
-      final File? imageFile = await _profilePictureService.showImageSourceDialog(context);
+      final File? imageFile = await _profilePictureService
+          .showImageSourceDialog(context);
       if (imageFile == null) return;
 
       setState(() {
@@ -254,7 +263,6 @@ class _EnhancedProfileScreenState extends State<EnhancedProfileScreen> {
           ? _buildLoadingState()
           : CustomScrollView(
               slivers: [
-               
                 SliverList(
                   delegate: SliverChildListDelegate([
                     _buildProfileHeader(),
@@ -315,7 +323,9 @@ class _EnhancedProfileScreenState extends State<EnhancedProfileScreen> {
                             colors: [Color(0xFF6D28D9), Color(0xFF8B5CF6)],
                           )
                         : null,
-                    color: _profilePictureUrl != null ? null : Colors.transparent,
+                    color: _profilePictureUrl != null
+                        ? null
+                        : Colors.transparent,
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
@@ -332,23 +342,28 @@ class _EnhancedProfileScreenState extends State<EnhancedProfileScreen> {
                             fit: BoxFit.cover,
                             width: 100,
                             height: 100,
-                            errorBuilder: (context, error, stackTrace) => const Icon(
-                              Icons.person_rounded,
-                              size: 50,
-                              color: Colors.white,
-                            ),
+                            errorBuilder: (context, error, stackTrace) =>
+                                const Icon(
+                                  Icons.person_rounded,
+                                  size: 50,
+                                  color: Colors.white,
+                                ),
                           ),
                         )
                       : _selectedImage != null
-                          ? ClipOval(
-                              child: Image.file(
-                                _selectedImage!,
-                                fit: BoxFit.cover,
-                                width: 100,
-                                height: 100,
-                              ),
-                            )
-                          : const Icon(Icons.person_rounded, size: 50, color: Colors.white),
+                      ? ClipOval(
+                          child: Image.file(
+                            _selectedImage!,
+                            fit: BoxFit.cover,
+                            width: 100,
+                            height: 100,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.person_rounded,
+                          size: 50,
+                          color: Colors.white,
+                        ),
                 ),
               ),
               GestureDetector(
@@ -366,7 +381,11 @@ class _EnhancedProfileScreenState extends State<EnhancedProfileScreen> {
                       ),
                     ],
                   ),
-                  child: const Icon(Icons.camera_alt_rounded, size: 16, color: Color(0xFF6D28D9)),
+                  child: const Icon(
+                    Icons.camera_alt_rounded,
+                    size: 16,
+                    color: Color(0xFF6D28D9),
+                  ),
                 ),
               ),
             ],
@@ -403,17 +422,47 @@ class _EnhancedProfileScreenState extends State<EnhancedProfileScreen> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            _buildProfileField('Full Name', _nameController, Icons.person_rounded, enabled: _isEditing),
+            _buildProfileField(
+              'Full Name',
+              _nameController,
+              Icons.person_rounded,
+              enabled: _isEditing,
+            ),
             const SizedBox(height: 12),
-            _buildProfileField('Email', _emailController, Icons.email_rounded, enabled: false),
+            _buildProfileField(
+              'Email',
+              _emailController,
+              Icons.email_rounded,
+              enabled: false,
+            ),
             const SizedBox(height: 12),
-            _buildProfileField('Phone', _phoneController, Icons.phone_rounded, enabled: _isEditing),
+            _buildProfileField(
+              'Phone',
+              _phoneController,
+              Icons.phone_rounded,
+              enabled: _isEditing,
+            ),
             const SizedBox(height: 12),
-            _buildProfileField('Vehicle Info', _vehicleController, Icons.directions_car_rounded, enabled: _isEditing),
+            _buildProfileField(
+              'Vehicle Info',
+              _vehicleController,
+              Icons.directions_car_rounded,
+              enabled: _isEditing,
+            ),
             const SizedBox(height: 12),
-            _buildProfileField('Location', _locationController, Icons.location_on_rounded, enabled: _isEditing),
+            _buildProfileField(
+              'Location',
+              _locationController,
+              Icons.location_on_rounded,
+              enabled: _isEditing,
+            ),
             const SizedBox(height: 12),
-            _buildProfileField('License Number', _licenseController, Icons.card_membership_rounded, enabled: _isEditing),
+            _buildProfileField(
+              'License Number',
+              _licenseController,
+              Icons.card_membership_rounded,
+              enabled: _isEditing,
+            ),
             const SizedBox(height: 20),
             if (_isEditing) ...[
               ElevatedButton(
@@ -421,7 +470,9 @@ class _EnhancedProfileScreenState extends State<EnhancedProfileScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF6D28D9),
                   minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 child: const Text('Save Changes'),
               ),
@@ -430,7 +481,9 @@ class _EnhancedProfileScreenState extends State<EnhancedProfileScreen> {
                 onPressed: _toggleEditing,
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 child: const Text('Cancel'),
               ),
@@ -440,7 +493,9 @@ class _EnhancedProfileScreenState extends State<EnhancedProfileScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF6D28D9),
                   minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 child: const Text('Edit Profile'),
               ),
@@ -451,7 +506,12 @@ class _EnhancedProfileScreenState extends State<EnhancedProfileScreen> {
     );
   }
 
-  Widget _buildProfileField(String label, TextEditingController controller, IconData icon, {bool enabled = true}) {
+  Widget _buildProfileField(
+    String label,
+    TextEditingController controller,
+    IconData icon, {
+    bool enabled = true,
+  }) {
     return TextField(
       controller: controller,
       enabled: enabled,
@@ -485,12 +545,36 @@ class _EnhancedProfileScreenState extends State<EnhancedProfileScreen> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            _buildInfoItem(Icons.people_rounded, 'Member Since', _userData['memberSince'] ?? 'Not available'),
-            _buildInfoItem(Icons.auto_awesome_rounded, 'Reward Points', '${_userData['points'] ?? '0'} points'),
-            _buildInfoItem(Icons.calendar_today_rounded, 'Next Service', _userData['nextService'] ?? 'Not scheduled'),
-            _buildInfoItem(Icons.verified_rounded, 'Account Status', 'Verified'),
-            _buildInfoItem(Icons.phone_rounded, 'Phone Number', _userData['phone'] ?? 'Not provided'),
-            _buildInfoItem(Icons.location_on_rounded, 'Location', _userData['location'] ?? 'Not specified'),
+            _buildInfoItem(
+              Icons.people_rounded,
+              'Member Since',
+              _userData['memberSince'] ?? 'Not available',
+            ),
+            _buildInfoItem(
+              Icons.auto_awesome_rounded,
+              'Reward Points',
+              '${_userData['points'] ?? '0'} points',
+            ),
+            _buildInfoItem(
+              Icons.calendar_today_rounded,
+              'Next Service',
+              _userData['nextService'] ?? 'Not scheduled',
+            ),
+            _buildInfoItem(
+              Icons.verified_rounded,
+              'Account Status',
+              'Verified',
+            ),
+            _buildInfoItem(
+              Icons.phone_rounded,
+              'Phone Number',
+              _userData['phone'] ?? 'Not provided',
+            ),
+            _buildInfoItem(
+              Icons.location_on_rounded,
+              'Location',
+              _userData['location'] ?? 'Not specified',
+            ),
           ],
         ),
       ),
@@ -509,8 +593,14 @@ class _EnhancedProfileScreenState extends State<EnhancedProfileScreen> {
         ),
         child: Icon(icon, color: const Color(0xFF6D28D9), size: 20),
       ),
-      title: Text(title, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
-      subtitle: Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+      title: Text(
+        title,
+        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+      ),
+      subtitle: Text(
+        value,
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+      ),
     );
   }
 
@@ -539,16 +629,15 @@ class _EnhancedProfileScreenState extends State<EnhancedProfileScreen> {
       };
 
       await _dataFetcher.updateUserProfileData(updatedData);
-      
+
       // Reload data to get updated information
       await _loadUserData();
-      
+
       setState(() {
         _isEditing = false;
       });
 
       _showSuccessSnackBar('Profile updated successfully!');
-      
     } catch (e) {
       _showErrorSnackBar('Failed to update profile: $e');
     } finally {
@@ -560,19 +649,13 @@ class _EnhancedProfileScreenState extends State<EnhancedProfileScreen> {
 
   void _showSuccessSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.green),
     );
   }
 
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
 
@@ -659,7 +742,9 @@ class SOSEmergencyScreen extends StatelessWidget {
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(25),
+                      ),
                     ),
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,

@@ -1,5 +1,10 @@
-// livemonitoring.dart
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:smart_road_app/admin/services/admin_data_service.dart';
+import 'package:smart_road_app/core/theme/app_theme.dart';
+import 'package:smart_road_app/core/animations/app_animations.dart';
+import 'package:smart_road_app/widgets/enhanced_card.dart';
+import 'package:smart_road_app/widgets/enhanced_button.dart';
 
 class LiveMonitoringPage extends StatefulWidget {
   const LiveMonitoringPage({super.key});
@@ -9,297 +14,402 @@ class LiveMonitoringPage extends StatefulWidget {
 }
 
 class _LiveMonitoringPageState extends State<LiveMonitoringPage> {
+  final AdminDataService _dataService = AdminDataService();
   String _selectedFilter = 'All';
-  final bool _showHeatmap = false;
-  final int _selectedService = -1;
+  bool _isLoading = true;
+  List<Map<String, dynamic>> _activeServices = [];
 
-  final List<Map<String, dynamic>> _activeServices = [
-    {
-      'id': '1',
-      'type': 'Tow Service',
-      'customer': 'John Doe',
-      'status': 'On the way',
-      'duration': '12 mins ago',
-      'location': 'Downtown, Manhattan',
-      'provider': 'City Tow Services',
-      'eta': '8 min',
-      'distance': '2.3 km',
-      'priority': 'High',
-      'coordinates': {'x': 120, 'y': 180},
-      'vehicle': 'Toyota Camry 2020',
-      'issue': 'Flat tire',
-    },
-    {
-      'id': '2',
-      'type': 'Emergency',
-      'customer': 'Sarah Wilson',
-      'status': 'SOS Active',
-      'duration': '2 mins ago',
-      'location': 'Highway I-95',
-      'provider': 'Emergency Response',
-      'eta': '5 min',
-      'distance': '1.2 km',
-      'priority': 'Critical',
-      'coordinates': {'x': 200, 'y': 250},
-      'vehicle': 'Honda Civic 2019',
-      'issue': 'Accident - Minor injuries',
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadActiveServices();
+    // Auto-refresh every 10 seconds
+    _startAutoRefresh();
+  }
+
+  void _startAutoRefresh() {
+    Future.delayed(const Duration(seconds: 10), () {
+      if (mounted) {
+        _loadActiveServices();
+        _startAutoRefresh();
+      }
+    });
+  }
+
+  Future<void> _loadActiveServices() async {
+    try {
+      final services = await _dataService.getActiveServices();
+      if (mounted) {
+        setState(() {
+          _activeServices = services;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading active services: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   List<Map<String, dynamic>> get _filteredServices {
     if (_selectedFilter == 'All') return _activeServices;
-    return _activeServices.where((service) => service['type'] == _selectedFilter).toList();
-  }
-
-  void _showServiceDetails(Map<String, dynamic> service) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => ServiceDetailsSheet(service: service),
-    );
+    return _activeServices.where((service) {
+      if (_selectedFilter == 'Emergency') {
+        return service['type'] == 'Emergency';
+      }
+      return service['type'] == _selectedFilter;
+    }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading && _activeServices.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryPurple),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Loading active services...',
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
+          ],
+        ),
+      );
+    }
+
     return Column(
       children: [
         // Control Panel
-        Container(
-          padding: const EdgeInsets.all(16),
-          color: Colors.white,
-          child: Column(
-            children: [
-              // Quick Stats
-              Row(
+        AppAnimations.fadeIn(
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: AppTheme.secondaryGradient,
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.primaryBlue.withValues(alpha: 0.3),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: SafeArea(
+              bottom: false,
+              child: Column(
                 children: [
-                  _buildStatItem('Active', '${_activeServices.length}', Colors.blue, Icons.directions_car),
-                  _buildStatItem('SOS', '${_activeServices.where((s) => s['type'] == 'Emergency').length}', Colors.red, Icons.warning),
-                  _buildStatItem('Completed', '23', Colors.green, Icons.check_circle),
-                  _buildStatItem('Avg ETA', '8 min', Colors.orange, Icons.timer),
-                ],
-              ),
-              const SizedBox(height: 12),
-              // Controls
-              Row(
-                children: [
-                  Expanded(
-                    child: Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.map, color: Colors.white, size: 20),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            'Live Monitoring',
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: Colors.green,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            const Text(
+                              'Live',
+                              style: TextStyle(color: Colors.white, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildStatItem(
+                          'Active Services',
+                          '${_activeServices.length}',
+                          Colors.white,
+                          Icons.directions_car_rounded,
+                        ),
+                      ),
+                      Expanded(
+                        child: _buildStatItem(
+                          'Garage',
+                          '${_activeServices.where((s) => s['type'] == 'Garage Service').length}',
+                          Colors.white,
+                          Icons.build_circle,
+                        ),
+                      ),
+                      Expanded(
+                        child: _buildStatItem(
+                          'Tow',
+                          '${_activeServices.where((s) => s['type'] == 'Tow Service').length}',
+                          Colors.white,
+                          Icons.local_shipping,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
                       children: [
-                        FilterChip(
-                          label: const Text('All'),
-                          selected: _selectedFilter == 'All',
-                          onSelected: (selected) => setState(() => _selectedFilter = 'All'),
-                        ),
-                        FilterChip(
-                          label: const Text('Emergency'),
-                          selected: _selectedFilter == 'Emergency',
-                          onSelected: (selected) => setState(() => _selectedFilter = 'Emergency'),
-                        ),
-                        FilterChip(
-                          label: const Text('Tow'),
-                          selected: _selectedFilter == 'Tow Service',
-                          onSelected: (selected) => setState(() => _selectedFilter = 'Tow Service'),
-                        ),
-                        FilterChip(
-                          label: const Text('Mechanic'),
-                          selected: _selectedFilter == 'Mechanic',
-                          onSelected: (selected) => setState(() => _selectedFilter = 'Mechanic'),
-                        ),
+                        _buildFilterChip('All', _selectedFilter == 'All'),
+                        _buildFilterChip('Garage Service', _selectedFilter == 'Garage Service'),
+                        _buildFilterChip('Tow Service', _selectedFilter == 'Tow Service'),
                       ],
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.refresh),
-                    onPressed: () {},
-                    tooltip: 'Refresh Map',
-                  ),
                 ],
               ),
-            ],
+            ),
           ),
         ),
 
         // Services List
         Expanded(
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(24),
-                topRight: Radius.circular(24),
+          child: _filteredServices.isEmpty
+              ? AppAnimations.fadeIn(
+                  child: _buildEmptyState(),
+                )
+              : RefreshIndicator(
+                  onRefresh: _loadActiveServices,
+                  color: AppTheme.primaryPurple,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _filteredServices.length,
+                    itemBuilder: (context, index) {
+                      return AppAnimations.fadeIn(
+                        delay: index * 30,
+                        child: _buildServiceCard(_filteredServices[index]),
+                      );
+                    },
+                  ),
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatItem(String title, String value, Color textColor, IconData icon) {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: textColor, size: 16),
+            const SizedBox(width: 4),
+            Text(
+              value,
+              style: TextStyle(
+                color: textColor,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.2),
-                  blurRadius: 10,
-                  offset: const Offset(0, -4),
-                ),
-              ],
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Active Services (${_filteredServices.length})', 
-                         style: Theme.of(context).textTheme.headlineSmall),
-                    Row(
-                      children: [
-                        Icon(Icons.sort, size: 20, color: Colors.grey[600]),
-                        const SizedBox(width: 4),
-                        Text('Sort by: ETA', style: TextStyle(color: Colors.grey[600])),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: _filteredServices.isEmpty 
-                      ? _buildEmptyState()
-                      : ListView.builder(
-                          itemCount: _filteredServices.length,
-                          itemBuilder: (context, index) {
-                            return _buildServiceCard(_filteredServices[index], index);
-                          },
-                        ),
-                ),
-              ],
-            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          title,
+          style: TextStyle(
+            color: textColor.withValues(alpha: 0.9),
+            fontSize: 12,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildStatItem(String title, String value, Color color, IconData icon) {
-    return Expanded(
-      child: Container(
-        margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.2)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(icon, size: 16, color: color),
-            ),
-            const SizedBox(width: 8),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color)),
-                Text(title, style: const TextStyle(fontSize: 10, color: Colors.grey)),
-              ],
-            ),
-          ],
+  Widget _buildFilterChip(String label, bool selected) {
+    return Container(
+      margin: const EdgeInsets.only(right: 8),
+      child: FilterChip(
+        label: Text(label),
+        selected: selected,
+        onSelected: (bool value) {
+          setState(() => _selectedFilter = value ? label : 'All');
+        },
+        selectedColor: Colors.white,
+        checkmarkColor: AppTheme.primaryBlue,
+        labelStyle: TextStyle(
+          color: selected ? AppTheme.primaryBlue : Colors.white,
+          fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
         ),
       ),
     );
   }
 
-  Widget _buildServiceCard(Map<String, dynamic> service, int index) {
-    return Card(
+  Widget _buildServiceCard(Map<String, dynamic> service) {
+    final serviceType = service['type'] ?? 'Service';
+    final status = service['status'] ?? 'Pending';
+    final timestamp = service['createdAt'] as Timestamp?;
+    final createdAt = timestamp?.toDate() ?? DateTime.now();
+    final timeAgo = _getTimeAgo(createdAt);
+    final color = AppTheme.getServiceTypeColor(serviceType);
+
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
-        leading: Container(
-          width: 50,
-          height: 50,
-          decoration: BoxDecoration(
-            color: _getServiceColor(service['type']).withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: _getServiceColor(service['type']).withOpacity(0.3)),
-          ),
-          child: Icon(
-            _getServiceIcon(service['type']),
-            color: _getServiceColor(service['type']),
-            size: 24,
-          ),
-        ),
-        title: Row(
-          children: [
-            Expanded(
-              child: Text(
-                service['type'],
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: _getPriorityColor(service['priority']).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                service['priority'],
-                style: TextStyle(
-                  color: _getPriorityColor(service['priority']),
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        ),
-        subtitle: Column(
+      child: EnhancedCard(
+        onTap: () => _showServiceDetails(service),
+        showBorder: true,
+        borderColor: color.withValues(alpha: 0.3),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 4),
-            Text('Customer: ${service['customer']}'),
-            Text('Location: ${service['location']}'),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    serviceType.contains('Garage') ? Icons.build_circle : Icons.local_shipping,
+                    color: color,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        serviceType,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Requested $timeAgo',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                StatusTag(status: status),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Icon(Icons.person_outline, size: 16, color: Colors.grey[600]),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    'Customer: ${service['customer'] ?? 'Unknown'}',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 8),
             Row(
               children: [
-                Icon(Icons.timer, size: 12, color: Colors.grey[600]),
+                Icon(Icons.location_on_outlined, size: 16, color: Colors.grey[600]),
                 const SizedBox(width: 4),
-                Text('ETA: ${service['eta']}', style: const TextStyle(fontSize: 12)),
-                const SizedBox(width: 16),
-                Icon(Icons.phone, size: 12, color: Colors.grey[600]),
-                const SizedBox(width: 4),
-                const Text('Call', style: TextStyle(fontSize: 12, color: Colors.blue)),
+                Expanded(
+                  child: Text(
+                    service['location'] ?? 'Location not available',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
-          ],
-        ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: _getStatusColor(service['status']).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                service['status'],
-                style: TextStyle(
-                  color: _getStatusColor(service['status']),
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(Icons.directions_car_outlined, size: 16, color: Colors.grey[600]),
+                const SizedBox(width: 4),
+                Text(
+                  service['vehicle'] ?? 'N/A',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ],
+            ),
+            if (service['problem'] != null) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, size: 16, color: Colors.grey[600]),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        service['problem'] ?? '',
+                        style: Theme.of(context).textTheme.bodySmall,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(service['duration'], style: TextStyle(color: Colors.grey[600], fontSize: 10)),
+            ],
+            if (service['provider'] != null && service['provider'] != 'Not Assigned') ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(Icons.business_outlined, size: 16, color: Colors.grey[600]),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      'Provider: ${service['provider']}',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
-        onTap: () => _showServiceDetails(service),
       ),
     );
   }
@@ -309,16 +419,31 @@ class _LiveMonitoringPageState extends State<LiveMonitoringPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.map_outlined, size: 80, color: Colors.grey[300]),
-          const SizedBox(height: 16),
-          const Text(
-            'No Active Services',
-            style: TextStyle(fontSize: 18, color: Colors.grey),
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryBlue.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.map_outlined,
+              size: 64,
+              color: AppTheme.primaryBlue,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'No active services',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'All services are completed or no matches found',
-            style: TextStyle(color: Colors.grey),
+          Text(
+            'Active service requests will appear here',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Colors.grey[600],
+            ),
             textAlign: TextAlign.center,
           ),
         ],
@@ -326,199 +451,109 @@ class _LiveMonitoringPageState extends State<LiveMonitoringPage> {
     );
   }
 
-  Color _getServiceColor(String type) {
-    switch (type) {
-      case 'Emergency': return Colors.red;
-      case 'Tow Service': return Colors.orange;
-      case 'Mechanic': return Colors.green;
-      case 'Insurance': return Colors.blue;
-      case 'Fuel Delivery': return Colors.purple;
-      default: return Colors.grey;
-    }
-  }
-
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'Completed': return Colors.green;
-      case 'In progress': return Colors.blue;
-      case 'On the way': return Colors.orange;
-      case 'SOS Active': return Colors.red;
-      case 'Pending': return Colors.grey;
-      default: return Colors.purple;
-    }
-  }
-
-  Color _getPriorityColor(String priority) {
-    switch (priority) {
-      case 'Critical': return Colors.red;
-      case 'High': return Colors.orange;
-      case 'Medium': return Colors.blue;
-      case 'Low': return Colors.green;
-      default: return Colors.grey;
-    }
-  }
-
-  IconData _getServiceIcon(String type) {
-    switch (type) {
-      case 'Tow Service': return Icons.local_shipping;
-      case 'Mechanic': return Icons.handyman;
-      case 'Emergency': return Icons.warning;
-      case 'Insurance': return Icons.security;
-      case 'Fuel Delivery': return Icons.local_gas_station;
-      default: return Icons.help;
-    }
-  }
-}
-
-class ServiceDetailsSheet extends StatelessWidget {
-  final Map<String, dynamic> service;
-
-  const ServiceDetailsSheet({super.key, required this.service});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
-        ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
+  void _showServiceDetails(Map<String, dynamic> service) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => AppAnimations.slideInFromBottom(
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
-          const SizedBox(height: 20),
-          Row(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: _getServiceColor(service['type']).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  _getServiceIcon(service['type']),
-                  color: _getServiceColor(service['type']),
-                  size: 30,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(service['type'], style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 4),
-                    Text('Service #${service['id']}', style: TextStyle(color: Colors.grey[600])),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: _getStatusColor(service['status']).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  service['status'],
-                  style: TextStyle(
-                    color: _getStatusColor(service['status']),
-                    fontWeight: FontWeight.bold,
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          _buildDetailRow('Customer', service['customer'], Icons.person),
-          _buildDetailRow('Vehicle', service['vehicle'], Icons.directions_car),
-          _buildDetailRow('Issue', service['issue'], Icons.info),
-          _buildDetailRow('Location', service['location'], Icons.location_on),
-          _buildDetailRow('Provider', service['provider'], Icons.business),
-          _buildDetailRow('ETA', service['eta'], Icons.timer),
-          _buildDetailRow('Distance', service['distance'], Icons.space_dashboard),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.phone),
-                  label: const Text('Call Customer'),
+              const SizedBox(height: 24),
+              Text(
+                'Service Details',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.chat),
-                  label: const Text('Message'),
+              const SizedBox(height: 24),
+              _buildDetailRow('Service Type', service['type'] ?? 'N/A', Icons.build_circle),
+              _buildDetailRow('Status', service['status'] ?? 'N/A', Icons.info),
+              _buildDetailRow('Customer', service['customer'] ?? 'N/A', Icons.person),
+              _buildDetailRow('Location', service['location'] ?? 'N/A', Icons.location_on),
+              _buildDetailRow('Vehicle', service['vehicle'] ?? 'N/A', Icons.directions_car),
+              if (service['problem'] != null)
+                _buildDetailRow('Problem', service['problem'] ?? 'N/A', Icons.description),
+              if (service['provider'] != null && service['provider'] != 'Not Assigned')
+                _buildDetailRow('Provider', service['provider'] ?? 'N/A', Icons.business),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: GradientButton(
+                  text: 'Close',
+                  onPressed: () => Navigator.pop(context),
+                  gradient: AppTheme.primaryGradient,
                 ),
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
 
   Widget _buildDetailRow(String label, String value, IconData icon) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.only(bottom: 16),
       child: Row(
         children: [
           Icon(icon, size: 20, color: Colors.grey[600]),
           const SizedBox(width: 12),
-          Expanded(flex: 2, child: Text(label, style: TextStyle(color: Colors.grey[600]))),
-          Expanded(flex: 3, child: Text(value, style: const TextStyle(fontWeight: FontWeight.w500))),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Color _getServiceColor(String type) {
-    switch (type) {
-      case 'Emergency': return Colors.red;
-      case 'Tow Service': return Colors.orange;
-      case 'Mechanic': return Colors.green;
-      case 'Insurance': return Colors.blue;
-      case 'Fuel Delivery': return Colors.purple;
-      default: return Colors.grey;
-    }
-  }
+  String _getTimeAgo(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
 
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'Completed': return Colors.green;
-      case 'In progress': return Colors.blue;
-      case 'On the way': return Colors.orange;
-      case 'SOS Active': return Colors.red;
-      case 'Pending': return Colors.grey;
-      default: return Colors.purple;
-    }
-  }
-
-  IconData _getServiceIcon(String type) {
-    switch (type) {
-      case 'Tow Service': return Icons.local_shipping;
-      case 'Mechanic': return Icons.handyman;
-      case 'Emergency': return Icons.warning;
-      case 'Insurance': return Icons.security;
-      case 'Fuel Delivery': return Icons.local_gas_station;
-      default: return Icons.help;
+    if (difference.inDays > 0) {
+      return '${difference.inDays}d ago';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours}h ago';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes}m ago';
+    } else {
+      return 'Just now';
     }
   }
 }

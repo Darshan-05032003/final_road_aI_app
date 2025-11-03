@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:smart_road_app/core/theme/app_theme.dart';
 
 class ThemeService extends ChangeNotifier {
   static const String _themeKey = 'theme_mode';
@@ -57,39 +58,11 @@ class ThemeService extends ChangeNotifier {
   }
 
   ThemeData getLightTheme() {
-    return ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.light,
-      primaryColor: const Color(0xFF6D28D9),
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF6D28D9),
-        brightness: Brightness.light,
-      ),
-      scaffoldBackgroundColor: Colors.white,
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Color(0xFF6D28D9),
-        foregroundColor: Colors.white,
-        elevation: 0,
-      ),
-    );
+    return AppTheme.lightTheme;
   }
 
   ThemeData getDarkTheme() {
-    return ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.dark,
-      primaryColor: const Color(0xFF8B5CF6),
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF8B5CF6),
-        brightness: Brightness.dark,
-      ),
-      scaffoldBackgroundColor: const Color(0xFF121212),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Color(0xFF1E1E1E),
-        foregroundColor: Colors.white,
-        elevation: 0,
-      ),
-    );
+    return AppTheme.darkTheme;
   }
 }
 

@@ -36,7 +36,11 @@ dependencies:
   upi_pay: ^1.1.0
   google_sign_in: ^6.2.1
   printing: ^5.14.2
+<<<<<<< HEAD
   avatar_glow: ^3.0.1
+=======
+  sqflite: ^2.3.3+2
+>>>>>>> 65222e8ed1f35bfa46bd8e1467dd771b48f9584e
 
 dev_dependencies:
   flutter_test:

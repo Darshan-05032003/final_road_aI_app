@@ -1,7 +1,677 @@
+
+
+// // import 'package:smart_road_app/Login/GarageRegister.dart';
+// // import 'package:smart_road_app/garage/garageDashboardd.dart';
+// // import 'package:firebase_auth/firebase_auth.dart';
+// // import 'package:flutter/material.dart';
+// // import 'package:shared_preferences/shared_preferences.dart';
+// // import 'package:smart_road_app/services/google_auth_service.dart';
+
+// // class GarageLoginPage extends StatefulWidget {
+// //   const GarageLoginPage({super.key});
+
+// //   @override
+// //   _GarageLoginPageState createState() => _GarageLoginPageState();
+// // }
+
+// // class _GarageLoginPageState extends State<GarageLoginPage> {
+// //   final TextEditingController _emailController = TextEditingController();
+// //   final TextEditingController _passwordController = TextEditingController();
+
+// //   bool _isLoading = false;
+// //   bool _obscureText = true;
+
+// //   // SharedPreferences keys
+// //   static const String _isLoggedInKey = 'garageIsLoggedIn';
+// //   static const String _userEmailKey = 'garageUserEmail';
+
+// //   @override
+// //   void initState() {
+// //     super.initState();
+// //     _checkLoginStatus();
+// //   }
+
+// //   // Check if user is already logged in
+// //   Future<void> _checkLoginStatus() async {
+// //     try {
+// //       // First check if user is authenticated with Firebase Auth
+// //       final currentUser = FirebaseAuth.instance.currentUser;
+      
+// //       if (currentUser == null) {
+// //         // Not authenticated, clear any stale SharedPreferences
+// //         final prefs = await SharedPreferences.getInstance();
+// //         await prefs.setBool(_isLoggedInKey, false);
+// //         await prefs.remove(_userEmailKey);
+// //         return;
+// //       }
+
+// //       // User is authenticated, verify SharedPreferences matches
+// //       final prefs = await SharedPreferences.getInstance();
+// //       final isLoggedIn = prefs.getBool(_isLoggedInKey) ?? false;
+// //       final savedEmail = prefs.getString(_userEmailKey) ?? '';
+
+// //       // Only auto-navigate if both Firebase Auth and SharedPreferences indicate login
+// //       if (isLoggedIn && currentUser.email != null && currentUser.email == savedEmail && mounted) {
+// //         // Auto-navigate to garage dashboard if already logged in
+// //         Navigator.of(context).pushAndRemoveUntil(
+// //           MaterialPageRoute(builder: (context) => GarageDashboard()),
+// //           (route) => false,
+// //         );
+// //       } else {
+// //         // Mismatch detected - clear stale data
+// //         await prefs.setBool(_isLoggedInKey, false);
+// //         await prefs.remove(_userEmailKey);
+// //         // Sign out from Firebase to be safe
+// //         await FirebaseAuth.instance.signOut();
+// //       }
+// //     } catch (e) {
+// //       print('Error checking garage login status: $e');
+// //       // On error, ensure we're signed out
+// //       try {
+// //         await FirebaseAuth.instance.signOut();
+// //         final prefs = await SharedPreferences.getInstance();
+// //         await prefs.setBool(_isLoggedInKey, false);
+// //         await prefs.remove(_userEmailKey);
+// //       } catch (signOutError) {
+// //         print('Error during cleanup: $signOutError');
+// //       }
+// //     }
+// //   }
+
+// //   // Save login state to SharedPreferences
+// //   Future<void> _saveLoginState(String email) async {
+// //     try {
+// //       final prefs = await SharedPreferences.getInstance();
+// //       await prefs.setBool(_isLoggedInKey, true);
+// //       await prefs.setString(_userEmailKey, email);
+// //     } catch (e) {
+// //       print('Error saving garage login state: $e');
+// //     }
+// //   }
+
+// //   void _login() async {
+// //     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+// //       ScaffoldMessenger.of(context).showSnackBar(
+// //         const SnackBar(content: Text("Please enter email and password")),
+// //       );
+// //       return;
+// //     }
+
+// //     setState(() {
+// //       _isLoading = true;
+// //     });
+
+// //     try {
+// //       await FirebaseAuth.instance.signInWithEmailAndPassword(
+// //         email: _emailController.text.trim(),
+// //         password: _passwordController.text.trim(),
+// //       );
+
+// //       // Save login state to SharedPreferences
+// //       await _saveLoginState(_emailController.text.trim());
+
+// //       ScaffoldMessenger.of(
+// //         context,
+// //       ).showSnackBar(const SnackBar(content: Text("Sign in successful")));
+
+// //       Navigator.of(context).pushAndRemoveUntil(
+// //         MaterialPageRoute(builder: (context) => GarageDashboard()),
+// //         (route) => false,
+// //       );
+// //     } catch (e) {
+// //       ScaffoldMessenger.of(
+// //         context,
+// //       ).showSnackBar(SnackBar(content: Text("Error: $e")));
+// //     } finally {
+// //       if (mounted) {
+// //         setState(() {
+// //           _isLoading = false;
+// //         });
+// //       }
+// //     }
+// //   }
+
+// //   // Forgot Password method
+// //   Future<void> _resetPassword() async {
+// //     String email = _emailController.text.trim();
+    
+// //     // If email field is empty, show dialog to enter email
+// //     if (email.isEmpty || !email.contains('@')) {
+// //       _showForgotPasswordDialog();
+// //       return;
+// //     }
+
+// //     setState(() {
+// //       _isLoading = true;
+// //     });
+
+// //     try {
+// //       await FirebaseAuth.instance.sendPasswordResetEmail(
+// //         email: email,
+// //       );
+
+// //       if (mounted) {
+// //         ScaffoldMessenger.of(context).showSnackBar(
+// //           const SnackBar(
+// //             content: Text("Password reset email sent! Check your inbox."),
+// //             backgroundColor: Colors.green,
+// //           ),
+// //         );
+// //       }
+// //     } on FirebaseAuthException catch (e) {
+// //       String errorMessage = "Failed to send reset email";
+
+// //       if (e.code == 'user-not-found') {
+// //         errorMessage = "No user found with this email address.";
+// //       } else if (e.code == 'invalid-email') {
+// //         errorMessage = "Invalid email address format.";
+// //       } else if (e.code == 'too-many-requests') {
+// //         errorMessage = "Too many requests. Please try again later.";
+// //       }
+
+// //       if (mounted) {
+// //         ScaffoldMessenger.of(context).showSnackBar(
+// //           SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
+// //         );
+// //       }
+// //     } catch (e) {
+// //       if (mounted) {
+// //         ScaffoldMessenger.of(context).showSnackBar(
+// //           const SnackBar(
+// //             content: Text("Failed to send reset email. Please try again."),
+// //             backgroundColor: Colors.red,
+// //           ),
+// //         );
+// //       }
+// //     } finally {
+// //       if (mounted) {
+// //         setState(() {
+// //           _isLoading = false;
+// //         });
+// //       }
+// //     }
+// //   }
+
+// //   // Show forgot password dialog
+// //   void _showForgotPasswordDialog() {
+// //     final emailController = TextEditingController();
+    
+// //     showDialog(
+// //       context: context,
+// //       builder: (context) => AlertDialog(
+// //         title: const Text('Reset Password'),
+// //         content: Column(
+// //           mainAxisSize: MainAxisSize.min,
+// //           children: [
+// //             const Text('Enter your email address to receive a password reset link:'),
+// //             const SizedBox(height: 20),
+// //             TextField(
+// //               controller: emailController,
+// //               decoration: InputDecoration(
+// //                 labelText: 'Email',
+// //                 hintText: 'Enter your email',
+// //                 prefixIcon: const Icon(Icons.email),
+// //                 border: OutlineInputBorder(
+// //                   borderRadius: BorderRadius.circular(12),
+// //                 ),
+// //               ),
+// //               keyboardType: TextInputType.emailAddress,
+// //               autofocus: true,
+// //             ),
+// //           ],
+// //         ),
+// //         actions: [
+// //           TextButton(
+// //             onPressed: () => Navigator.pop(context),
+// //             child: const Text('Cancel'),
+// //           ),
+// //           ElevatedButton(
+// //             onPressed: () async {
+// //               final email = emailController.text.trim();
+// //               if (email.isEmpty || !email.contains('@')) {
+// //                 ScaffoldMessenger.of(context).showSnackBar(
+// //                   const SnackBar(
+// //                     content: Text("Please enter a valid email address"),
+// //                     backgroundColor: Colors.red,
+// //                   ),
+// //                 );
+// //                 return;
+// //               }
+              
+// //               Navigator.pop(context);
+// //               await _sendPasswordResetEmail(email);
+// //             },
+// //             style: ElevatedButton.styleFrom(
+// //               backgroundColor: Colors.blue[600],
+// //             ),
+// //             child: const Text('Send Reset Link'),
+// //           ),
+// //         ],
+// //       ),
+// //     );
+// //   }
+
+// //   // Send password reset email
+// //   Future<void> _sendPasswordResetEmail(String email) async {
+// //     setState(() {
+// //       _isLoading = true;
+// //     });
+
+// //     try {
+// //       await FirebaseAuth.instance.sendPasswordResetEmail(
+// //         email: email,
+// //       );
+
+// //       if (mounted) {
+// //         ScaffoldMessenger.of(context).showSnackBar(
+// //           const SnackBar(
+// //             content: Text("Password reset email sent! Check your inbox."),
+// //             backgroundColor: Colors.green,
+// //           ),
+// //         );
+// //       }
+// //     } on FirebaseAuthException catch (e) {
+// //       String errorMessage = "Failed to send reset email";
+
+// //       if (e.code == 'user-not-found') {
+// //         errorMessage = "No user found with this email address.";
+// //       } else if (e.code == 'invalid-email') {
+// //         errorMessage = "Invalid email address format.";
+// //       } else if (e.code == 'too-many-requests') {
+// //         errorMessage = "Too many requests. Please try again later.";
+// //       }
+
+// //       if (mounted) {
+// //         ScaffoldMessenger.of(context).showSnackBar(
+// //           SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
+// //         );
+// //       }
+// //     } catch (e) {
+// //       if (mounted) {
+// //         ScaffoldMessenger.of(context).showSnackBar(
+// //           const SnackBar(
+// //             content: Text("Failed to send reset email. Please try again."),
+// //             backgroundColor: Colors.red,
+// //           ),
+// //         );
+// //       }
+// //     } finally {
+// //       if (mounted) {
+// //         setState(() {
+// //           _isLoading = false;
+// //         });
+// //       }
+// //     }
+// //   }
+
+// //   // Google Sign-In method
+// //   Future<void> _signInWithGoogle() async {
+// //     setState(() {
+// //       _isLoading = true;
+// //     });
+
+// //     try {
+// //       final UserCredential? userCredential = await GoogleAuthService.signInWithGoogle();
+
+// //       if (userCredential != null && userCredential.user != null) {
+// //         // Save login state to SharedPreferences
+// //         await _saveLoginState(userCredential.user!.email ?? '');
+
+// //         if (mounted) {
+// //           ScaffoldMessenger.of(context).showSnackBar(
+// //             const SnackBar(
+// //               content: Text("Google Sign-In successful"),
+// //               backgroundColor: Colors.green,
+// //             ),
+// //           );
+
+// //           Navigator.of(context).pushAndRemoveUntil(
+// //             MaterialPageRoute(builder: (context) => GarageDashboard()),
+// //             (route) => false,
+// //           );
+// //         }
+// //       } else {
+// //         // User cancelled the sign-in
+// //         if (mounted) {
+// //           ScaffoldMessenger.of(context).showSnackBar(
+// //             const SnackBar(
+// //               content: Text("Sign-In was cancelled"),
+// //               backgroundColor: Colors.orange,
+// //             ),
+// //           );
+// //         }
+// //       }
+// //     } catch (e) {
+// //       if (mounted) {
+// //         ScaffoldMessenger.of(context).showSnackBar(
+// //           SnackBar(
+// //             content: Text("Google Sign-In failed: ${e.toString()}"),
+// //             backgroundColor: Colors.red,
+// //           ),
+// //         );
+// //       }
+// //     } finally {
+// //       if (mounted) {
+// //         setState(() {
+// //           _isLoading = false;
+// //         });
+// //       }
+// //     }
+// //   }
+
+// //   @override
+// //   Widget build(BuildContext context) {
+// //     return WillPopScope(
+// //       onWillPop: () async {
+// //         // Navigate back to role selection instead of exiting app
+// //         Navigator.of(context).pop();
+// //         return false;
+// //       },
+// //       child: Scaffold(
+// //         backgroundColor: Colors.grey[50],
+// //         body: SingleChildScrollView(
+// //           child: SizedBox(
+// //             height: MediaQuery.of(context).size.height,
+// //             child: Stack(
+// //               children: [
+// //                 // Blue gradient background
+// //                 Container(
+// //                   height: MediaQuery.of(context).size.height * 0.4,
+// //                   decoration: BoxDecoration(
+// //                     gradient: LinearGradient(
+// //                       colors: [Colors.blue[800]!, Colors.blue[600]!],
+// //                       begin: Alignment.topLeft,
+// //                       end: Alignment.bottomRight,
+// //                     ),
+// //                     borderRadius: BorderRadius.only(
+// //                       bottomLeft: Radius.circular(40),
+// //                       bottomRight: Radius.circular(40),
+// //                     ),
+// //                   ),
+// //                 ),
+
+// //                 Padding(
+// //                   padding: EdgeInsets.all(24.0),
+// //                   child: Column(
+// //                     mainAxisAlignment: MainAxisAlignment.center,
+// //                     children: [
+// //                       SizedBox(height: 80),
+
+// //                       // Logo and Title
+// //                       Container(
+// //                         padding: EdgeInsets.all(16),
+// //                         decoration: BoxDecoration(
+// //                           color: Colors.white,
+// //                           shape: BoxShape.circle,
+// //                           boxShadow: [
+// //                             BoxShadow(
+// //                               color: Colors.blue.withOpacity(0.2),
+// //                               blurRadius: 15,
+// //                               offset: Offset(0, 5),
+// //                             ),
+// //                           ],
+// //                         ),
+// //                         child: Icon(
+// //                           Icons.build,
+// //                           size: 40,
+// //                           color: Colors.blue[700],
+// //                         ),
+// //                       ),
+
+// //                       SizedBox(height: 20),
+
+// //                       Text(
+// //                         'Garage Login',
+// //                         style: TextStyle(
+// //                           fontSize: 28,
+// //                           fontWeight: FontWeight.bold,
+// //                           color: Colors.white,
+// //                         ),
+// //                       ),
+
+// //                       SizedBox(height: 8),
+
+// //                       Text(
+// //                         'Manage your garage services',
+// //                         style: TextStyle(
+// //                           color: Colors.white.withOpacity(0.9),
+// //                           fontSize: 16,
+// //                         ),
+// //                       ),
+
+// //                       SizedBox(height: 80),
+
+// //                       // Login Card
+// //                       Card(
+// //                         elevation: 8,
+// //                         shape: RoundedRectangleBorder(
+// //                           borderRadius: BorderRadius.circular(20),
+// //                         ),
+// //                         child: Padding(
+// //                           padding: EdgeInsets.all(24),
+// //                           child: Column(
+// //                             children: [
+// //                               // Email Field
+// //                               TextField(
+// //                                 controller: _emailController,
+// //                                 keyboardType: TextInputType.emailAddress,
+// //                                 decoration: InputDecoration(
+// //                                   labelText: 'Email / Phone',
+// //                                   prefixIcon: Icon(
+// //                                     Icons.email,
+// //                                     color: Colors.blue[400],
+// //                                   ),
+// //                                   border: OutlineInputBorder(
+// //                                     borderRadius: BorderRadius.circular(12),
+// //                                   ),
+// //                                   focusedBorder: OutlineInputBorder(
+// //                                     borderRadius: BorderRadius.circular(12),
+// //                                     borderSide: BorderSide(
+// //                                       color: Colors.blue[400]!,
+// //                                       width: 2,
+// //                                     ),
+// //                                   ),
+// //                                 ),
+// //                               ),
+
+// //                               SizedBox(height: 20),
+
+// //                               // Password Field
+// //                               TextField(
+// //                                 controller: _passwordController,
+// //                                 obscureText: _obscureText,
+// //                                 decoration: InputDecoration(
+// //                                   labelText: 'Password',
+// //                                   prefixIcon: Icon(
+// //                                     Icons.lock,
+// //                                     color: Colors.blue[400],
+// //                                   ),
+// //                                   suffixIcon: IconButton(
+// //                                     icon: Icon(
+// //                                       _obscureText
+// //                                           ? Icons.visibility
+// //                                           : Icons.visibility_off,
+// //                                       color: Colors.blue[400],
+// //                                     ),
+// //                                     onPressed: () {
+// //                                       setState(() {
+// //                                         _obscureText = !_obscureText;
+// //                                       });
+// //                                     },
+// //                                   ),
+// //                                   border: OutlineInputBorder(
+// //                                     borderRadius: BorderRadius.circular(12),
+// //                                   ),
+// //                                   focusedBorder: OutlineInputBorder(
+// //                                     borderRadius: BorderRadius.circular(12),
+// //                                     borderSide: BorderSide(
+// //                                       color: Colors.blue[400]!,
+// //                                       width: 2,
+// //                                     ),
+// //                                   ),
+// //                                 ),
+// //                               ),
+
+// //                               SizedBox(height: 10),
+
+// //                               // Forgot Password
+// //                               Align(
+// //                                 alignment: Alignment.centerRight,
+// //                                 child: TextButton(
+// //                                   onPressed: _isLoading ? null : _resetPassword,
+// //                                   child: Text(
+// //                                     'Forgot Password?',
+// //                                     style: TextStyle(
+// //                                       color: Colors.blue[600],
+// //                                       fontWeight: FontWeight.w500,
+// //                                     ),
+// //                                   ),
+// //                                 ),
+// //                               ),
+
+// //                               SizedBox(height: 20),
+
+// //                               // Login Button
+// //                               SizedBox(
+// //                                 width: double.infinity,
+// //                                 height: 50,
+// //                                 child: ElevatedButton(
+// //                                   onPressed: _isLoading ? null : _login,
+// //                                   style: ElevatedButton.styleFrom(
+// //                                     backgroundColor: Colors.blue[600],
+// //                                     shape: RoundedRectangleBorder(
+// //                                       borderRadius: BorderRadius.circular(12),
+// //                                     ),
+// //                                     elevation: 3,
+// //                                   ),
+// //                                   child: _isLoading
+// //                                       ? SizedBox(
+// //                                           height: 20,
+// //                                           width: 20,
+// //                                           child: CircularProgressIndicator(
+// //                                             strokeWidth: 2,
+// //                                             valueColor:
+// //                                                 AlwaysStoppedAnimation<Color>(
+// //                                                   Colors.white,
+// //                                                 ),
+// //                                           ),
+// //                                         )
+// //                                       : Text(
+// //                                           'LOGIN TO GARAGE',
+// //                                           style: TextStyle(
+// //                                             fontSize: 16,
+// //                                             fontWeight: FontWeight.bold,
+// //                                             color: Colors.white,
+// //                                           ),
+// //                                         ),
+// //                                 ),
+// //                               ),
+
+// //                               SizedBox(height: 20),
+
+// //                               // Divider with "OR"
+// //                               Row(
+// //                                 children: [
+// //                                   Expanded(child: Divider()),
+// //                                   Padding(
+// //                                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
+// //                                     child: Text(
+// //                                       'OR',
+// //                                       style: TextStyle(
+// //                                         color: Colors.grey[600],
+// //                                         fontWeight: FontWeight.w500,
+// //                                       ),
+// //                                     ),
+// //                                   ),
+// //                                   Expanded(child: Divider()),
+// //                                 ],
+// //                               ),
+
+// //                               SizedBox(height: 20),
+
+// //                               // Google Sign-In Button
+// //                               SizedBox(
+// //                                 width: double.infinity,
+// //                                 height: 50,
+// //                                 child: OutlinedButton.icon(
+// //                                   onPressed: _isLoading ? null : _signInWithGoogle,
+// //                                   icon: Image.network(
+// //                                     'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg',
+// //                                     height: 24,
+// //                                     width: 24,
+// //                                     errorBuilder: (context, error, stackTrace) {
+// //                                       return Icon(Icons.g_mobiledata, size: 24, color: Colors.red[600]);
+// //                                     },
+// //                                   ),
+// //                                   label: Text(
+// //                                     'Continue with Google',
+// //                                     style: TextStyle(
+// //                                       fontSize: 16,
+// //                                       fontWeight: FontWeight.w600,
+// //                                       color: Colors.grey[800],
+// //                                     ),
+// //                                   ),
+// //                                   style: OutlinedButton.styleFrom(
+// //                                     side: BorderSide(color: Colors.grey[300]!),
+// //                                     shape: RoundedRectangleBorder(
+// //                                       borderRadius: BorderRadius.circular(12),
+// //                                           ),
+// //                                         ),
+// //                                 ),
+// //                               ),
+
+// //                               SizedBox(height: 20),
+
+// //                               // Register Link
+// //                               Row(
+// //                                 mainAxisAlignment: MainAxisAlignment.center,
+// //                                 children: [
+// //                                   Text(
+// //                                     "Don't have a garage account? ",
+// //                                     style: TextStyle(color: Colors.grey[600]),
+// //                                   ),
+// //                                   GestureDetector(
+// //                                     onTap: () {
+// //                                       Navigator.of(context).push(
+// //                                         MaterialPageRoute(
+// //                                           builder: (context) =>
+// //                                               GarageRegistrationPage(),
+// //                                         ),
+// //                                       );
+// //                                     },
+// //                                     child: Text(
+// //                                       'Register',
+// //                                       style: TextStyle(
+// //                                         color: Colors.blue[600],
+// //                                         fontWeight: FontWeight.bold,
+// //                                       ),
+// //                                     ),
+// //                                   ),
+// //                                 ],
+// //                               ),
+// //                             ],
+// //                           ),
+// //                         ),
+// //                       ),
+// //                     ],
+// //                   ),
+// //                 ),
+// //               ],
+// //             ),
+// //           ),
+// //         ),
+// //       ),
+// //     );
+// //   }
+// // }
+
 // import 'package:smart_road_app/Login/GarageRegister.dart';
 // import 'package:smart_road_app/garage/garageDashboardd.dart';
 // import 'package:firebase_auth/firebase_auth.dart';
 // import 'package:flutter/material.dart';
+// import 'package:shared_preferences/shared_preferences.dart';
+// import 'package:smart_road_app/services/google_auth_service.dart';
+// import 'package:smart_road_app/shared_prefrences.dart' show AuthService, GarageAuth;
 
 // class GarageLoginPage extends StatefulWidget {
 //   const GarageLoginPage({super.key});
@@ -14,407 +684,1350 @@
 //   final TextEditingController _emailController = TextEditingController();
 //   final TextEditingController _passwordController = TextEditingController();
 
-//   final bool _isLoading = false;
+//   bool _isLoading = false;
 //   bool _obscureText = true;
 
-//   void _login() async {
-//   try {
-//                         await FirebaseAuth.instance.signInWithEmailAndPassword(
-//                           email: _emailController.text.trim(),
-//                           password: _passwordController.text.trim(),
-//                         );
-//                         ScaffoldMessenger.of(context).showSnackBar(
-//                           const SnackBar(content: Text("Sign in successful")),
-//                         );
-//                          Navigator.of(context).push(MaterialPageRoute(builder: (context)=>GarageDashboard()));
-//                       } catch (e) {
-//                         ScaffoldMessenger.of(
-//                           context,
-//                         ).showSnackBar(SnackBar(content: Text("Error: $e")));
-//                       }
+//   @override
+//   void initState() {
+//     super.initState();
+//     _checkLoginStatus();
+//   }
 
+//   // Check if user is already logged in using the centralized AuthService
+//   Future<void> _checkLoginStatus() async {
+//     try {
+//       final bool isLoggedIn = await AuthService.checkValidLogin();
+//       final String? userEmail = await AuthService.getUserEmail();
+//       final String? userRole = await AuthService.getUserRole();
+      
+//       // Check if Firebase user matches our stored preferences
+//       final currentUser = FirebaseAuth.instance.currentUser;
+      
+//       if (isLoggedIn && 
+//           userRole == 'garage' && 
+//           currentUser != null && 
+//           currentUser.email == userEmail &&
+//           mounted) {
+        
+//         print('✅ Auto-login detected for garage: $userEmail');
+        
+//         // Auto-navigate to garage dashboard if already logged in
+//         Navigator.of(context).pushAndRemoveUntil(
+//           MaterialPageRoute(builder: (context) => const GarageDashboard()),
+//           (route) => false,
+//         );
+//       } else {
+//         // Clear any stale data if conditions don't match
+//         if (currentUser == null || currentUser.email != userEmail || userRole != 'garage') {
+//           await _clearStaleData();
+//         }
+//       }
+//     } catch (e) {
+//       print('❌ Error checking garage login status: $e');
+//       await _clearStaleData();
+//     }
+//   }
+
+//   // Clear stale login data - FIXED METHOD
+//   Future<void> _clearStaleData() async {
+//     try {
+//       // Only clear data if user is actually logged out
+//       final currentUser = FirebaseAuth.instance.currentUser;
+//       if (currentUser == null) {
+//         await GarageAuth.garageLogout();
+//         await AuthService.logout();
+//       }
+//     } catch (e) {
+//       print('Error during cleanup: $e');
+//     }
+//   }
+
+//   // Save login state using centralized services
+//   Future<void> _saveLoginState(String email) async {
+//     try {
+//       await GarageAuth.saveGarageLogin(email);
+//       print('✅ Garage login state saved for: $email');
+//     } catch (e) {
+//       print('❌ Error saving garage login state: $e');
+//     }
+//   }
+
+//   void _login() async {
+//     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         const SnackBar(content: Text("Please enter email and password")),
+//       );
+//       return;
+//     }
+
+//     setState(() {
+//       _isLoading = true;
+//     });
+
+//     try {
+//       final UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+//         email: _emailController.text.trim(),
+//         password: _passwordController.text.trim(),
+//       );
+
+//       if (userCredential.user != null) {
+//         // Save login state to SharedPreferences
+//         await _saveLoginState(_emailController.text.trim());
+
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           const SnackBar(content: Text("Sign in successful")),
+//         );
+
+//         if (mounted) {
+//           Navigator.of(context).pushAndRemoveUntil(
+//             MaterialPageRoute(builder: (context) => const GarageDashboard()),
+//             (route) => false,
+//           );
+//         }
+//       }
+//     } on FirebaseAuthException catch (e) {
+//       String errorMessage = "Login failed";
+      
+//       if (e.code == 'user-not-found') {
+//         errorMessage = "No user found with this email.";
+//       } else if (e.code == 'wrong-password') {
+//         errorMessage = "Wrong password provided.";
+//       } else if (e.code == 'invalid-email') {
+//         errorMessage = "Invalid email address.";
+//       } else if (e.code == 'too-many-requests') {
+//         errorMessage = "Too many attempts. Try again later.";
+//       }
+      
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         SnackBar(content: Text(errorMessage)),
+//       );
+//     } catch (e) {
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         SnackBar(content: Text("Error: $e")),
+//       );
+//     } finally {
+//       if (mounted) {
+//         setState(() {
+//           _isLoading = false;
+//         });
+//       }
+//     }
+//   }
+
+//   // Forgot Password method
+//   Future<void> _resetPassword() async {
+//     String email = _emailController.text.trim();
+    
+//     // If email field is empty, show dialog to enter email
+//     if (email.isEmpty || !email.contains('@')) {
+//       _showForgotPasswordDialog();
+//       return;
+//     }
+
+//     await _sendPasswordResetEmail(email);
+//   }
+
+//   // Show forgot password dialog
+//   void _showForgotPasswordDialog() {
+//     final emailController = TextEditingController();
+    
+//     showDialog(
+//       context: context,
+//       builder: (context) => AlertDialog(
+//         title: const Text('Reset Password'),
+//         content: Column(
+//           mainAxisSize: MainAxisSize.min,
+//           children: [
+//             const Text('Enter your email address to receive a password reset link:'),
+//             const SizedBox(height: 20),
+//             TextField(
+//               controller: emailController,
+//               decoration: InputDecoration(
+//                 labelText: 'Email',
+//                 hintText: 'Enter your email',
+//                 prefixIcon: const Icon(Icons.email),
+//                 border: OutlineInputBorder(
+//                   borderRadius: BorderRadius.circular(12),
+//                 ),
+//               ),
+//               keyboardType: TextInputType.emailAddress,
+//               autofocus: true,
+//             ),
+//           ],
+//         ),
+//         actions: [
+//           TextButton(
+//             onPressed: () => Navigator.pop(context),
+//             child: const Text('Cancel'),
+//           ),
+//           ElevatedButton(
+//             onPressed: () async {
+//               final email = emailController.text.trim();
+//               if (email.isEmpty || !email.contains('@')) {
+//                 ScaffoldMessenger.of(context).showSnackBar(
+//                   const SnackBar(
+//                     content: Text("Please enter a valid email address"),
+//                     backgroundColor: Colors.red,
+//                   ),
+//                 );
+//                 return;
+//               }
+              
+//               Navigator.pop(context);
+//               await _sendPasswordResetEmail(email);
+//             },
+//             style: ElevatedButton.styleFrom(
+//               backgroundColor: Colors.blue[600],
+//             ),
+//             child: const Text('Send Reset Link'),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+
+//   // Send password reset email
+//   Future<void> _sendPasswordResetEmail(String email) async {
+//     setState(() {
+//       _isLoading = true;
+//     });
+
+//     try {
+//       await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+
+//       if (mounted) {
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           const SnackBar(
+//             content: Text("Password reset email sent! Check your inbox."),
+//             backgroundColor: Colors.green,
+//           ),
+//         );
+//       }
+//     } on FirebaseAuthException catch (e) {
+//       String errorMessage = "Failed to send reset email";
+
+//       if (e.code == 'user-not-found') {
+//         errorMessage = "No user found with this email address.";
+//       } else if (e.code == 'invalid-email') {
+//         errorMessage = "Invalid email address format.";
+//       } else if (e.code == 'too-many-requests') {
+//         errorMessage = "Too many requests. Please try again later.";
+//       }
+
+//       if (mounted) {
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
+//         );
+//       }
+//     } catch (e) {
+//       if (mounted) {
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           const SnackBar(
+//             content: Text("Failed to send reset email. Please try again."),
+//             backgroundColor: Colors.red,
+//           ),
+//         );
+//       }
+//     } finally {
+//       if (mounted) {
+//         setState(() {
+//           _isLoading = false;
+//         });
+//       }
+//     }
+//   }
+
+//   // Google Sign-In method
+//   Future<void> _signInWithGoogle() async {
+//     setState(() {
+//       _isLoading = true;
+//     });
+
+//     try {
+//       final UserCredential? userCredential = await GoogleAuthService.signInWithGoogle();
+
+//       if (userCredential != null && userCredential.user != null) {
+//         // Save login state to SharedPreferences
+//         await _saveLoginState(userCredential.user!.email ?? '');
+
+//         if (mounted) {
+//           ScaffoldMessenger.of(context).showSnackBar(
+//             const SnackBar(
+//               content: Text("Google Sign-In successful"),
+//               backgroundColor: Colors.green,
+//             ),
+//           );
+
+//           Navigator.of(context).pushAndRemoveUntil(
+//             MaterialPageRoute(builder: (context) => const GarageDashboard()),
+//             (route) => false,
+//           );
+//         }
+//       } else {
+//         // User cancelled the sign-in
+//         if (mounted) {
+//           ScaffoldMessenger.of(context).showSnackBar(
+//             const SnackBar(
+//               content: Text("Sign-In was cancelled"),
+//               backgroundColor: Colors.orange,
+//             ),
+//           );
+//         }
+//       }
+//     } catch (e) {
+//       if (mounted) {
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           SnackBar(
+//             content: Text("Google Sign-In failed: ${e.toString()}"),
+//             backgroundColor: Colors.red,
+//           ),
+//         );
+//       }
+//     } finally {
+//       if (mounted) {
+//         setState(() {
+//           _isLoading = false;
+//         });
+//       }
+//     }
 //   }
 
 //   @override
 //   Widget build(BuildContext context) {
-//     return Scaffold(
-//       backgroundColor: Colors.grey[50],
-//       body: SingleChildScrollView(
-//         child: SizedBox(
-//           height: MediaQuery.of(context).size.height,
-//           child: Stack(
-//             children: [
-//               // Blue gradient background
-//               Container(
-//                 height: MediaQuery.of(context).size.height * 0.4,
-//                 decoration: BoxDecoration(
-//                   gradient: LinearGradient(
-//                     colors: [Colors.blue[800]!, Colors.blue[600]!],
-//                     begin: Alignment.topLeft,
-//                     end: Alignment.bottomRight,
-//                   ),
-//                   borderRadius: BorderRadius.only(
-//                     bottomLeft: Radius.circular(40),
-//                     bottomRight: Radius.circular(40),
+//     return WillPopScope(
+//       onWillPop: () async {
+//         // Navigate back to role selection instead of exiting app
+//         Navigator.of(context).pop();
+//         return false;
+//       },
+//       child: Scaffold(
+//         backgroundColor: Colors.grey[50],
+//         body: SingleChildScrollView(
+//           child: SizedBox(
+//             height: MediaQuery.of(context).size.height,
+//             child: Stack(
+//               children: [
+//                 // Blue gradient background
+//                 Container(
+//                   height: MediaQuery.of(context).size.height * 0.4,
+//                   decoration: BoxDecoration(
+//                     gradient: LinearGradient(
+//                       colors: [Colors.blue[800]!, Colors.blue[600]!],
+//                       begin: Alignment.topLeft,
+//                       end: Alignment.bottomRight,
+//                     ),
+//                     borderRadius: const BorderRadius.only(
+//                       bottomLeft: Radius.circular(40),
+//                       bottomRight: Radius.circular(40),
+//                     ),
 //                   ),
 //                 ),
-//               ),
 
-//               Padding(
-//                 padding: EdgeInsets.all(24.0),
-//                 child: Column(
-//                   mainAxisAlignment: MainAxisAlignment.center,
-//                   children: [
-//                     SizedBox(height: 80),
+//                 Padding(
+//                   padding: const EdgeInsets.all(24.0),
+//                   child: Column(
+//                     mainAxisAlignment: MainAxisAlignment.center,
+//                     children: [
+//                       const SizedBox(height: 80),
 
-//                     // Logo and Title
-//                     Container(
-//                       padding: EdgeInsets.all(16),
-//                       decoration: BoxDecoration(
-//                         color: Colors.white,
-//                         shape: BoxShape.circle,
-//                         boxShadow: [
-//                           BoxShadow(
-//                             color: Colors.blue.withOpacity(0.2),
-//                             blurRadius: 15,
-//                             offset: Offset(0, 5),
-//                           ),
-//                         ],
-//                       ),
-//                       child: Icon(
-//                         Icons.build,
-//                         size: 40,
-//                         color: Colors.blue[700],
-//                       ),
-//                     ),
-
-//                     SizedBox(height: 20),
-
-//                     Text(
-//                       'Garage Login',
-//                       style: TextStyle(
-//                         fontSize: 28,
-//                         fontWeight: FontWeight.bold,
-//                         color: Colors.white,
-//                       ),
-//                     ),
-
-//                     SizedBox(height: 8),
-
-//                     Text(
-//                       'Manage your garage services',
-//                       style: TextStyle(
-//                         color: Colors.white.withOpacity(0.9),
-//                         fontSize: 16,
-//                       ),
-//                     ),
-
-//                     SizedBox(height: 80),
-
-//                     // Login Card
-//                     Card(
-//                       elevation: 8,
-//                       shape: RoundedRectangleBorder(
-//                         borderRadius: BorderRadius.circular(20),
-//                       ),
-//                       child: Padding(
-//                         padding: EdgeInsets.all(24),
-//                         child: Column(
-//                           children: [
-//                             // Email Field
-//                             TextField(
-//                               controller: _emailController,
-//                               keyboardType: TextInputType.emailAddress,
-//                               decoration: InputDecoration(
-//                                 labelText: 'Email / Phone',
-//                                 prefixIcon: Icon(Icons.email, color: Colors.blue[400]),
-//                                 border: OutlineInputBorder(
-//                                   borderRadius: BorderRadius.circular(12),
-//                                 ),
-//                                 focusedBorder: OutlineInputBorder(
-//                                   borderRadius: BorderRadius.circular(12),
-//                                   borderSide: BorderSide(color: Colors.blue[400]!, width: 2),
-//                                 ),
-//                               ),
-//                             ),
-
-//                             SizedBox(height: 20),
-
-//                             // Password Field
-//                             TextField(
-//                               controller: _passwordController,
-//                               obscureText: _obscureText,
-//                               decoration: InputDecoration(
-//                                 labelText: 'Password',
-//                                 prefixIcon: Icon(Icons.lock, color: Colors.blue[400]),
-//                                 suffixIcon: IconButton(
-//                                   icon: Icon(
-//                                     _obscureText ? Icons.visibility : Icons.visibility_off,
-//                                     color: Colors.blue[400],
-//                                   ),
-//                                   onPressed: () {
-//                                     setState(() {
-//                                       _obscureText = !_obscureText;
-//                                     });
-//                                   },
-//                                 ),
-//                                 border: OutlineInputBorder(
-//                                   borderRadius: BorderRadius.circular(12),
-//                                 ),
-//                                 focusedBorder: OutlineInputBorder(
-//                                   borderRadius: BorderRadius.circular(12),
-//                                   borderSide: BorderSide(color: Colors.blue[400]!, width: 2),
-//                                 ),
-//                               ),
-//                             ),
-
-//                             SizedBox(height: 10),
-
-//                             // Forgot Password
-//                             Align(
-//                               alignment: Alignment.centerRight,
-//                               child: TextButton(
-//                                 onPressed: () {
-//                                   // Navigate to forgot password
-//                                 },
-//                                 child: Text(
-//                                   'Forgot Password?',
-//                                   style: TextStyle(
-//                                     color: Colors.blue[600],
-//                                     fontWeight: FontWeight.w500,
-//                                   ),
-//                                 ),
-//                               ),
-//                             ),
-
-//                             SizedBox(height: 20),
-
-//                             // Login Button
-//                             SizedBox(
-//                               width: double.infinity,
-//                               height: 50,
-//                               child: ElevatedButton(
-//                                 onPressed: _isLoading ? null : _login,
-//                                 style: ElevatedButton.styleFrom(
-//                                   backgroundColor: Colors.blue[600],
-//                                   shape: RoundedRectangleBorder(
-//                                     borderRadius: BorderRadius.circular(12),
-//                                   ),
-//                                   elevation: 3,
-//                                 ),
-//                                 child: _isLoading
-//                                     ? SizedBox(
-//                                         height: 20,
-//                                         width: 20,
-//                                         child: CircularProgressIndicator(
-//                                           strokeWidth: 2,
-//                                           valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-//                                         ),
-//                                       )
-//                                     : Text(
-//                                         'LOGIN TO GARAGE',
-//                                         style: TextStyle(
-//                                           fontSize: 16,
-//                                           fontWeight: FontWeight.bold,
-//                                           color: Colors.white,
-//                                         ),
-//                                       ),
-//                               ),
-//                             ),
-
-//                             SizedBox(height: 20),
-
-//                             // Register Link
-//                             Row(
-//                               mainAxisAlignment: MainAxisAlignment.center,
-//                               children: [
-//                                 Text(
-//                                   "Don't have a garage account? ",
-//                                   style: TextStyle(
-//                                     color: Colors.grey[600],
-//                                   ),
-//                                 ),
-//                                 GestureDetector(
-//                                   onTap: () {
-//                                       Navigator.of(context).push(MaterialPageRoute(builder: (context)=>GarageRegistrationPage()));
-//                                   },
-//                                   child: Text(
-//                                     'Register',
-//                                     style: TextStyle(
-//                                       color: Colors.blue[600],
-//                                       fontWeight: FontWeight.bold,
-//                                     ),
-//                                   ),
-//                                 ),
-//                               ],
+//                       // Logo and Title
+//                       Container(
+//                         padding: const EdgeInsets.all(16),
+//                         decoration: BoxDecoration(
+//                           color: Colors.white,
+//                           shape: BoxShape.circle,
+//                           boxShadow: [
+//                             BoxShadow(
+//                               color: Colors.blue.withOpacity(0.2),
+//                               blurRadius: 15,
+//                               offset: const Offset(0, 5),
 //                             ),
 //                           ],
 //                         ),
+//                         child: Icon(
+//                           Icons.build,
+//                           size: 40,
+//                           color: Colors.blue[700],
+//                         ),
 //                       ),
-//                     ),
-//                   ],
+
+//                       const SizedBox(height: 20),
+
+//                       const Text(
+//                         'Garage Login',
+//                         style: TextStyle(
+//                           fontSize: 28,
+//                           fontWeight: FontWeight.bold,
+//                           color: Colors.white,
+//                         ),
+//                       ),
+
+//                       const SizedBox(height: 8),
+
+//                       Text(
+//                         'Manage your garage services',
+//                         style: TextStyle(
+//                           color: Colors.white.withOpacity(0.9),
+//                           fontSize: 16,
+//                         ),
+//                       ),
+
+//                       const SizedBox(height: 80),
+
+//                       // Login Card
+//                       Card(
+//                         elevation: 8,
+//                         shape: RoundedRectangleBorder(
+//                           borderRadius: BorderRadius.circular(20),
+//                         ),
+//                         child: Padding(
+//                           padding: const EdgeInsets.all(24),
+//                           child: Column(
+//                             children: [
+//                               // Email Field
+//                               TextField(
+//                                 controller: _emailController,
+//                                 keyboardType: TextInputType.emailAddress,
+//                                 decoration: InputDecoration(
+//                                   labelText: 'Email / Phone',
+//                                   prefixIcon: Icon(
+//                                     Icons.email,
+//                                     color: Colors.blue[400],
+//                                   ),
+//                                   border: OutlineInputBorder(
+//                                     borderRadius: BorderRadius.circular(12),
+//                                   ),
+//                                   focusedBorder: OutlineInputBorder(
+//                                     borderRadius: BorderRadius.circular(12),
+//                                     borderSide: BorderSide(
+//                                       color: Colors.blue[400]!,
+//                                       width: 2,
+//                                     ),
+//                                   ),
+//                                 ),
+//                               ),
+
+//                               const SizedBox(height: 20),
+
+//                               // Password Field
+//                               TextField(
+//                                 controller: _passwordController,
+//                                 obscureText: _obscureText,
+//                                 decoration: InputDecoration(
+//                                   labelText: 'Password',
+//                                   prefixIcon: Icon(
+//                                     Icons.lock,
+//                                     color: Colors.blue[400],
+//                                   ),
+//                                   suffixIcon: IconButton(
+//                                     icon: Icon(
+//                                       _obscureText
+//                                           ? Icons.visibility
+//                                           : Icons.visibility_off,
+//                                       color: Colors.blue[400],
+//                                     ),
+//                                     onPressed: () {
+//                                       setState(() {
+//                                         _obscureText = !_obscureText;
+//                                       });
+//                                     },
+//                                   ),
+//                                   border: OutlineInputBorder(
+//                                     borderRadius: BorderRadius.circular(12),
+//                                   ),
+//                                   focusedBorder: OutlineInputBorder(
+//                                     borderRadius: BorderRadius.circular(12),
+//                                     borderSide: BorderSide(
+//                                       color: Colors.blue[400]!,
+//                                       width: 2,
+//                                     ),
+//                                   ),
+//                                 ),
+//                               ),
+
+//                               const SizedBox(height: 10),
+
+//                               // Forgot Password
+//                               Align(
+//                                 alignment: Alignment.centerRight,
+//                                 child: TextButton(
+//                                   onPressed: _isLoading ? null : _resetPassword,
+//                                   child: Text(
+//                                     'Forgot Password?',
+//                                     style: TextStyle(
+//                                       color: Colors.blue[600],
+//                                       fontWeight: FontWeight.w500,
+//                                     ),
+//                                   ),
+//                                 ),
+//                               ),
+
+//                               const SizedBox(height: 20),
+
+//                               // Login Button
+//                               SizedBox(
+//                                 width: double.infinity,
+//                                 height: 50,
+//                                 child: ElevatedButton(
+//                                   onPressed: _isLoading ? null : _login,
+//                                   style: ElevatedButton.styleFrom(
+//                                     backgroundColor: Colors.blue[600],
+//                                     shape: RoundedRectangleBorder(
+//                                       borderRadius: BorderRadius.circular(12),
+//                                     ),
+//                                     elevation: 3,
+//                                   ),
+//                                   child: _isLoading
+//                                       ? const SizedBox(
+//                                           height: 20,
+//                                           width: 20,
+//                                           child: CircularProgressIndicator(
+//                                             strokeWidth: 2,
+//                                             valueColor: AlwaysStoppedAnimation<Color>(
+//                                               Colors.white,
+//                                             ),
+//                                           ),
+//                                         )
+//                                       : const Text(
+//                                           'LOGIN TO GARAGE',
+//                                           style: TextStyle(
+//                                             fontSize: 16,
+//                                             fontWeight: FontWeight.bold,
+//                                             color: Colors.white,
+//                                           ),
+//                                         ),
+//                                 ),
+//                               ),
+
+//                               const SizedBox(height: 20),
+
+//                               // Divider with "OR"
+//                               Row(
+//                                 children: [
+//                                   const Expanded(child: Divider()),
+//                                   Padding(
+//                                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
+//                                     child: Text(
+//                                       'OR',
+//                                       style: TextStyle(
+//                                         color: Colors.grey[600],
+//                                         fontWeight: FontWeight.w500,
+//                                       ),
+//                                     ),
+//                                   ),
+//                                   const Expanded(child: Divider()),
+//                                 ],
+//                               ),
+
+//                               const SizedBox(height: 20),
+
+//                               // Google Sign-In Button
+//                               SizedBox(
+//                                 width: double.infinity,
+//                                 height: 50,
+//                                 child: OutlinedButton.icon(
+//                                   onPressed: _isLoading ? null : _signInWithGoogle,
+//                                   icon: Image.network(
+//                                     'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg',
+//                                     height: 24,
+//                                     width: 24,
+//                                     errorBuilder: (context, error, stackTrace) {
+//                                       return Icon(Icons.g_mobiledata, size: 24, color: Colors.red[600]);
+//                                     },
+//                                   ),
+//                                   label: const Text(
+//                                     'Continue with Google',
+//                                     style: TextStyle(
+//                                       fontSize: 16,
+//                                       fontWeight: FontWeight.w600,
+//                                       color: Color.fromRGBO(66, 66, 66, 1),
+//                                     ),
+//                                   ),
+//                                   style: OutlinedButton.styleFrom(
+//                                     side: BorderSide(color: Colors.grey[300]!),
+//                                     shape: RoundedRectangleBorder(
+//                                       borderRadius: BorderRadius.circular(12),
+//                                     ),
+//                                   ),
+//                                 ),
+//                               ),
+
+//                               const SizedBox(height: 20),
+
+//                               // Register Link
+//                               Row(
+//                                 mainAxisAlignment: MainAxisAlignment.center,
+//                                 children: [
+//                                   Text(
+//                                     "Don't have a garage account? ",
+//                                     style: TextStyle(color: Colors.grey[600]),
+//                                   ),
+//                                   GestureDetector(
+//                                     onTap: () {
+//                                       Navigator.of(context).push(
+//                                         MaterialPageRoute(
+//                                           builder: (context) => const GarageRegistrationPage(),
+//                                         ),
+//                                       );
+//                                     },
+//                                     child: Text(
+//                                       'Register',
+//                                       style: TextStyle(
+//                                         color: Colors.blue[600],
+//                                         fontWeight: FontWeight.bold,
+//                                       ),
+//                                     ),
+//                                   ),
+//                                 ],
+//                               ),
+//                             ],
+//                           ),
+//                         ),
+//                       ),
+//                     ],
+//                   ),
 //                 ),
-//               ),
-//             ],
+//               ],
+//             ),
 //           ),
 //         ),
 //       ),
 //     );
 //   }
+// }  
+
+// import 'package:smart_road_app/Login/GarageRegister.dart';
+// import 'package:smart_road_app/garage/garageDashboardd.dart';
+// import 'package:firebase_auth/firebase_auth.dart';
+// import 'package:flutter/material.dart';
+// import 'package:smart_road_app/services/google_auth_service.dart';
+// //import 'package:smart_road_app/services/auth_service.dart';
+// import 'package:smart_road_app/shared_prefrences.dart' show  GarageAuth; // Import the centralized AuthService
+
+// class GarageLoginPage extends StatefulWidget {
+//   const GarageLoginPage({super.key});
+
+//   @override
+//   _GarageLoginPageState createState() => _GarageLoginPageState();
 // }
 
-// // import 'package:cloud_firestore/cloud_firestore.dart';
-// // import 'package:flutter/material.dart';
-// // // In your main.dart or wherever you navigate to these screens
-// // import 'package:smart_road_app/VehicleOwner/nearby_garages_screen.dart';
-// // import 'package:smart_road_app/garage/garage_service_providerscreen.dart';
-// // import 'package:smart_road_app/Login/GarageLoginScreen.dart';
+// class _GarageLoginPageState extends State<GarageLoginPage> {
+//   final TextEditingController _emailController = TextEditingController();
+//   final TextEditingController _passwordController = TextEditingController();
 
-// // class GarageLoginScreen extends StatefulWidget {
-// //   const GarageLoginScreen({super.key});
+//   bool _isLoading = false;
+//   bool _obscureText = true;
 
-// //   @override
-// //   _GarageLoginScreenState createState() => _GarageLoginScreenState();
-// // }
+//   @override
+//   void initState() {
+//     super.initState();
+//     _checkLoginStatus();
+//   }
 
-// // class _GarageLoginScreenState extends State<GarageLoginScreen> {
-// //   final TextEditingController _emailController = TextEditingController();
-// //   final TextEditingController _passwordController = TextEditingController();
-// //   bool _isLoading = false;
+//   // Check if user is already logged in using the centralized AuthService
+//   Future<void> _checkLoginStatus() async {
+//     try {
+//       final bool isLoggedIn = await AuthService.checkValidLogin();
+//       final String? userEmail = await AuthService.getUserEmail();
+//       final String? userRole = await AuthService.getUserRole();
+      
+//       // Check if Firebase user matches our stored preferences
+//       final currentUser = FirebaseAuth.instance.currentUser;
+      
+//       if (isLoggedIn && 
+//           userRole == 'garage' && 
+//           currentUser != null && 
+//           currentUser.email == userEmail &&
+//           mounted) {
+        
+//         print('✅ Auto-login detected for garage: $userEmail');
+        
+//         // Auto-navigate to garage dashboard if already logged in
+//         Navigator.of(context).pushAndRemoveUntil(
+//           MaterialPageRoute(builder: (context) => const GarageDashboard()),
+//           (route) => false,
+//         );
+//       } else {
+//         // Clear any stale data if conditions don't match
+//         if (currentUser == null || currentUser.email != userEmail || userRole != 'garage') {
+//           await _clearStaleData();
+//         }
+//       }
+//     } catch (e) {
+//       print('❌ Error checking garage login status: $e');
+//       await _clearStaleData();
+//     }
+//   }
 
-// //   Future<void> _loginGarage() async {
-// //     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-// //       ScaffoldMessenger.of(context).showSnackBar(
-// //         SnackBar(content: Text('Please enter email and password')),
-// //       );
-// //       return;
-// //     }
+//   // Clear stale login data
+//   Future<void> _clearStaleData() async {
+//     try {
+//       // Only clear data if user is actually logged out
+//       final currentUser = FirebaseAuth.instance.currentUser;
+//       if (currentUser == null) {
+//         await GarageAuth.garageLogout();
+//         await AuthService.logout();
+//       }
+//     } catch (e) {
+//       print('Error during cleanup: $e');
+//     }
+//   }
 
-// //     setState(() {
-// //       _isLoading = true;
-// //     });
+//   // Save login state using centralized services - UPDATED
+//   Future<void> _saveLoginState(String email, {String? userId, String? userName}) async {
+//     try {
+//       await GarageAuth.saveGarageLogin(email);
+//       print('✅ Garage login state saved for: $email');
+//     } catch (e) {
+//       print('❌ Error saving garage login state: $e');
+//       throw e;
+//     }
+//   }
 
-// //     try {
-// //       // Check if garage exists in Firestore
-// //       final garageSnapshot = await FirebaseFirestore.instance
-// //           .collection('garages')
-// //           .where('email', isEqualTo: _emailController.text.trim())
-// //           .limit(1)
-// //           .get();
+//   void _login() async {
+//     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         const SnackBar(
+//           content: Text("Please enter email and password"),
+//           backgroundColor: Colors.red,
+//         ),
+//       );
+//       return;
+//     }
 
-// //       if (garageSnapshot.docs.isEmpty) {
-// //         ScaffoldMessenger.of(context).showSnackBar(
-// //           SnackBar(content: Text('No garage found with this email')),
-// //         );
-// //         return;
-// //       }
+//     setState(() {
+//       _isLoading = true;
+//     });
 
-// //       final garageData = garageSnapshot.docs.first.data();
+//     try {
+//       final UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+//         email: _emailController.text.trim(),
+//         password: _passwordController.text.trim(),
+//       );
 
-// //       // For demo purposes, we'll just check if the garage exists
-// //       // In production, you should implement proper authentication
+//       if (userCredential.user != null) {
+//         final User user = userCredential.user!;
+        
+//         // Save login state to SharedPreferences
+//         await _saveLoginState(
+//           user.email!,
+//           userId: user.uid,
+//           userName: user.displayName,
+//         );
 
-// //       print('✅ Garage login successful: ${_emailController.text}');
+//         if (mounted) {
+//           ScaffoldMessenger.of(context).showSnackBar(
+//             const SnackBar(
+//               content: Text("Sign in successful"),
+//               backgroundColor: Colors.green,
+//             ),
+//           );
 
-// //       // Navigate to garage service provider screen
-// //       Navigator.pushReplacement(
-// //         context,
-// //         MaterialPageRoute(
-// //           builder: (context) => GarageServiceProviderScreen(
-// //             garageEmail: _emailController.text.trim(),
-// //           ),
-// //         ),
-// //       );
+//           Navigator.of(context).pushAndRemoveUntil(
+//             MaterialPageRoute(builder: (context) => const GarageDashboard()),
+//             (route) => false,
+//           );
+//         }
+//       }
+//     } on FirebaseAuthException catch (e) {
+//       String errorMessage = "Login failed";
+      
+//       if (e.code == 'user-not-found') {
+//         errorMessage = "No user found with this email.";
+//       } else if (e.code == 'wrong-password') {
+//         errorMessage = "Wrong password provided.";
+//       } else if (e.code == 'invalid-email') {
+//         errorMessage = "Invalid email address.";
+//       } else if (e.code == 'too-many-requests') {
+//         errorMessage = "Too many attempts. Try again later.";
+//       } else if (e.code == 'user-disabled') {
+//         errorMessage = "This account has been disabled.";
+//       } else {
+//         errorMessage = "Login failed: ${e.message}";
+//       }
+      
+//       if (mounted) {
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           SnackBar(
+//             content: Text(errorMessage),
+//             backgroundColor: Colors.red,
+//           ),
+//         );
+//       }
+//     } catch (e) {
+//       if (mounted) {
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           SnackBar(
+//             content: Text("Unexpected error: $e"),
+//             backgroundColor: Colors.red,
+//           ),
+//         );
+//       }
+//     } finally {
+//       if (mounted) {
+//         setState(() {
+//           _isLoading = false;
+//         });
+//       }
+//     }
+//   }
 
-// //     } catch (e) {
-// //       print('❌ Garage login error: $e');
-// //       ScaffoldMessenger.of(context).showSnackBar(
-// //         SnackBar(content: Text('Login failed: ${e.toString()}')),
-// //       );
-// //     } finally {
-// //       setState(() {
-// //         _isLoading = false;
-// //       });
-// //     }
-// //   }
+//   // Forgot Password method
+//   Future<void> _resetPassword() async {
+//     String email = _emailController.text.trim();
+    
+//     // If email field is empty, show dialog to enter email
+//     if (email.isEmpty || !email.contains('@')) {
+//       _showForgotPasswordDialog();
+//       return;
+//     }
 
-// //   @override
-// //   Widget build(BuildContext context) {
-// //     return Scaffold(
-// //       appBar: AppBar(
-// //         title: Text('Garage Login'),
-// //         backgroundColor: Color(0xFF6D28D9),
-// //         foregroundColor: Colors.white,
-// //       ),
-// //       body: Padding(
-// //         padding: EdgeInsets.all(24),
-// //         child: Column(
-// //           mainAxisAlignment: MainAxisAlignment.center,
-// //           children: [
-// //             Icon(Icons.build_circle_rounded, size: 80, color: Color(0xFF6D28D9)),
-// //             SizedBox(height: 24),
-// //             Text(
-// //               'Garage Service Provider',
-// //               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-// //             ),
-// //             SizedBox(height: 8),
-// //             Text(
-// //               'Login to manage your service requests',
-// //               style: TextStyle(color: Colors.grey[600]),
-// //             ),
-// //             SizedBox(height: 32),
-// //             TextFormField(
-// //               controller: _emailController,
-// //               decoration: InputDecoration(
-// //                 labelText: 'Garage Email',
-// //                 prefixIcon: Icon(Icons.email_rounded),
-// //                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-// //               ),
-// //               keyboardType: TextInputType.emailAddress,
-// //             ),
-// //             SizedBox(height: 16),
-// //             TextFormField(
-// //               controller: _passwordController,
-// //               decoration: InputDecoration(
-// //                 labelText: 'Password',
-// //                 prefixIcon: Icon(Icons.lock_rounded),
-// //                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-// //               ),
-// //               obscureText: true,
-// //             ),
-// //             SizedBox(height: 24),
-// //             SizedBox(
-// //               width: double.infinity,
-// //               child: ElevatedButton(
-// //                 onPressed: _isLoading ? null : _loginGarage,
-// //                 style: ElevatedButton.styleFrom(
-// //                   backgroundColor: Color(0xFF6D28D9),
-// //                   foregroundColor: Colors.white,
-// //                   padding: EdgeInsets.symmetric(vertical: 16),
-// //                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-// //                 ),
-// //                 child: _isLoading
-// //                     ? Row(
-// //                         mainAxisAlignment: MainAxisAlignment.center,
-// //                         children: [
-// //                           SizedBox(
-// //                             width: 20,
-// //                             height: 20,
-// //                             child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-// //                           ),
-// //                           SizedBox(width: 12),
-// //                           Text('Logging in...'),
-// //                         ],
-// //                       )
-// //                     : Text('Login as Garage Provider'),
-// //               ),
-// //             ),
-// //           ],
-// //         ),
-// //       ),
-// //     );
-// //   }
-// // }
+//     await _sendPasswordResetEmail(email);
+//   }
+
+//   // Show forgot password dialog
+//   void _showForgotPasswordDialog() {
+//     final emailController = TextEditingController();
+//     bool isSending = false;
+    
+//     showDialog(
+//       context: context,
+//       builder: (context) => StatefulBuilder(
+//         builder: (context, setDialogState) => AlertDialog(
+//           title: const Text('Reset Password'),
+//           content: Column(
+//             mainAxisSize: MainAxisSize.min,
+//             children: [
+//               const Text('Enter your email address to receive a password reset link:'),
+//               const SizedBox(height: 20),
+//               TextField(
+//                 controller: emailController,
+//                 decoration: InputDecoration(
+//                   labelText: 'Email',
+//                   hintText: 'Enter your email',
+//                   prefixIcon: const Icon(Icons.email),
+//                   border: OutlineInputBorder(
+//                     borderRadius: BorderRadius.circular(12),
+//                   ),
+//                 ),
+//                 keyboardType: TextInputType.emailAddress,
+//                 autofocus: true,
+//                 enabled: !isSending,
+//               ),
+//             ],
+//           ),
+//           actions: [
+//             TextButton(
+//               onPressed: isSending ? null : () => Navigator.pop(context),
+//               child: const Text('Cancel'),
+//             ),
+//             ElevatedButton(
+//               onPressed: isSending ? null : () async {
+//                 final email = emailController.text.trim();
+//                 if (email.isEmpty || !email.contains('@')) {
+//                   ScaffoldMessenger.of(context).showSnackBar(
+//                     const SnackBar(
+//                       content: Text("Please enter a valid email address"),
+//                       backgroundColor: Colors.red,
+//                     ),
+//                   );
+//                   return;
+//                 }
+                
+//                 setDialogState(() {
+//                   isSending = true;
+//                 });
+                
+//                 Navigator.pop(context);
+//                 await _sendPasswordResetEmail(email);
+//               },
+//               style: ElevatedButton.styleFrom(
+//                 backgroundColor: Colors.blue[600],
+//               ),
+//               child: isSending
+//                   ? const SizedBox(
+//                       width: 20,
+//                       height: 20,
+//                       child: CircularProgressIndicator(
+//                         strokeWidth: 2,
+//                         valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+//                       ),
+//                     )
+//                   : const Text('Send Reset Link'),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+
+//   // Send password reset email
+//   Future<void> _sendPasswordResetEmail(String email) async {
+//     setState(() {
+//       _isLoading = true;
+//     });
+
+//     try {
+//       await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+
+//       if (mounted) {
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           const SnackBar(
+//             content: Text("Password reset email sent! Check your inbox."),
+//             backgroundColor: Colors.green,
+//           ),
+//         );
+//       }
+//     } on FirebaseAuthException catch (e) {
+//       String errorMessage = "Failed to send reset email";
+
+//       if (e.code == 'user-not-found') {
+//         errorMessage = "No user found with this email address.";
+//       } else if (e.code == 'invalid-email') {
+//         errorMessage = "Invalid email address format.";
+//       } else if (e.code == 'too-many-requests') {
+//         errorMessage = "Too many requests. Please try again later.";
+//       }
+
+//       if (mounted) {
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           SnackBar(
+//             content: Text(errorMessage), 
+//             backgroundColor: Colors.red
+//           ),
+//         );
+//       }
+//     } catch (e) {
+//       if (mounted) {
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           const SnackBar(
+//             content: Text("Failed to send reset email. Please try again."),
+//             backgroundColor: Colors.red,
+//           ),
+//         );
+//       }
+//     } finally {
+//       if (mounted) {
+//         setState(() {
+//           _isLoading = false;
+//         });
+//       }
+//     }
+//   }
+
+//   // Google Sign-In method - UPDATED
+//   Future<void> _signInWithGoogle() async {
+//     setState(() {
+//       _isLoading = true;
+//     });
+
+//     try {
+//       final UserCredential? userCredential = await GoogleAuthService.signInWithGoogle();
+
+//       if (userCredential != null && userCredential.user != null) {
+//         final User user = userCredential.user!;
+        
+//         // Save login state to SharedPreferences
+//         await _saveLoginState(
+//           user.email!,
+//           userId: user.uid,
+//           userName: user.displayName,
+//         );
+
+//         if (mounted) {
+//           ScaffoldMessenger.of(context).showSnackBar(
+//             const SnackBar(
+//               content: Text("Google Sign-In successful"),
+//               backgroundColor: Colors.green,
+//             ),
+//           );
+
+//           Navigator.of(context).pushAndRemoveUntil(
+//             MaterialPageRoute(builder: (context) => const GarageDashboard()),
+//             (route) => false,
+//           );
+//         }
+//       } else {
+//         // User cancelled the sign-in
+//         if (mounted) {
+//           ScaffoldMessenger.of(context).showSnackBar(
+//             const SnackBar(
+//               content: Text("Sign-In was cancelled"),
+//               backgroundColor: Colors.orange,
+//             ),
+//           );
+//         }
+//       }
+//     } catch (e) {
+//       if (mounted) {
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           SnackBar(
+//             content: Text("Google Sign-In failed: ${e.toString()}"),
+//             backgroundColor: Colors.red,
+//           ),
+//         );
+//       }
+//     } finally {
+//       if (mounted) {
+//         setState(() {
+//           _isLoading = false;
+//         });
+//       }
+//     }
+//   }
+
+//   // Static method to logout from other screens - UPDATED
+//   static Future<void> logout() async {
+//     try {
+//       await AuthService.logout(); // Use the main logout method
+//       await GarageAuth.garageLogout(); // Clear garage-specific data
+//       print('✅ Garage logout completed successfully');
+//     } catch (e) {
+//       print('❌ Error during garage logout: $e');
+//     }
+//   }
+
+//   // Static method to check login status - UPDATED
+//   static Future<bool> isUserLoggedIn() async {
+//     try {
+//       final bool mainLogin = await AuthService.checkValidLogin();
+//       final bool garageLogin = await GarageAuth.isGarageLoggedIn();
+//       final String? userRole = await AuthService.getUserRole();
+      
+//       return mainLogin && garageLogin && userRole == 'garage';
+//     } catch (e) {
+//       print('Error checking garage login status: $e');
+//       return false;
+//     }
+//   }
+
+//   // Static method to get current user email - UPDATED
+//   static Future<String?> getCurrentUserEmail() async {
+//     try {
+//       return await AuthService.getUserEmail();
+//     } catch (e) {
+//       print('Error getting saved email: $e');
+//       return null;
+//     }
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return WillPopScope(
+//       onWillPop: () async {
+//         // Navigate back to role selection instead of exiting app
+//         Navigator.of(context).pop();
+//         return false;
+//       },
+//       child: Scaffold(
+//         backgroundColor: Colors.grey[50],
+//         body: SingleChildScrollView(
+//           child: SizedBox(
+//             height: MediaQuery.of(context).size.height,
+//             child: Stack(
+//               children: [
+//                 // Blue gradient background
+//                 Container(
+//                   height: MediaQuery.of(context).size.height * 0.4,
+//                   decoration: BoxDecoration(
+//                     gradient: LinearGradient(
+//                       colors: [Colors.blue[800]!, Colors.blue[600]!],
+//                       begin: Alignment.topLeft,
+//                       end: Alignment.bottomRight,
+//                     ),
+//                     borderRadius: const BorderRadius.only(
+//                       bottomLeft: Radius.circular(40),
+//                       bottomRight: Radius.circular(40),
+//                     ),
+//                   ),
+//                 ),
+
+//                 Padding(
+//                   padding: const EdgeInsets.all(24.0),
+//                   child: Column(
+//                     mainAxisAlignment: MainAxisAlignment.center,
+//                     children: [
+//                       const SizedBox(height: 80),
+
+//                       // Logo and Title
+//                       Container(
+//                         padding: const EdgeInsets.all(16),
+//                         decoration: BoxDecoration(
+//                           color: Colors.white,
+//                           shape: BoxShape.circle,
+//                           boxShadow: [
+//                             BoxShadow(
+//                               color: Colors.blue.withOpacity(0.2),
+//                               blurRadius: 15,
+//                               offset: const Offset(0, 5),
+//                             ),
+//                           ],
+//                         ),
+//                         child: Icon(
+//                           Icons.build,
+//                           size: 40,
+//                           color: Colors.blue[700],
+//                         ),
+//                       ),
+
+//                       const SizedBox(height: 20),
+
+//                       const Text(
+//                         'Garage Login',
+//                         style: TextStyle(
+//                           fontSize: 28,
+//                           fontWeight: FontWeight.bold,
+//                           color: Colors.white,
+//                         ),
+//                       ),
+
+//                       const SizedBox(height: 8),
+
+//                       Text(
+//                         'Manage your garage services',
+//                         style: TextStyle(
+//                           color: Colors.white.withOpacity(0.9),
+//                           fontSize: 16,
+//                         ),
+//                       ),
+
+//                       const SizedBox(height: 80),
+
+//                       // Login Card
+//                       Card(
+//                         elevation: 8,
+//                         shape: RoundedRectangleBorder(
+//                           borderRadius: BorderRadius.circular(20),
+//                         ),
+//                         child: Padding(
+//                           padding: const EdgeInsets.all(24),
+//                           child: Column(
+//                             children: [
+//                               // Email Field
+//                               TextField(
+//                                 controller: _emailController,
+//                                 keyboardType: TextInputType.emailAddress,
+//                                 decoration: InputDecoration(
+//                                   labelText: 'Email / Phone',
+//                                   prefixIcon: Icon(
+//                                     Icons.email,
+//                                     color: Colors.blue[400],
+//                                   ),
+//                                   border: OutlineInputBorder(
+//                                     borderRadius: BorderRadius.circular(12),
+//                                   ),
+//                                   focusedBorder: OutlineInputBorder(
+//                                     borderRadius: BorderRadius.circular(12),
+//                                     borderSide: BorderSide(
+//                                       color: Colors.blue[400]!,
+//                                       width: 2,
+//                                     ),
+//                                   ),
+//                                 ),
+//                               ),
+
+//                               const SizedBox(height: 20),
+
+//                               // Password Field
+//                               TextField(
+//                                 controller: _passwordController,
+//                                 obscureText: _obscureText,
+//                                 decoration: InputDecoration(
+//                                   labelText: 'Password',
+//                                   prefixIcon: Icon(
+//                                     Icons.lock,
+//                                     color: Colors.blue[400],
+//                                   ),
+//                                   suffixIcon: IconButton(
+//                                     icon: Icon(
+//                                       _obscureText
+//                                           ? Icons.visibility
+//                                           : Icons.visibility_off,
+//                                       color: Colors.blue[400],
+//                                     ),
+//                                     onPressed: () {
+//                                       setState(() {
+//                                         _obscureText = !_obscureText;
+//                                       });
+//                                     },
+//                                   ),
+//                                   border: OutlineInputBorder(
+//                                     borderRadius: BorderRadius.circular(12),
+//                                   ),
+//                                   focusedBorder: OutlineInputBorder(
+//                                     borderRadius: BorderRadius.circular(12),
+//                                     borderSide: BorderSide(
+//                                       color: Colors.blue[400]!,
+//                                       width: 2,
+//                                     ),
+//                                   ),
+//                                 ),
+//                                 onSubmitted: (_) {
+//                                   if (!_isLoading) {
+//                                     _login();
+//                                   }
+//                                 },
+//                               ),
+
+//                               const SizedBox(height: 10),
+
+//                               // Forgot Password
+//                               Align(
+//                                 alignment: Alignment.centerRight,
+//                                 child: TextButton(
+//                                   onPressed: _isLoading ? null : _resetPassword,
+//                                   child: Text(
+//                                     'Forgot Password?',
+//                                     style: TextStyle(
+//                                       color: Colors.blue[600],
+//                                       fontWeight: FontWeight.w500,
+//                                     ),
+//                                   ),
+//                                 ),
+//                               ),
+
+//                               const SizedBox(height: 20),
+
+//                               // Login Button
+//                               SizedBox(
+//                                 width: double.infinity,
+//                                 height: 50,
+//                                 child: ElevatedButton(
+//                                   onPressed: _isLoading ? null : _login,
+//                                   style: ElevatedButton.styleFrom(
+//                                     backgroundColor: Colors.blue[600],
+//                                     shape: RoundedRectangleBorder(
+//                                       borderRadius: BorderRadius.circular(12),
+//                                     ),
+//                                     elevation: 3,
+//                                   ),
+//                                   child: _isLoading
+//                                       ? const SizedBox(
+//                                           height: 20,
+//                                           width: 20,
+//                                           child: CircularProgressIndicator(
+//                                             strokeWidth: 2,
+//                                             valueColor: AlwaysStoppedAnimation<Color>(
+//                                               Colors.white,
+//                                             ),
+//                                           ),
+//                                         )
+//                                       : const Text(
+//                                           'LOGIN TO GARAGE',
+//                                           style: TextStyle(
+//                                             fontSize: 16,
+//                                             fontWeight: FontWeight.bold,
+//                                             color: Colors.white,
+//                                           ),
+//                                         ),
+//                                 ),
+//                               ),
+
+//                               const SizedBox(height: 20),
+
+//                               // Divider with "OR"
+//                               Row(
+//                                 children: [
+//                                   const Expanded(child: Divider()),
+//                                   Padding(
+//                                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
+//                                     child: Text(
+//                                       'OR',
+//                                       style: TextStyle(
+//                                         color: Colors.grey[600],
+//                                         fontWeight: FontWeight.w500,
+//                                       ),
+//                                     ),
+//                                   ),
+//                                   const Expanded(child: Divider()),
+//                                 ],
+//                               ),
+
+//                               const SizedBox(height: 20),
+
+//                               // Google Sign-In Button
+//                               SizedBox(
+//                                 width: double.infinity,
+//                                 height: 50,
+//                                 child: OutlinedButton.icon(
+//                                   onPressed: _isLoading ? null : _signInWithGoogle,
+//                                   icon: Image.network(
+//                                     'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg',
+//                                     height: 24,
+//                                     width: 24,
+//                                     errorBuilder: (context, error, stackTrace) {
+//                                       return Icon(Icons.g_mobiledata, size: 24, color: Colors.red[600]);
+//                                     },
+//                                   ),
+//                                   label: const Text(
+//                                     'Continue with Google',
+//                                     style: TextStyle(
+//                                       fontSize: 16,
+//                                       fontWeight: FontWeight.w600,
+//                                       color: Color.fromRGBO(66, 66, 66, 1),
+//                                     ),
+//                                   ),
+//                                   style: OutlinedButton.styleFrom(
+//                                     side: BorderSide(color: Colors.grey[300]!),
+//                                     shape: RoundedRectangleBorder(
+//                                       borderRadius: BorderRadius.circular(12),
+//                                     ),
+//                                   ),
+//                                 ),
+//                               ),
+
+//                               const SizedBox(height: 20),
+
+//                               // Register Link
+//                               Row(
+//                                 mainAxisAlignment: MainAxisAlignment.center,
+//                                 children: [
+//                                   Text(
+//                                     "Don't have a garage account? ",
+//                                     style: TextStyle(color: Colors.grey[600]),
+//                                   ),
+//                                   GestureDetector(
+//                                     onTap: _isLoading
+//                                         ? null
+//                                         : () {
+//                                             Navigator.of(context).push(
+//                                               MaterialPageRoute(
+//                                                 builder: (context) => const GarageRegistrationPage(),
+//                                               ),
+//                                             );
+//                                           },
+//                                     child: Text(
+//                                       'Register',
+//                                       style: TextStyle(
+//                                         color: Colors.blue[600],
+//                                         fontWeight: FontWeight.bold,
+//                                       ),
+//                                     ),
+//                                   ),
+//                                 ],
+//                               ),
+//                             ],
+//                           ),
+//                         ),
+//                       ),
+//                     ],
+//                   ),
+//                 ),
+//               ],
+//             ),
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+
+//   @override
+//   void dispose() {
+//     _emailController.dispose();
+//     _passwordController.dispose();
+//     super.dispose();
+//   }
+// } 
 
 import 'package:smart_road_app/Login/GarageRegister.dart';
 import 'package:smart_road_app/garage/garageDashboardd.dart';
@@ -438,8 +2051,14 @@ class _GarageLoginPageState extends State<GarageLoginPage> {
   bool _obscureText = true;
 
   // SharedPreferences keys
-  static const String _isLoggedInKey = 'garageIsLoggedIn';
-  static const String _userEmailKey = 'garageUserEmail';
+  static const String _isLoggedInKey = 'isLoggedIn';
+  static const String _userEmailKey = 'userEmail';
+  static const String _userRoleKey = 'userRole';
+  static const String _loginTimeKey = 'loginTime';
+  static const String _userIdKey = 'userId';
+  static const String _userNameKey = 'userName';
+  static const String _garageLoggedInKey = 'garageIsLoggedIn';
+  static const String _garageEmailKey = 'garageEmail';
 
   @override
   void initState() {
@@ -450,65 +2069,167 @@ class _GarageLoginPageState extends State<GarageLoginPage> {
   // Check if user is already logged in
   Future<void> _checkLoginStatus() async {
     try {
-      // First check if user is authenticated with Firebase Auth
+      final prefs = await SharedPreferences.getInstance();
+      final bool isLoggedIn = prefs.getBool(_isLoggedInKey) ?? false;
+      final String? userEmail = prefs.getString(_userEmailKey);
+      final String? userRole = prefs.getString(_userRoleKey);
+      final bool isGarageLoggedIn = prefs.getBool(_garageLoggedInKey) ?? false;
+      
+      // Check if Firebase user matches our stored preferences
       final currentUser = FirebaseAuth.instance.currentUser;
       
-      if (currentUser == null) {
-        // Not authenticated, clear any stale SharedPreferences
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool(_isLoggedInKey, false);
-        await prefs.remove(_userEmailKey);
-        return;
-      }
-
-      // User is authenticated, verify SharedPreferences matches
-      final prefs = await SharedPreferences.getInstance();
-      final isLoggedIn = prefs.getBool(_isLoggedInKey) ?? false;
-      final savedEmail = prefs.getString(_userEmailKey) ?? '';
-
-      // Only auto-navigate if both Firebase Auth and SharedPreferences indicate login
-      if (isLoggedIn && currentUser.email != null && currentUser.email == savedEmail && mounted) {
+      if (isLoggedIn && 
+          isGarageLoggedIn &&
+          userRole == 'garage' && 
+          currentUser != null && 
+          currentUser.email == userEmail &&
+          mounted) {
+        
+        print('✅ Auto-login detected for garage: $userEmail');
+        
         // Auto-navigate to garage dashboard if already logged in
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => GarageDashboard()),
+          MaterialPageRoute(builder: (context) => const GarageDashboard()),
           (route) => false,
         );
       } else {
-        // Mismatch detected - clear stale data
-        await prefs.setBool(_isLoggedInKey, false);
-        await prefs.remove(_userEmailKey);
-        // Sign out from Firebase to be safe
-        await FirebaseAuth.instance.signOut();
+        // Clear any stale data if conditions don't match
+        if (currentUser == null || currentUser.email != userEmail || userRole != 'garage') {
+          await _clearStaleData();
+        }
       }
     } catch (e) {
-      print('Error checking garage login status: $e');
-      // On error, ensure we're signed out
-      try {
-        await FirebaseAuth.instance.signOut();
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool(_isLoggedInKey, false);
-        await prefs.remove(_userEmailKey);
-      } catch (signOutError) {
-        print('Error during cleanup: $signOutError');
-      }
+      print('❌ Error checking garage login status: $e');
+      await _clearStaleData();
     }
   }
 
-  // Save login state to SharedPreferences
-  Future<void> _saveLoginState(String email) async {
+  // Clear stale login data
+  Future<void> _clearStaleData() async {
+    try {
+      // Only clear data if user is actually logged out
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        await _garageLogout();
+      }
+    } catch (e) {
+      print('Error during cleanup: $e');
+    }
+  }
+
+  // Save login state using SharedPreferences
+  Future<void> _saveLoginState(String email, {String? userId, String? userName}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      
+      // Save main authentication data
       await prefs.setBool(_isLoggedInKey, true);
       await prefs.setString(_userEmailKey, email);
+      await prefs.setString(_userRoleKey, 'garage');
+      await prefs.setString(_loginTimeKey, DateTime.now().toIso8601String());
+      
+      if (userId != null) {
+        await prefs.setString(_userIdKey, userId);
+      }
+      
+      if (userName != null) {
+        await prefs.setString(_userNameKey, userName);
+      }
+      
+      // Save garage-specific data
+      await prefs.setBool(_garageLoggedInKey, true);
+      await prefs.setString(_garageEmailKey, email);
+      
+      print('✅ Garage login state saved for: $email');
     } catch (e) {
-      print('Error saving garage login state: $e');
+      print('❌ Error saving garage login state: $e');
+      throw e;
+    }
+  }
+
+  // Garage logout method
+  Future<void> _garageLogout() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_garageLoggedInKey, false);
+      await prefs.remove(_garageEmailKey);
+      print('✅ Garage logout completed');
+    } catch (e) {
+      print('❌ Error during garage logout: $e');
+    }
+  }
+
+  // Main logout method
+  Future<void> _logout() async {
+    try {
+      print('🔄 Starting logout process...');
+      
+      // 1. Clear SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_isLoggedInKey, false);
+      await prefs.remove(_userEmailKey);
+      await prefs.remove(_userRoleKey);
+      await prefs.remove(_userIdKey);
+      await prefs.remove(_userNameKey);
+      await prefs.remove(_loginTimeKey);
+      
+      // 2. Clear role-specific data
+      await _clearRoleSpecificData();
+      
+      // 3. Sign out from Firebase (if available)
+      await _signOutFromFirebase();
+      
+      print('✅ Logout completed successfully');
+    } catch (e) {
+      print('❌ Error during logout: $e');
+    }
+  }
+
+  // Clear role-specific data
+  Future<void> _clearRoleSpecificData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Clear all role-specific data
+      await prefs.remove('towProviderIsLoggedIn');
+      await prefs.remove('towProviderEmail');
+      await prefs.remove('vehicleOwnerIsLoggedIn');
+      await prefs.remove('vehicleOwnerEmail');
+      await prefs.remove('garageIsLoggedIn');
+      await prefs.remove('garageEmail');
+      await prefs.remove('insuranceIsLoggedIn');
+      await prefs.remove('insuranceEmail');
+      await prefs.remove('adminIsLoggedIn');
+      await prefs.remove('adminEmail');
+      
+      print('✅ Role-specific data cleared');
+    } catch (e) {
+      print('⚠️ Error clearing role data: $e');
+    }
+  }
+
+  // Sign out from Firebase
+  Future<void> _signOutFromFirebase() async {
+    try {
+      final FirebaseAuth auth = FirebaseAuth.instance;
+      if (auth.currentUser != null) {
+        await auth.signOut();
+        print('✅ Firebase signOut successful');
+      } else {
+        print('ℹ️ No user logged in Firebase');
+      }
+    } catch (e) {
+      print('⚠️ Firebase signOut error (non-critical): $e');
     }
   }
 
   void _login() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please enter email and password")),
+        const SnackBar(
+          content: Text("Please enter email and password"),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
@@ -518,26 +2239,69 @@ class _GarageLoginPageState extends State<GarageLoginPage> {
     });
 
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
+      final UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
 
-      // Save login state to SharedPreferences
-      await _saveLoginState(_emailController.text.trim());
+      if (userCredential.user != null) {
+        final User user = userCredential.user!;
+        
+        // Save login state to SharedPreferences
+        await _saveLoginState(
+          user.email!,
+          userId: user.uid,
+          userName: user.displayName,
+        );
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Sign in successful")));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Sign in successful"),
+              backgroundColor: Colors.green,
+            ),
+          );
 
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => GarageDashboard()),
-        (route) => false,
-      );
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const GarageDashboard()),
+            (route) => false,
+          );
+        }
+      }
+    } on FirebaseAuthException catch (e) {
+      String errorMessage = "Login failed";
+      
+      if (e.code == 'user-not-found') {
+        errorMessage = "No user found with this email.";
+      } else if (e.code == 'wrong-password') {
+        errorMessage = "Wrong password provided.";
+      } else if (e.code == 'invalid-email') {
+        errorMessage = "Invalid email address.";
+      } else if (e.code == 'too-many-requests') {
+        errorMessage = "Too many attempts. Try again later.";
+      } else if (e.code == 'user-disabled') {
+        errorMessage = "This account has been disabled.";
+      } else {
+        errorMessage = "Login failed: ${e.message}";
+      }
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Error: $e")));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Unexpected error: $e"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -557,112 +2321,81 @@ class _GarageLoginPageState extends State<GarageLoginPage> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(
-        email: email,
-      );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Password reset email sent! Check your inbox."),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } on FirebaseAuthException catch (e) {
-      String errorMessage = "Failed to send reset email";
-
-      if (e.code == 'user-not-found') {
-        errorMessage = "No user found with this email address.";
-      } else if (e.code == 'invalid-email') {
-        errorMessage = "Invalid email address format.";
-      } else if (e.code == 'too-many-requests') {
-        errorMessage = "Too many requests. Please try again later.";
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Failed to send reset email. Please try again."),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
+    await _sendPasswordResetEmail(email);
   }
 
   // Show forgot password dialog
   void _showForgotPasswordDialog() {
     final emailController = TextEditingController();
+    bool isSending = false;
     
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Reset Password'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Enter your email address to receive a password reset link:'),
-            const SizedBox(height: 20),
-            TextField(
-              controller: emailController,
-              decoration: InputDecoration(
-                labelText: 'Email',
-                hintText: 'Enter your email',
-                prefixIcon: const Icon(Icons.email),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Reset Password'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Enter your email address to receive a password reset link:'),
+              const SizedBox(height: 20),
+              TextField(
+                controller: emailController,
+                decoration: InputDecoration(
+                  labelText: 'Email',
+                  hintText: 'Enter your email',
+                  prefixIcon: const Icon(Icons.email),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
+                keyboardType: TextInputType.emailAddress,
+                autofocus: true,
+                enabled: !isSending,
               ),
-              keyboardType: TextInputType.emailAddress,
-              autofocus: true,
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: isSending ? null : () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: isSending ? null : () async {
+                final email = emailController.text.trim();
+                if (email.isEmpty || !email.contains('@')) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Please enter a valid email address"),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
+                
+                setDialogState(() {
+                  isSending = true;
+                });
+                
+                Navigator.pop(context);
+                await _sendPasswordResetEmail(email);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue[600],
+              ),
+              child: isSending
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Text('Send Reset Link'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final email = emailController.text.trim();
-              if (email.isEmpty || !email.contains('@')) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text("Please enter a valid email address"),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-                return;
-              }
-              
-              Navigator.pop(context);
-              await _sendPasswordResetEmail(email);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue[600],
-            ),
-            child: const Text('Send Reset Link'),
-          ),
-        ],
       ),
     );
   }
@@ -674,9 +2407,7 @@ class _GarageLoginPageState extends State<GarageLoginPage> {
     });
 
     try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(
-        email: email,
-      );
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -699,7 +2430,10 @@ class _GarageLoginPageState extends State<GarageLoginPage> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(errorMessage), 
+            backgroundColor: Colors.red
+          ),
         );
       }
     } catch (e) {
@@ -730,8 +2464,14 @@ class _GarageLoginPageState extends State<GarageLoginPage> {
       final UserCredential? userCredential = await GoogleAuthService.signInWithGoogle();
 
       if (userCredential != null && userCredential.user != null) {
+        final User user = userCredential.user!;
+        
         // Save login state to SharedPreferences
-        await _saveLoginState(userCredential.user!.email ?? '');
+        await _saveLoginState(
+          user.email!,
+          userId: user.uid,
+          userName: user.displayName,
+        );
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -742,7 +2482,7 @@ class _GarageLoginPageState extends State<GarageLoginPage> {
           );
 
           Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (context) => GarageDashboard()),
+            MaterialPageRoute(builder: (context) => const GarageDashboard()),
             (route) => false,
           );
         }
@@ -775,6 +2515,68 @@ class _GarageLoginPageState extends State<GarageLoginPage> {
     }
   }
 
+  // Static method to logout from other screens
+  static Future<void> logout() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Clear main authentication data
+      await prefs.setBool('isLoggedIn', false);
+      await prefs.remove('userEmail');
+      await prefs.remove('userRole');
+      await prefs.remove('userId');
+      await prefs.remove('userName');
+      await prefs.remove('loginTime');
+      
+      // Clear garage-specific data
+      await prefs.setBool('garageIsLoggedIn', false);
+      await prefs.remove('garageEmail');
+      
+      // Clear all role-specific data
+      await prefs.remove('towProviderIsLoggedIn');
+      await prefs.remove('towProviderEmail');
+      await prefs.remove('vehicleOwnerIsLoggedIn');
+      await prefs.remove('vehicleOwnerEmail');
+      await prefs.remove('insuranceIsLoggedIn');
+      await prefs.remove('insuranceEmail');
+      await prefs.remove('adminIsLoggedIn');
+      await prefs.remove('adminEmail');
+      
+      // Sign out from Firebase
+      await FirebaseAuth.instance.signOut();
+      
+      print('✅ Garage logout completed successfully');
+    } catch (e) {
+      print('❌ Error during garage logout: $e');
+    }
+  }
+
+  // Static method to check login status
+  static Future<bool> isUserLoggedIn() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final bool mainLogin = prefs.getBool('isLoggedIn') ?? false;
+      final bool garageLogin = prefs.getBool('garageIsLoggedIn') ?? false;
+      final String? userRole = prefs.getString('userRole');
+      
+      return mainLogin && garageLogin && userRole == 'garage';
+    } catch (e) {
+      print('Error checking garage login status: $e');
+      return false;
+    }
+  }
+
+  // Static method to get current user email
+  static Future<String?> getCurrentUserEmail() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('userEmail');
+    } catch (e) {
+      print('Error getting saved email: $e');
+      return null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
@@ -799,7 +2601,7 @@ class _GarageLoginPageState extends State<GarageLoginPage> {
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.only(
+                    borderRadius: const BorderRadius.only(
                       bottomLeft: Radius.circular(40),
                       bottomRight: Radius.circular(40),
                     ),
@@ -807,15 +2609,15 @@ class _GarageLoginPageState extends State<GarageLoginPage> {
                 ),
 
                 Padding(
-                  padding: EdgeInsets.all(24.0),
+                  padding: const EdgeInsets.all(24.0),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      SizedBox(height: 80),
+                      const SizedBox(height: 80),
 
                       // Logo and Title
                       Container(
-                        padding: EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           shape: BoxShape.circle,
@@ -823,7 +2625,7 @@ class _GarageLoginPageState extends State<GarageLoginPage> {
                             BoxShadow(
                               color: Colors.blue.withOpacity(0.2),
                               blurRadius: 15,
-                              offset: Offset(0, 5),
+                              offset: const Offset(0, 5),
                             ),
                           ],
                         ),
@@ -834,9 +2636,9 @@ class _GarageLoginPageState extends State<GarageLoginPage> {
                         ),
                       ),
 
-                      SizedBox(height: 20),
+                      const SizedBox(height: 20),
 
-                      Text(
+                      const Text(
                         'Garage Login',
                         style: TextStyle(
                           fontSize: 28,
@@ -845,7 +2647,7 @@ class _GarageLoginPageState extends State<GarageLoginPage> {
                         ),
                       ),
 
-                      SizedBox(height: 8),
+                      const SizedBox(height: 8),
 
                       Text(
                         'Manage your garage services',
@@ -855,7 +2657,7 @@ class _GarageLoginPageState extends State<GarageLoginPage> {
                         ),
                       ),
 
-                      SizedBox(height: 80),
+                      const SizedBox(height: 80),
 
                       // Login Card
                       Card(
@@ -864,7 +2666,7 @@ class _GarageLoginPageState extends State<GarageLoginPage> {
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Padding(
-                          padding: EdgeInsets.all(24),
+                          padding: const EdgeInsets.all(24),
                           child: Column(
                             children: [
                               // Email Field
@@ -890,7 +2692,7 @@ class _GarageLoginPageState extends State<GarageLoginPage> {
                                 ),
                               ),
 
-                              SizedBox(height: 20),
+                              const SizedBox(height: 20),
 
                               // Password Field
                               TextField(
@@ -926,9 +2728,14 @@ class _GarageLoginPageState extends State<GarageLoginPage> {
                                     ),
                                   ),
                                 ),
+                                onSubmitted: (_) {
+                                  if (!_isLoading) {
+                                    _login();
+                                  }
+                                },
                               ),
 
-                              SizedBox(height: 10),
+                              const SizedBox(height: 10),
 
                               // Forgot Password
                               Align(
@@ -945,7 +2752,7 @@ class _GarageLoginPageState extends State<GarageLoginPage> {
                                 ),
                               ),
 
-                              SizedBox(height: 20),
+                              const SizedBox(height: 20),
 
                               // Login Button
                               SizedBox(
@@ -961,18 +2768,17 @@ class _GarageLoginPageState extends State<GarageLoginPage> {
                                     elevation: 3,
                                   ),
                                   child: _isLoading
-                                      ? SizedBox(
+                                      ? const SizedBox(
                                           height: 20,
                                           width: 20,
                                           child: CircularProgressIndicator(
                                             strokeWidth: 2,
-                                            valueColor:
-                                                AlwaysStoppedAnimation<Color>(
-                                                  Colors.white,
-                                                ),
+                                            valueColor: AlwaysStoppedAnimation<Color>(
+                                              Colors.white,
+                                            ),
                                           ),
                                         )
-                                      : Text(
+                                      : const Text(
                                           'LOGIN TO GARAGE',
                                           style: TextStyle(
                                             fontSize: 16,
@@ -983,12 +2789,12 @@ class _GarageLoginPageState extends State<GarageLoginPage> {
                                 ),
                               ),
 
-                              SizedBox(height: 20),
+                              const SizedBox(height: 20),
 
                               // Divider with "OR"
                               Row(
                                 children: [
-                                  Expanded(child: Divider()),
+                                  const Expanded(child: Divider()),
                                   Padding(
                                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
                                     child: Text(
@@ -999,11 +2805,11 @@ class _GarageLoginPageState extends State<GarageLoginPage> {
                                       ),
                                     ),
                                   ),
-                                  Expanded(child: Divider()),
+                                  const Expanded(child: Divider()),
                                 ],
                               ),
 
-                              SizedBox(height: 20),
+                              const SizedBox(height: 20),
 
                               // Google Sign-In Button
                               SizedBox(
@@ -1019,24 +2825,24 @@ class _GarageLoginPageState extends State<GarageLoginPage> {
                                       return Icon(Icons.g_mobiledata, size: 24, color: Colors.red[600]);
                                     },
                                   ),
-                                  label: Text(
+                                  label: const Text(
                                     'Continue with Google',
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
-                                      color: Colors.grey[800],
+                                      color: Color.fromRGBO(66, 66, 66, 1),
                                     ),
                                   ),
                                   style: OutlinedButton.styleFrom(
                                     side: BorderSide(color: Colors.grey[300]!),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
-                                          ),
-                                        ),
+                                    ),
+                                  ),
                                 ),
                               ),
 
-                              SizedBox(height: 20),
+                              const SizedBox(height: 20),
 
                               // Register Link
                               Row(
@@ -1047,14 +2853,15 @@ class _GarageLoginPageState extends State<GarageLoginPage> {
                                     style: TextStyle(color: Colors.grey[600]),
                                   ),
                                   GestureDetector(
-                                    onTap: () {
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              GarageRegistrationPage(),
-                                        ),
-                                      );
-                                    },
+                                    onTap: _isLoading
+                                        ? null
+                                        : () {
+                                            Navigator.of(context).push(
+                                              MaterialPageRoute(
+                                                builder: (context) => const GarageRegistrationPage(),
+                                              ),
+                                            );
+                                          },
                                     child: Text(
                                       'Register',
                                       style: TextStyle(
@@ -1078,5 +2885,12 @@ class _GarageLoginPageState extends State<GarageLoginPage> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
   }
 }
