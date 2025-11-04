@@ -7157,7 +7157,7 @@ class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
           onNotificationTap: _navigateToNotifications,
         );
       case 2:
-        return EnhancedHistoryScreen(userEmail: _userEmail ?? 'avi@gmail.com', serviceHistory: [], garageName: null,);
+        return EnhancedHistoryScreen(userEmail: _userEmail ?? 'avi@gmail.com', serviceHistory: [],);
       case 3:
         return RequestInsuranceScreen();
       case 4:
@@ -7347,6 +7347,7 @@ class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
   }
 
   void _showSpareParts() {
+     Navigator.pop(context);
     Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (context) => SparePartsStore()));
