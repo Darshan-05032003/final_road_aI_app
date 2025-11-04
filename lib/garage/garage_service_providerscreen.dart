@@ -81,318 +81,63 @@ class _GarageServiceProviderScreenState
   }
 
   Future<void> _showCompleteServiceDialog(Map<String, dynamic> request) async {
-    final amountController = TextEditingController();
-    final upiIdController = TextEditingController();
     final notesController = TextEditingController();
-
-    // Try to get saved UPI ID from provider profile BEFORE showing dialog
-    bool hasSavedUpiId = false;
-    try {
-      print('🔍 [UPI LOAD] Starting UPI ID load for: ${widget.garageEmail}');
-      
-      // First, check new structure (garages collection)
-      DocumentSnapshot? profileDoc = await FirebaseFirestore.instance
-          .collection('garages')
-          .doc(widget.garageEmail)
-          .get();
-      
-      print('🔍 [UPI LOAD] Checked garages collection. Exists: ${profileDoc.exists}');
-      
-      // Extract UPI ID if found in new structure
-      if (profileDoc.exists) {
-        final profileData = profileDoc.data() as Map<String, dynamic>?;
-        print('🔍 [UPI LOAD] Profile data keys: ${profileData?.keys.toList()}');
-        
-        if (profileData != null && profileData['upiId'] != null) {
-          final savedUpiId = profileData['upiId'].toString().trim();
-          print('🔍 [UPI LOAD] Found UPI ID in garages: $savedUpiId');
-          
-          if (savedUpiId.isNotEmpty) {
-            upiIdController.text = savedUpiId;
-            hasSavedUpiId = true;
-            print('✅ [UPI LOAD] UPI ID loaded from garages collection: $savedUpiId');
-          }
-        } else {
-          print('⚠️ [UPI LOAD] No upiId field in garages collection');
-        }
-      }
-      
-      // If not found in new structure, check old structure
-      if (!hasSavedUpiId) {
-        print('📋 [UPI LOAD] Not found in garages collection, checking old structure...');
-        profileDoc = await FirebaseFirestore.instance
-            .collection('garage')
-            .doc(widget.garageEmail)
-            .collection('profile')
-            .doc('companyDetails')
-            .get();
-        
-        print('🔍 [UPI LOAD] Checked old structure. Exists: ${profileDoc.exists}');
-        
-        if (profileDoc.exists) {
-          final profileData = profileDoc.data() as Map<String, dynamic>?;
-          print('🔍 [UPI LOAD] Old profile data keys: ${profileData?.keys.toList()}');
-          
-          if (profileData != null && profileData['upiId'] != null) {
-            final savedUpiId = profileData['upiId'].toString().trim();
-            print('🔍 [UPI LOAD] Found UPI ID in old structure: $savedUpiId');
-            
-            if (savedUpiId.isNotEmpty) {
-              upiIdController.text = savedUpiId;
-              hasSavedUpiId = true;
-              print('✅ [UPI LOAD] UPI ID loaded from old structure: $savedUpiId');
-            }
-          } else {
-            print('⚠️ [UPI LOAD] No upiId field in old structure');
-          }
-        }
-      }
-      
-      if (!hasSavedUpiId) {
-        print('⚠️ [UPI LOAD] UPI ID not found in profile. hasSavedUpiId = false');
-      } else {
-        print('✅ [UPI LOAD] Final state: hasSavedUpiId = true, UPI ID = ${upiIdController.text}');
-      }
-    } catch (e) {
-      print('❌ [UPI LOAD] Could not load saved UPI ID: $e');
-      print('❌ [UPI LOAD] Stack trace: ${StackTrace.current}');
-    }
-
-    // Now show the dialog with the loaded data
-    print('📱 [DIALOG] Showing dialog. hasSavedUpiId: $hasSavedUpiId, UPI ID in controller: "${upiIdController.text}"');
-    
-    // Store hasSavedUpiId in a final variable for use in the dialog builder
-    final finalHasSavedUpiId = hasSavedUpiId;
-    final upiIdValue = upiIdController.text;
     
     final result = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) {
-        // Use StatefulBuilder to ensure UI updates correctly
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: const Text('Complete Service'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: amountController,
-                      decoration: InputDecoration(
-                        labelText: 'Service Amount *',
-                        hintText: 'Enter amount in ₹',
-                        prefixIcon: const Icon(Icons.currency_rupee),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        filled: true,
-                        fillColor: Colors.grey.shade50,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                      ),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      textInputAction: TextInputAction.next,
-                      autofocus: !finalHasSavedUpiId, // Only autofocus if UPI ID is not pre-filled
-                    ),
-                    const SizedBox(height: 16),
-                    Builder(
-                      builder: (textFieldContext) {
-                        // Force rebuild if needed by checking controller value
-                        final currentValue = upiIdController.text;
-                        print('🔍 [DIALOG BUILDER] UPI ID TextField - Controller value: "$currentValue", finalHasSavedUpiId: $finalHasSavedUpiId, storedValue: "$upiIdValue"');
-                        
-                        // Ensure controller has the value - if not, set it
-                        if (finalHasSavedUpiId && currentValue.isEmpty && upiIdValue.isNotEmpty) {
-                          print('⚠️ [DIALOG BUILDER] WARNING: Controller empty but value available. Setting it now...');
-                          upiIdController.text = upiIdValue;
-                        }
-                        
-                        return TextField(
-                          controller: upiIdController,
-                          enabled: true, // Allow editing even if saved
-                          keyboardType: TextInputType.text,
-                          textInputAction: TextInputAction.next,
-                          decoration: InputDecoration(
-                            labelText: 'Your UPI ID *',
-                            hintText: finalHasSavedUpiId ? null : 'yourname@paytm',
-                            prefixIcon: const Icon(Icons.payment, color: Colors.purple),
-                            helperText: finalHasSavedUpiId
-                                ? 'Pre-filled from your profile. You can edit if needed.'
-                                : 'This will be used to receive payment',
-                            suffixIcon: finalHasSavedUpiId
-                                ? const Padding(
-                                    padding: EdgeInsets.all(8.0),
-                                    child: Icon(Icons.check_circle, color: Colors.green, size: 24),
-                                  )
-                                : null,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(
-                                color: finalHasSavedUpiId ? Colors.green : Colors.grey,
-                                width: finalHasSavedUpiId ? 2 : 1,
-                              ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(
-                                color: finalHasSavedUpiId ? Colors.green : Colors.grey,
-                                width: finalHasSavedUpiId ? 2 : 1,
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(
-                                color: finalHasSavedUpiId ? Colors.green : Colors.blue,
-                                width: 2,
-                              ),
-                            ),
-                            filled: true,
-                            fillColor: finalHasSavedUpiId ? Colors.green.shade50 : Colors.grey.shade50,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                          ),
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: finalHasSavedUpiId ? FontWeight.w500 : FontWeight.normal,
-                            color: finalHasSavedUpiId ? Colors.green.shade900 : Colors.black87,
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: notesController,
-                      decoration: const InputDecoration(
-                        labelText: 'Service Notes (Optional)',
-                        hintText: 'Any additional notes...',
-                        prefixIcon: Icon(Icons.note),
-                      ),
-                      maxLines: 3,
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext, false),
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    if (amountController.text.trim().isEmpty) {
-                      ScaffoldMessenger.of(dialogContext).showSnackBar(
-                        const SnackBar(content: Text('Please enter service amount')),
-                      );
-                      return;
-                    }
-                    if (double.tryParse(amountController.text.trim()) == null ||
-                        double.parse(amountController.text.trim()) <= 0) {
-                      ScaffoldMessenger.of(dialogContext).showSnackBar(
-                        const SnackBar(content: Text('Please enter valid amount')),
-                      );
-                      return;
-                    }
-                    if (upiIdController.text.trim().isEmpty) {
-                      ScaffoldMessenger.of(dialogContext).showSnackBar(
-                        const SnackBar(content: Text('Please enter your UPI ID')),
-                      );
-                      return;
-                    }
-                    Navigator.pop(dialogContext, true);
-                  },
-                  child: const Text('Mark Complete'),
+        return AlertDialog(
+          title: const Text('Complete Service'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Are you sure you want to mark this service as completed?'),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: notesController,
+                  decoration: const InputDecoration(
+                    labelText: 'Service Notes (Optional)',
+                    hintText: 'Any additional notes...',
+                    prefixIcon: Icon(Icons.note),
+                  ),
+                  maxLines: 3,
                 ),
               ],
-            );
-          },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, true);
+              },
+              child: const Text('Mark Complete'),
+            ),
+          ],
         );
       },
     );
 
     if (result == true) {
-      final amount = double.parse(amountController.text.trim());
-      final upiId = upiIdController.text.trim();
       final notes = notesController.text.trim();
-
-      await _completeServiceWithPayment(request, amount, upiId, notes);
+      await _completeService(request, notes);
+      notesController.dispose();
     }
   }
 
-  Future<void> _completeServiceWithPayment(
+  Future<void> _completeService(
     Map<String, dynamic> request,
-    double amount,
-    String upiId,
     String notes,
   ) async {
     try {
-      // Save UPI ID to provider profile for future use (both old and new structures)
-      try {
-        final batch = FirebaseFirestore.instance.batch();
-        
-        // Update new structure (garages collection)
-        final newProfileRef = FirebaseFirestore.instance
-            .collection('garages')
-            .doc(widget.garageEmail);
-        batch.set(newProfileRef, {
-          'upiId': upiId,
-          'updatedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
-        
-        // Update old structure if it exists
-        final oldProfileRef = FirebaseFirestore.instance
-            .collection('garage')
-            .doc(widget.garageEmail)
-            .collection('profile')
-            .doc('companyDetails');
-        
-        // Check if old structure exists
-        final oldProfileDoc = await oldProfileRef.get();
-        if (oldProfileDoc.exists) {
-          batch.update(oldProfileRef, {
-            'upiId': upiId,
-            'updatedAt': FieldValue.serverTimestamp(),
-          });
-        } else {
-          // Create if doesn't exist
-          batch.set(oldProfileRef, {
-            'upiId': upiId,
-            'updatedAt': FieldValue.serverTimestamp(),
-          }, SetOptions(merge: true));
-        }
-        
-        await batch.commit();
-        print('✅ UPI ID saved to profile successfully');
-      } catch (e) {
-        print('❌ Could not save UPI ID to profile: $e');
-      }
-
-      // Update request with completion and payment info
-      await _updateRequestStatusWithPayment(
-        request['id'],
-        'Completed',
-        amount,
-        upiId,
-        notes,
-        request,
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
-    }
-  }
-
-  Future<void> _updateRequestStatusWithPayment(
-    String requestId,
-    String status,
-    double amount,
-    String upiId,
-    String notes,
-    Map<String, dynamic> request,
-  ) async {
-    try {
-      final sanitizedGarageEmail = _sanitizeEmail(widget.garageEmail);
+      final requestId = request['id'];
       final userEmail = request['userEmail'];
+      final sanitizedGarageEmail = _sanitizeEmail(widget.garageEmail);
 
       // Update in garage's collection
       await FirebaseFirestore.instance
@@ -401,10 +146,7 @@ class _GarageServiceProviderScreenState
           .collection('service_requests')
           .doc(requestId)
           .update({
-            'status': status,
-            'serviceAmount': amount,
-            'providerUpiId': upiId,
-            'paymentStatus': 'pending',
+            'status': 'Completed',
             'completedAt': FieldValue.serverTimestamp(),
             'serviceNotes': notes,
             'updatedAt': FieldValue.serverTimestamp(),
@@ -421,10 +163,7 @@ class _GarageServiceProviderScreenState
 
         if (userRequestsSnapshot.docs.isNotEmpty) {
           await userRequestsSnapshot.docs.first.reference.update({
-            'status': status,
-            'serviceAmount': amount,
-            'providerUpiId': upiId,
-            'paymentStatus': 'pending',
+            'status': 'Completed',
             'completedAt': FieldValue.serverTimestamp(),
             'serviceNotes': notes,
             'updatedAt': FieldValue.serverTimestamp(),
@@ -435,15 +174,12 @@ class _GarageServiceProviderScreenState
       // Update Realtime Database
       final DatabaseReference dbRef = FirebaseDatabase.instance.ref();
       await dbRef.child('garage_requests').child(requestId).update({
-        'status': status,
-        'serviceAmount': amount,
-        'providerUpiId': upiId,
-        'paymentStatus': 'pending',
+        'status': 'Completed',
         'completedAt': DateTime.now().millisecondsSinceEpoch,
         'updatedAt': DateTime.now().millisecondsSinceEpoch,
       });
 
-      // Send notification to user about service charges
+      // Send notification to user
       final userId = request['userId']?.toString() ?? 
           (userEmail != null ? userEmail!.replaceAll(RegExp(r'[\.#\$\[\]]'), '_') : 'unknown');
       
@@ -455,27 +191,22 @@ class _GarageServiceProviderScreenState
       await userNotificationRef.set({
         'id': userNotificationRef.key,
         'requestId': requestId,
-        'title': 'Service Charges Updated 💰',
-        'message': 'Your service charges are ₹$amount. Please make payment to UPI: $upiId',
+        'title': 'Service Completed ✅',
+        'message': 'Your service has been completed successfully.',
         'timestamp': DateTime.now().millisecondsSinceEpoch,
         'read': false,
-        'type': 'service_charges_entered',
+        'type': 'service_completed',
         'vehicleNumber': request['vehicleNumber'] ?? 'N/A',
         'garageName': request['garageName'] ?? widget.garageEmail,
         'status': 'completed',
-        'amount': amount,
-        'upiId': upiId,
-        'paymentStatus': 'pending',
       });
 
       // Refresh the list
       _loadServiceRequests();
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Service marked as completed. Customer will be notified to pay ₹$amount',
-          ),
+        const SnackBar(
+          content: Text('Service marked as completed successfully'),
           backgroundColor: Colors.green,
         ),
       );

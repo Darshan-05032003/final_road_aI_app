@@ -1364,6 +1364,146 @@ class DatabaseService {
     print('✅ Cleared admin cache');
   }
 
+  // ==================== SERVICE HISTORY CACHING ====================
+
+  /// Cache service history item
+  Future<void> cacheServiceHistory(Map<String, dynamic> historyData, String userEmail) async {
+    final db = await database;
+    try {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final requestId = historyData['requestId'] ?? historyData['id'] ?? '';
+      
+      await db.insert(
+        'service_history',
+        {
+          'id': historyData['id'] ?? requestId,
+          'request_id': requestId,
+          'user_email': userEmail,
+          'service_type': historyData['serviceType'] ?? '',
+          'status': historyData['status'] ?? '',
+          'cost': historyData['cost'] != null ? double.tryParse(historyData['cost'].toString().replaceAll('₹', '').replaceAll(',', '')) ?? 0.0 : null,
+          'rating': historyData['rating'] ?? '',
+          'created_at': _parseTimestamp(historyData['createdAt']),
+          'completed_at': historyData['completedAt'] != null ? _parseTimestamp(historyData['completedAt']) : null,
+          'data_json': jsonEncode(historyData),
+          'last_synced': now,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    } catch (e) {
+      print('❌ Error caching service history: $e');
+    }
+  }
+
+  /// Cache multiple service history items
+  Future<void> cacheServiceHistoryList(List<Map<String, dynamic>> historyList, String userEmail) async {
+    final batch = <Future>[];
+    for (var history in historyList) {
+      batch.add(cacheServiceHistory(history, userEmail));
+    }
+    await Future.wait(batch);
+    print('✅ Cached ${historyList.length} service history items');
+  }
+
+  /// Get cached service history
+  Future<List<Map<String, dynamic>>> getCachedServiceHistory({
+    required String userEmail,
+    String? status,
+    String? serviceType,
+  }) async {
+    final db = await database;
+    try {
+      String whereClause = 'user_email = ?';
+      List<dynamic> whereArgs = [userEmail];
+
+      if (status != null) {
+        whereClause += ' AND status = ?';
+        whereArgs.add(status);
+      }
+
+      if (serviceType != null) {
+        whereClause += ' AND service_type = ?';
+        whereArgs.add(serviceType);
+      }
+
+      final List<Map<String, dynamic>> maps = await db.query(
+        'service_history',
+        where: whereClause,
+        whereArgs: whereArgs,
+        orderBy: 'created_at DESC',
+      );
+
+      return maps.map((map) {
+        if (map['data_json'] != null) {
+          try {
+            return jsonDecode(map['data_json'] as String) as Map<String, dynamic>;
+          } catch (e) {
+            print('⚠️ Error parsing service history JSON: $e');
+          }
+        }
+        return {
+          'id': map['id'],
+          'requestId': map['request_id'],
+          'userEmail': map['user_email'],
+          'serviceType': map['service_type'],
+          'status': map['status'],
+          'cost': map['cost'] != null ? '₹${map['cost']}' : null,
+          'rating': map['rating'],
+          'createdAt': map['created_at'],
+          'completedAt': map['completed_at'],
+        };
+      }).toList();
+    } catch (e) {
+      print('❌ Error getting cached service history: $e');
+      return [];
+    }
+  }
+
+  /// Get service statistics for a user
+  Future<Map<String, int>> getServiceStatistics(String userEmail) async {
+    final db = await database;
+    try {
+      // Total requested
+      final total = Sqflite.firstIntValue(
+        await db.rawQuery(
+          'SELECT COUNT(*) FROM service_history WHERE user_email = ?',
+          [userEmail],
+        ),
+      ) ?? 0;
+
+      // Completed
+      final completed = Sqflite.firstIntValue(
+        await db.rawQuery(
+          'SELECT COUNT(*) FROM service_history WHERE user_email = ? AND (status LIKE ? OR status LIKE ?)',
+          [userEmail, '%completed%', '%complete%'],
+        ),
+      ) ?? 0;
+
+      // Not completed (rejected, cancelled, or any other status)
+      final notCompleted = total - completed;
+
+      return {
+        'total': total,
+        'completed': completed,
+        'notCompleted': notCompleted,
+      };
+    } catch (e) {
+      print('❌ Error getting service statistics: $e');
+      return {'total': 0, 'completed': 0, 'notCompleted': 0};
+    }
+  }
+
+  /// Clear service history cache for a user
+  Future<void> clearServiceHistoryCache(String userEmail) async {
+    final db = await database;
+    await db.delete(
+      'service_history',
+      where: 'user_email = ?',
+      whereArgs: [userEmail],
+    );
+    print('✅ Cleared service history cache for user: $userEmail');
+  }
+
   /// Close database
   Future<void> close() async {
     final db = await database;

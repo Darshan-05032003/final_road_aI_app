@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:smart_road_app/services/vehicle_owner_sync_service.dart';
+import 'package:smart_road_app/services/database_service.dart';
 
 class EnhancedHistoryScreen extends StatefulWidget {
 
@@ -14,6 +16,7 @@ class EnhancedHistoryScreen extends StatefulWidget {
 
 class _EnhancedHistoryScreenState extends State<EnhancedHistoryScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final VehicleOwnerSyncService _syncService = VehicleOwnerSyncService();
   List<ServiceHistory> _serviceHistory = [];
   bool _isLoading = true;
   bool _hasError = false;
@@ -21,11 +24,21 @@ class _EnhancedHistoryScreenState extends State<EnhancedHistoryScreen> {
   StreamSubscription<QuerySnapshot>? _garageSubscription;
   StreamSubscription<QuerySnapshot>? _towSubscription;
   final Map<String, ServiceHistory> _historyMap = {}; // Track history items by requestId
+  
+  // Statistics
+  Map<String, int> _statistics = {
+    'total': 0,
+    'completed': 0,
+    'notCompleted': 0,
+  };
+  bool _isLoadingStats = true;
 
   @override
   void initState() {
     super.initState();
+    _initializeSync();
     _loadServiceHistory();
+    _loadStatistics();
     _setupRealtimeListeners();
   }
 
@@ -33,7 +46,39 @@ class _EnhancedHistoryScreenState extends State<EnhancedHistoryScreen> {
   void dispose() {
     _garageSubscription?.cancel();
     _towSubscription?.cancel();
+    _syncService.dispose();
     super.dispose();
+  }
+
+  Future<void> _initializeSync() async {
+    await _syncService.initialize();
+  }
+
+  Future<void> _loadStatistics() async {
+    setState(() {
+      _isLoadingStats = true;
+    });
+
+    try {
+      final stats = await _syncService.getServiceStatistics(
+        userEmail: widget.userEmail,
+        useCache: true,
+      );
+
+      if (mounted) {
+        setState(() {
+          _statistics = stats;
+          _isLoadingStats = false;
+        });
+      }
+    } catch (e) {
+      print('❌ Error loading statistics: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingStats = false;
+        });
+      }
+    }
   }
 
   void _setupRealtimeListeners() {
@@ -84,13 +129,12 @@ class _EnhancedHistoryScreenState extends State<EnhancedHistoryScreen> {
           String normalizedStatus = _normalizeStatus(status);
           
           // Check if this is an ongoing service (should be excluded from history)
-          bool isOngoing = normalizedStatus == 'pending' || 
+          // Only exclude services that are actively pending/processing
+          bool isOngoing = (normalizedStatus == 'pending' || 
                           normalizedStatus == 'in process' ||
-                          status.contains('pending') ||
-                          status.contains('process') ||
-                          status.contains('accepted') ||
-                          status.contains('confirmed') ||
-                          status.contains('assigned');
+                          status.contains('pending')) &&
+                          !status.contains('complete') &&
+                          !status.contains('reject');
           
           String requestId = _getField(data, 'requestId', doc.id);
           
@@ -104,7 +148,7 @@ class _EnhancedHistoryScreenState extends State<EnhancedHistoryScreen> {
             continue;
           }
           
-          // Only include past services (completed, rejected, cancelled)
+          // Include all past services (completed, rejected, cancelled, and any other non-ongoing statuses)
           // Skip if already in history and unchanged
           if (_historyMap.containsKey(requestId)) {
             final existingService = _historyMap[requestId]!;
@@ -124,7 +168,6 @@ class _EnhancedHistoryScreenState extends State<EnhancedHistoryScreen> {
           DateTime createdAt = _parseTimestamp(data['createdAt']);
           DateTime updatedAt = _parseTimestamp(data['updatedAt']);
           DateTime? completedAt = data['completedAt'] != null ? _parseTimestamp(data['completedAt']) : null;
-          DateTime? paidAt = data['paidAt'] != null ? _parseTimestamp(data['paidAt']) : null;
           
           // Extract all possible fields with proper fallbacks
           String vehicleNumber = _getField(data, 'vehicleNumber', 'Not Specified');
@@ -134,15 +177,8 @@ class _EnhancedHistoryScreenState extends State<EnhancedHistoryScreen> {
               : _getField(data, 'providerName', 
                   _getField(data, 'towProviderName', 'Tow Provider'));
           
-          // Get pricing information
-          double? serviceAmount = _parseDouble(data['serviceAmount']);
-          double? taxAmount = _parseDouble(data['taxAmount']);
-          double? totalAmount = _parseDouble(data['totalAmount']);
-          String cost = totalAmount != null && totalAmount > 0 
-              ? '₹${totalAmount.toStringAsFixed(2)}' 
-              : (serviceAmount != null && serviceAmount > 0 
-                  ? '₹${serviceAmount.toStringAsFixed(2)}' 
-                  : _getField(data, 'cost', _getField(data, 'amount', _getField(data, 'price', '₹0.00'))));
+          // Get cost information
+          String cost = _getField(data, 'cost', _getField(data, 'amount', _getField(data, 'price', '₹0.00')));
           
           String rating = _getField(data, 'rating', 'N/A');
           
@@ -182,16 +218,7 @@ class _EnhancedHistoryScreenState extends State<EnhancedHistoryScreen> {
             fuelType: _getField(data, 'fuelType', 'Not Specified'),
             vehicleType: _getField(data, 'vehicleType', 'Car'),
             additionalData: {
-              'serviceAmount': serviceAmount,
-              'taxAmount': taxAmount,
-              'totalAmount': totalAmount,
-              'paymentStatus': data['paymentStatus'] ?? 'pending',
-              'paymentMethod': data['paymentMethod'],
-              'transactionId': data['paymentTransactionId'] ?? data['transactionId'],
-              'upiTransactionId': data['upiTransactionId'],
               'completedAt': completedAt,
-              'paidAt': paidAt,
-              'providerUpiId': data['providerUpiId'],
             },
           );
           
@@ -206,6 +233,9 @@ class _EnhancedHistoryScreenState extends State<EnhancedHistoryScreen> {
       // Update UI if there were changes
       if (hasUpdates) {
         _updateHistoryList();
+        
+        // Cache updated history to SQLite
+        _cacheHistoryToSQLite();
       }
     } catch (e) {
       print('❌ Error handling real-time update: $e');
@@ -228,6 +258,43 @@ class _EnhancedHistoryScreenState extends State<EnhancedHistoryScreen> {
     print('✅ History updated: ${historyList.length} services in history');
   }
 
+  Future<void> _cacheHistoryToSQLite() async {
+    try {
+      if (_historyMap.isEmpty) return;
+
+      final historyData = _historyMap.values.map((service) => {
+        'id': service.id,
+        'requestId': service.requestId,
+        'serviceType': service.serviceType,
+        'status': service.status,
+        'createdAt': service.createdAt,
+        'updatedAt': service.updatedAt,
+        'completedAt': service.additionalData['completedAt'],
+        'cost': service.cost,
+        'rating': service.rating,
+        'vehicleNumber': service.vehicleNumber,
+        'garageName': service.garageName,
+        'name': service.name,
+        'phone': service.phone,
+        'location': service.location,
+        'problemDescription': service.problemDescription,
+        'preferredDate': service.preferredDate,
+        'preferredTime': service.preferredTime,
+        'vehicleModel': service.vehicleModel,
+        'fuelType': service.fuelType,
+        'vehicleType': service.vehicleType,
+      }).toList();
+
+      final dbService = DatabaseService();
+      await dbService.cacheServiceHistoryList(historyData, widget.userEmail);
+      
+      // Update statistics
+      await _loadStatistics();
+    } catch (e) {
+      print('⚠️ Error caching history to SQLite: $e');
+    }
+  }
+
   Future<void> _loadServiceHistory() async {
     try {
       if (widget.userEmail.isEmpty) {
@@ -236,6 +303,112 @@ class _EnhancedHistoryScreenState extends State<EnhancedHistoryScreen> {
 
       print('🔄 Loading service history for: ${widget.userEmail}');
 
+      // Load from SQLite first (offline-first)
+      final cachedHistory = await _syncService.getServiceHistory(
+        userEmail: widget.userEmail,
+        useCache: true,
+        syncInBackground: true,
+      );
+
+      // Convert cached data to ServiceHistory objects
+      List<ServiceHistory> history = [];
+      for (var data in cachedHistory) {
+        try {
+          final requestId = data['requestId'] ?? data['id'] ?? '';
+          final status = (data['status'] ?? '').toString().toLowerCase().trim();
+          final normalizedStatus = _normalizeStatus(status);
+
+          // Skip ongoing services
+          bool isOngoing = (normalizedStatus == 'pending' ||
+                          normalizedStatus == 'in process' ||
+                          status.contains('pending')) &&
+                          !status.contains('complete') &&
+                          !status.contains('reject');
+
+          if (isOngoing) continue;
+
+          // Parse dates
+          DateTime createdAt = _parseTimestamp(data['createdAt']);
+          DateTime updatedAt = _parseTimestamp(data['updatedAt']);
+          DateTime? completedAt = data['completedAt'] != null ? _parseTimestamp(data['completedAt']) : null;
+
+          // Extract fields
+          String vehicleNumber = _getField(data, 'vehicleNumber', 'Not Specified');
+          String serviceType = _getField(data, 'serviceType', 'Garage Service');
+          String garageName = serviceType == 'Garage Service'
+              ? _getField(data, 'assignedGarage', _getField(data, 'garageName', 'AutoCare Garage'))
+              : _getField(data, 'providerName', _getField(data, 'towProviderName', 'Tow Provider'));
+
+          String cost = _getField(data, 'cost', _getField(data, 'amount', _getField(data, 'price', '₹0.00')));
+          String rating = _getField(data, 'rating', 'N/A');
+          String preferredDate = _getField(data, 'preferredDate', _formatDate(createdAt));
+          String preferredTime = _getField(data, 'preferredTime', _formatTime(createdAt));
+
+          String problemDescription = serviceType == 'Garage Service'
+              ? _getField(data, 'problemDescription', _getField(data, 'description', _getField(data, 'additionalDetails', _getField(data, 'issueDescription', 'No description provided'))))
+              : _getField(data, 'description', _getField(data, 'issue', _getField(data, 'problemDescription', 'No description provided')));
+
+          ServiceHistory service = ServiceHistory(
+            id: data['id'] ?? requestId,
+            requestId: requestId,
+            vehicleNumber: vehicleNumber,
+            serviceType: serviceType,
+            preferredDate: preferredDate,
+            preferredTime: preferredTime,
+            name: _getField(data, 'name', 'Customer'),
+            phone: _getField(data, 'phone', 'Not Provided'),
+            location: _getField(data, 'location', 'Not Provided'),
+            problemDescription: problemDescription,
+            userEmail: widget.userEmail,
+            status: normalizedStatus,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            cost: cost,
+            garageName: garageName,
+            rating: rating,
+            vehicleModel: _getField(data, 'vehicleModel', 'Not Specified'),
+            fuelType: _getField(data, 'fuelType', 'Not Specified'),
+            vehicleType: _getField(data, 'vehicleType', 'Car'),
+            additionalData: {
+              'completedAt': completedAt,
+            },
+          );
+
+          history.add(service);
+        } catch (e) {
+          print('⚠️ Error processing cached history item: $e');
+        }
+      }
+
+      // Update history map and UI
+      _historyMap.clear();
+      for (var service in history) {
+        _historyMap[service.requestId] = service;
+      }
+      _updateHistoryList();
+
+      // Reload statistics after loading history
+      await _loadStatistics();
+
+      // If no cached data and online, try loading from Firestore directly
+      if (history.isEmpty && _syncService.isOnline) {
+        print('📡 No cached data, loading from Firestore...');
+        await _loadFromFirestore();
+      }
+    } catch (e) {
+      print('❌ Error loading service history: $e');
+      if (mounted) {
+        setState(() {
+          _hasError = true;
+          _errorMessage = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadFromFirestore() async {
+    try {
       // First, check if the user document exists
       final userDoc = await _firestore
           .collection('owner')
@@ -287,16 +460,15 @@ class _EnhancedHistoryScreenState extends State<EnhancedHistoryScreen> {
             String normalizedStatus = _normalizeStatus(status);
             
             // Check if this is an ongoing service (should be excluded from history)
-            bool isOngoing = normalizedStatus == 'pending' || 
+            // Only exclude services that are actively pending/processing
+            bool isOngoing = (normalizedStatus == 'pending' || 
                             normalizedStatus == 'in process' ||
-                            status.contains('pending') ||
-                            status.contains('process') ||
-                            status.contains('accepted') ||
-                            status.contains('confirmed') ||
-                            status.contains('assigned');
+                            status.contains('pending')) &&
+                            !status.contains('complete') &&
+                            !status.contains('reject');
             
-            // Only include past services (completed, rejected, cancelled)
-            // Exclude all ongoing services
+            // Include all past services (completed, rejected, cancelled, and any other non-ongoing statuses)
+            // Exclude only actively pending/processing services
             if (isOngoing) {
               print('⏭️ Skipping ongoing service: ${doc.id} - status: $status');
               continue;
@@ -308,7 +480,6 @@ class _EnhancedHistoryScreenState extends State<EnhancedHistoryScreen> {
             DateTime createdAt = _parseTimestamp(data['createdAt']);
             DateTime updatedAt = _parseTimestamp(data['updatedAt']);
             DateTime? completedAt = data['completedAt'] != null ? _parseTimestamp(data['completedAt']) : null;
-            DateTime? paidAt = data['paidAt'] != null ? _parseTimestamp(data['paidAt']) : null;
             
             // Extract all possible fields with proper fallbacks
             String requestId = _getField(data, 'requestId', 'GRG-${DateTime.now().millisecondsSinceEpoch}');
@@ -317,15 +488,8 @@ class _EnhancedHistoryScreenState extends State<EnhancedHistoryScreen> {
             String garageName = _getField(data, 'assignedGarage', 
                               _getField(data, 'garageName', 'AutoCare Garage'));
             
-            // Get pricing information
-            double? serviceAmount = _parseDouble(data['serviceAmount']);
-            double? taxAmount = _parseDouble(data['taxAmount']);
-            double? totalAmount = _parseDouble(data['totalAmount']);
-            String cost = totalAmount != null && totalAmount > 0 
-                ? '₹${totalAmount.toStringAsFixed(2)}' 
-                : (serviceAmount != null && serviceAmount > 0 
-                    ? '₹${serviceAmount.toStringAsFixed(2)}' 
-                    : _getField(data, 'cost', _getField(data, 'amount', _getField(data, 'price', '₹0.00'))));
+            // Get cost information
+            String cost = _getField(data, 'cost', _getField(data, 'amount', _getField(data, 'price', '₹0.00')));
             
             String rating = _getField(data, 'rating', 'N/A');
             
@@ -361,16 +525,7 @@ class _EnhancedHistoryScreenState extends State<EnhancedHistoryScreen> {
               fuelType: _getField(data, 'fuelType', 'Not Specified'),
               vehicleType: _getField(data, 'vehicleType', 'Car'),
               additionalData: {
-                'serviceAmount': serviceAmount,
-                'taxAmount': taxAmount,
-                'totalAmount': totalAmount,
-                'paymentStatus': data['paymentStatus'] ?? 'pending',
-                'paymentMethod': data['paymentMethod'],
-                'transactionId': data['paymentTransactionId'] ?? data['transactionId'],
-                'upiTransactionId': data['upiTransactionId'],
                 'completedAt': completedAt,
-                'paidAt': paidAt,
-                'providerUpiId': data['providerUpiId'],
               },
             );
             
@@ -416,16 +571,15 @@ class _EnhancedHistoryScreenState extends State<EnhancedHistoryScreen> {
             String normalizedStatus = _normalizeStatus(status);
             
             // Check if this is an ongoing service (should be excluded from history)
-            bool isOngoing = normalizedStatus == 'pending' || 
+            // Only exclude services that are actively pending/processing
+            bool isOngoing = (normalizedStatus == 'pending' || 
                             normalizedStatus == 'in process' ||
-                            status.contains('pending') ||
-                            status.contains('process') ||
-                            status.contains('accepted') ||
-                            status.contains('confirmed') ||
-                            status.contains('assigned');
+                            status.contains('pending')) &&
+                            !status.contains('complete') &&
+                            !status.contains('reject');
             
-            // Only include past services (completed, rejected, cancelled)
-            // Exclude all ongoing services
+            // Include all past services (completed, rejected, cancelled, and any other non-ongoing statuses)
+            // Exclude only actively pending/processing services
             if (isOngoing) {
               print('⏭️ Skipping ongoing service: ${doc.id} - status: $status');
               continue;
@@ -437,7 +591,6 @@ class _EnhancedHistoryScreenState extends State<EnhancedHistoryScreen> {
             DateTime createdAt = _parseTimestamp(data['createdAt']);
             DateTime updatedAt = _parseTimestamp(data['updatedAt']);
             DateTime? completedAt = data['completedAt'] != null ? _parseTimestamp(data['completedAt']) : null;
-            DateTime? paidAt = data['paidAt'] != null ? _parseTimestamp(data['paidAt']) : null;
             
             // Extract all possible fields with proper fallbacks
             String requestId = _getField(data, 'requestId', 'TOW-${DateTime.now().millisecondsSinceEpoch}');
@@ -446,15 +599,8 @@ class _EnhancedHistoryScreenState extends State<EnhancedHistoryScreen> {
             String providerName = _getField(data, 'providerName', 
                             _getField(data, 'towProviderName', 'Tow Provider'));
             
-            // Get pricing information
-            double? serviceAmount = _parseDouble(data['serviceAmount']);
-            double? taxAmount = _parseDouble(data['taxAmount']);
-            double? totalAmount = _parseDouble(data['totalAmount']);
-            String cost = totalAmount != null && totalAmount > 0 
-                ? '₹${totalAmount.toStringAsFixed(2)}' 
-                : (serviceAmount != null && serviceAmount > 0 
-                    ? '₹${serviceAmount.toStringAsFixed(2)}' 
-                    : _getField(data, 'cost', _getField(data, 'amount', _getField(data, 'price', '₹0.00'))));
+            // Get cost information
+            String cost = _getField(data, 'cost', _getField(data, 'amount', _getField(data, 'price', '₹0.00')));
             
             String rating = _getField(data, 'rating', 'N/A');
             
@@ -489,16 +635,7 @@ class _EnhancedHistoryScreenState extends State<EnhancedHistoryScreen> {
               fuelType: _getField(data, 'fuelType', 'Not Specified'),
               vehicleType: _getField(data, 'vehicleType', 'Car'),
               additionalData: {
-                'serviceAmount': serviceAmount,
-                'taxAmount': taxAmount,
-                'totalAmount': totalAmount,
-                'paymentStatus': data['paymentStatus'] ?? 'pending',
-                'paymentMethod': data['paymentMethod'],
-                'transactionId': data['paymentTransactionId'] ?? data['transactionId'],
-                'upiTransactionId': data['upiTransactionId'],
                 'completedAt': completedAt,
-                'paidAt': paidAt,
-                'providerUpiId': data['providerUpiId'],
               },
             );
             
@@ -511,6 +648,36 @@ class _EnhancedHistoryScreenState extends State<EnhancedHistoryScreen> {
         }
       } catch (e) {
         print('❌ Error loading tow requests: $e');
+      }
+
+      // Cache to SQLite - convert ServiceHistory to Map format
+      if (history.isNotEmpty) {
+        final historyData = history.map((service) => {
+          'id': service.id,
+          'requestId': service.requestId,
+          'serviceType': service.serviceType,
+          'status': service.status,
+          'createdAt': service.createdAt,
+          'updatedAt': service.updatedAt,
+          'completedAt': service.additionalData['completedAt'],
+          'cost': service.cost,
+          'rating': service.rating,
+          'vehicleNumber': service.vehicleNumber,
+          'garageName': service.garageName,
+          'name': service.name,
+          'phone': service.phone,
+          'location': service.location,
+          'problemDescription': service.problemDescription,
+          'preferredDate': service.preferredDate,
+          'preferredTime': service.preferredTime,
+          'vehicleModel': service.vehicleModel,
+          'fuelType': service.fuelType,
+          'vehicleType': service.vehicleType,
+        }).toList();
+        
+        // Use DatabaseService to cache directly
+        final dbService = DatabaseService();
+        await dbService.cacheServiceHistoryList(historyData, widget.userEmail);
       }
 
       // Populate history map for real-time updates
@@ -529,6 +696,9 @@ class _EnhancedHistoryScreenState extends State<EnhancedHistoryScreen> {
           _hasError = false;
         });
       }
+
+      // Reload statistics
+      await _loadStatistics();
 
       print('🎉 Service History loaded successfully: ${_serviceHistory.length} completed/rejected requests');
 
@@ -717,10 +887,12 @@ class _EnhancedHistoryScreenState extends State<EnhancedHistoryScreen> {
   String _getStatusText(String status) {
     final statusLower = status.toLowerCase();
     
-    if (statusLower == 'completed') {
-      return 'Completed';
-    } else if (statusLower == 'cancelled') {
+    if (statusLower == 'completed' || statusLower.contains('complete')) {
+      return 'Complete';
+    } else if (statusLower == 'cancelled' || statusLower.contains('cancel')) {
       return 'Cancelled';
+    } else if (statusLower.contains('reject')) {
+      return 'Rejected';
     } else if (statusLower.contains('progress')) {
       return 'In Progress';
     } else if (statusLower.contains('confirm')) {
@@ -728,8 +900,14 @@ class _EnhancedHistoryScreenState extends State<EnhancedHistoryScreen> {
     } else if (statusLower == 'pending') {
       return 'Pending';
     } else {
-      return status;
+      // For any other status, show as "Not Complete"
+      return 'Not Complete';
     }
+  }
+  
+  bool _isComplete(String status) {
+    final statusLower = status.toLowerCase();
+    return statusLower == 'completed' || statusLower.contains('complete');
   }
 
   void _handleRetry() {
@@ -775,16 +953,33 @@ class _EnhancedHistoryScreenState extends State<EnhancedHistoryScreen> {
     return RefreshIndicator(
       onRefresh: () async {
         await _loadServiceHistory();
+        await _loadStatistics();
+        if (_syncService.isOnline) {
+          await _syncService.syncNow(widget.userEmail);
+        }
       },
       backgroundColor: const Color(0xFF6D28D9),
       color: Colors.white,
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _serviceHistory.length,
-        itemBuilder: (context, index) {
-          final service = _serviceHistory[index];
-          return _buildHistoryCard(service, context);
-        },
+      child: CustomScrollView(
+        slivers: [
+          // Statistics Section
+          SliverToBoxAdapter(
+            child: _buildStatisticsSection(),
+          ),
+          // History List
+          SliverPadding(
+            padding: const EdgeInsets.all(16),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final service = _serviceHistory[index];
+                  return _buildHistoryCard(service, context);
+                },
+                childCount: _serviceHistory.length,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -943,9 +1138,172 @@ class _EnhancedHistoryScreenState extends State<EnhancedHistoryScreen> {
     );
   }
 
+  Widget _buildStatisticsSection() {
+    if (_isLoadingStats) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        child: const Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6D28D9)),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF6D28D9), Color(0xFF8B5CF6)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.purple.withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.analytics_outlined,
+                color: Colors.white,
+                size: 28,
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Service Statistics',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const Spacer(),
+              if (!_syncService.isOnline)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.wifi_off, color: Colors.white, size: 14),
+                      SizedBox(width: 4),
+                      Text(
+                        'Offline',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: _buildStatCard(
+                  'Total Services',
+                  _statistics['total'] ?? 0,
+                  Icons.request_quote,
+                  Colors.white.withOpacity(0.2),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildStatCard(
+                  'Completed',
+                  _statistics['completed'] ?? 0,
+                  Icons.check_circle,
+                  Colors.green.withOpacity(0.3),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildStatCard(
+                  'Not Completed',
+                  _statistics['notCompleted'] ?? 0,
+                  Icons.pending,
+                  Colors.orange.withOpacity(0.3),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatCard(String label, int value, IconData icon, Color iconBg) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: iconBg,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon,
+              color: Colors.white,
+              size: 20,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value.toString(),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.9),
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildHistoryCard(ServiceHistory service, BuildContext context) {
     final statusColor = _getStatusColor(service.status);
     final statusText = _getStatusText(service.status);
+    final isComplete = _isComplete(service.status);
     
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -1008,20 +1366,39 @@ class _EnhancedHistoryScreenState extends State<EnhancedHistoryScreen> {
                         ],
                       ),
                     ),
+                    // Enhanced Status Badge
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
-                        color: statusColor.withOpacity(0.1),
+                        color: isComplete 
+                            ? Colors.green.withOpacity(0.15)
+                            : statusColor.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: statusColor.withOpacity(0.3)),
-                      ),
-                      child: Text(
-                        statusText,
-                        style: TextStyle(
-                          color: statusColor,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 10,
+                        border: Border.all(
+                          color: isComplete 
+                              ? Colors.green
+                              : statusColor,
+                          width: 1.5,
                         ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isComplete ? Icons.check_circle : Icons.info_outline,
+                            size: 14,
+                            color: isComplete ? Colors.green : statusColor,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            statusText,
+                            style: TextStyle(
+                              color: isComplete ? Colors.green : statusColor,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -1153,29 +1530,8 @@ class ServiceDetailsBottomSheet extends StatelessWidget {
                       _buildDetailRow('Requested On', DateFormat('MMM dd, yyyy • hh:mm a').format(service.createdAt)),
                       if (service.additionalData['completedAt'] != null)
                         _buildDetailRow('Completed On', DateFormat('MMM dd, yyyy • hh:mm a').format(service.additionalData['completedAt'] as DateTime)),
-                      if (service.additionalData['paidAt'] != null)
-                        _buildDetailRow('Paid On', DateFormat('MMM dd, yyyy • hh:mm a').format(service.additionalData['paidAt'] as DateTime)),
                     ]),
                     
-                    const SizedBox(height: 20),
-                    _buildDetailSection('Payment & Pricing', [
-                      if (service.additionalData['serviceAmount'] != null && service.additionalData['serviceAmount'] > 0)
-                        _buildDetailRow('Service Amount', '₹${(service.additionalData['serviceAmount'] as double).toStringAsFixed(2)}'),
-                      if (service.additionalData['taxAmount'] != null && service.additionalData['taxAmount'] > 0)
-                        _buildDetailRow('GST (18%)', '₹${(service.additionalData['taxAmount'] as double).toStringAsFixed(2)}'),
-                      if (service.additionalData['totalAmount'] != null && service.additionalData['totalAmount'] > 0)
-                        _buildDetailRow('Total Amount', '₹${(service.additionalData['totalAmount'] as double).toStringAsFixed(2)}', isHighlight: true)
-                      else
-                        _buildDetailRow('Total Amount', service.cost, isHighlight: true),
-                      if (service.additionalData['paymentStatus'] != null)
-                        _buildDetailRow('Payment Status', _capitalizeFirst(service.additionalData['paymentStatus'].toString())),
-                      if (service.additionalData['paymentMethod'] != null)
-                        _buildDetailRow('Payment Method', service.additionalData['paymentMethod'].toString()),
-                      if (service.additionalData['transactionId'] != null)
-                        _buildDetailRow('Transaction ID', service.additionalData['transactionId'].toString()),
-                      if (service.additionalData['upiTransactionId'] != null)
-                        _buildDetailRow('UPI Transaction ID', service.additionalData['upiTransactionId'].toString()),
-                    ]),
                     
                     const SizedBox(height: 20),
                     _buildDetailSection('Schedule & Location', [
@@ -1343,18 +1699,21 @@ class ServiceDetailsBottomSheet extends StatelessWidget {
   String _getStatusText(String status) {
     final statusLower = status.toLowerCase();
     
-    if (statusLower == 'completed') {
-      return 'Completed';
-    } else if (statusLower == 'cancelled' || statusLower == 'rejected') {
+    if (statusLower == 'completed' || statusLower.contains('complete')) {
+      return 'Complete';
+    } else if (statusLower == 'cancelled' || statusLower.contains('cancel')) {
+      return 'Cancelled';
+    } else if (statusLower.contains('reject')) {
       return 'Rejected';
     } else if (statusLower.contains('progress') || statusLower == 'in process') {
-      return 'In Process';
+      return 'In Progress';
     } else if (statusLower.contains('confirm')) {
       return 'Confirmed';
     } else if (statusLower == 'pending') {
       return 'Pending';
     } else {
-      return status;
+      // For any other status, show as "Not Complete"
+      return 'Not Complete';
     }
   }
 

@@ -1146,51 +1146,7 @@ class _TowServiceRequestsScreenState extends State<TowServiceRequestsScreen>
   }
 
   Future<void> _showCompleteServiceDialog(TowServiceRequest request) async {
-    final amountController = TextEditingController();
-    final upiIdController = TextEditingController();
     final notesController = TextEditingController();
-
-    // Try to load saved UPI ID from provider profile
-    bool hasSavedUpiId = false;
-    if (_towProviderId != null) {
-      try {
-        // Check new structure first
-        DocumentSnapshot? profileDoc = await _firestore
-            .collection('tow_providers')
-            .doc(_towProviderId!)
-            .get();
-
-        final profileData = profileDoc.data() as Map<String, dynamic>?;
-        if (profileDoc.exists && profileData != null && profileData['upiId'] != null) {
-          final savedUpiId = profileData['upiId'].toString().trim();
-          if (savedUpiId.isNotEmpty) {
-            upiIdController.text = savedUpiId;
-            hasSavedUpiId = true;
-          }
-        }
-
-        // If not found, check old structure
-        if (!hasSavedUpiId) {
-          profileDoc = await _firestore
-              .collection('tow')
-              .doc(_userEmail ?? _towProviderId!)
-              .collection('profile')
-              .doc('provider_details')
-              .get();
-
-          final oldProfileData = profileDoc.data() as Map<String, dynamic>?;
-          if (profileDoc.exists && oldProfileData != null && oldProfileData['upiId'] != null) {
-            final savedUpiId = oldProfileData['upiId'].toString().trim();
-            if (savedUpiId.isNotEmpty) {
-              upiIdController.text = savedUpiId;
-              hasSavedUpiId = true;
-            }
-          }
-        }
-      } catch (e) {
-        print('⚠️ Could not load saved UPI ID: $e');
-      }
-    }
 
     final result = await showDialog<bool>(
       context: context,
@@ -1201,27 +1157,7 @@ class _TowServiceRequestsScreenState extends State<TowServiceRequestsScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
-                controller: amountController,
-                decoration: InputDecoration(
-                  labelText: 'Service Amount *',
-                  hintText: 'Enter amount in ₹',
-                  prefixIcon: Icon(Icons.currency_rupee),
-                ),
-                keyboardType: TextInputType.numberWithOptions(decimal: true),
-              ),
-              SizedBox(height: 16),
-              TextField(
-                controller: upiIdController,
-                decoration: InputDecoration(
-                  labelText: 'Your UPI ID *',
-                  hintText: hasSavedUpiId ? null : 'yourname@paytm',
-                  prefixIcon: Icon(Icons.payment),
-                  helperText: hasSavedUpiId
-                      ? 'Pre-filled from your profile'
-                      : 'This will be used to receive payment',
-                ),
-              ),
+              Text('Are you sure you want to mark this service as completed?'),
               SizedBox(height: 16),
               TextField(
                 controller: notesController,
@@ -1242,25 +1178,6 @@ class _TowServiceRequestsScreenState extends State<TowServiceRequestsScreen>
           ),
           ElevatedButton(
             onPressed: () {
-              if (amountController.text.trim().isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Please enter service amount')),
-                );
-                return;
-              }
-              if (double.tryParse(amountController.text.trim()) == null ||
-                  double.parse(amountController.text.trim()) <= 0) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Please enter valid amount')),
-                );
-                return;
-              }
-              if (upiIdController.text.trim().isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Please enter UPI ID')),
-                );
-                return;
-              }
               Navigator.pop(context, true);
             },
             child: Text('Mark Complete'),
@@ -1270,69 +1187,19 @@ class _TowServiceRequestsScreenState extends State<TowServiceRequestsScreen>
     );
 
     if (result == true) {
-      final amount = double.parse(amountController.text.trim());
-      final upiId = upiIdController.text.trim();
       final notes = notesController.text.trim();
-
-      await _completeServiceWithPayment(request, amount, upiId, notes);
+      await _completeService(request, notes);
     }
 
-    amountController.dispose();
-    upiIdController.dispose();
     notesController.dispose();
   }
 
-  Future<void> _completeServiceWithPayment(
+  Future<void> _completeService(
     TowServiceRequest request,
-    double amount,
-    String upiId,
     String notes,
   ) async {
     try {
-      // Save UPI ID to provider profile
-      if (_towProviderId != null) {
-        try {
-          final batch = _firestore.batch();
-          
-          // Update new structure
-          final newProfileRef = _firestore
-              .collection('tow_providers')
-              .doc(_towProviderId!);
-          batch.set(newProfileRef, {
-            'upiId': upiId,
-            'updatedAt': FieldValue.serverTimestamp(),
-          }, SetOptions(merge: true));
-          
-          // Update old structure if it exists
-          if (_userEmail != null) {
-            final oldProfileRef = _firestore
-                .collection('tow')
-                .doc(_userEmail!)
-                .collection('profile')
-                .doc('provider_details');
-            
-            final oldProfileDoc = await oldProfileRef.get();
-            if (oldProfileDoc.exists) {
-              batch.update(oldProfileRef, {
-                'upiId': upiId,
-                'updatedAt': FieldValue.serverTimestamp(),
-              });
-            } else {
-              batch.set(oldProfileRef, {
-                'upiId': upiId,
-                'updatedAt': FieldValue.serverTimestamp(),
-              }, SetOptions(merge: true));
-            }
-          }
-          
-          await batch.commit();
-          print('✅ UPI ID saved to profile successfully');
-        } catch (e) {
-          print('❌ Could not save UPI ID to profile: $e');
-        }
-      }
-
-      // Update request with completion and payment info in provider's collection
+      // Update request with completion info in provider's collection
       if (_towProviderId != null) {
         await _firestore
             .collection('tow_providers')
@@ -1341,9 +1208,6 @@ class _TowServiceRequestsScreenState extends State<TowServiceRequestsScreen>
             .doc(request.id)
             .update({
               'status': 'completed',
-              'serviceAmount': amount,
-              'providerUpiId': upiId,
-              'paymentStatus': 'pending',
               'completedAt': FieldValue.serverTimestamp(),
               'serviceNotes': notes,
               'updatedAt': FieldValue.serverTimestamp(),
@@ -1369,9 +1233,6 @@ class _TowServiceRequestsScreenState extends State<TowServiceRequestsScreen>
                 .doc(userRequestSnapshot.docs.first.id)
                 .update({
                   'status': 'completed',
-                  'serviceAmount': amount,
-                  'providerUpiId': upiId,
-                  'paymentStatus': 'pending',
                   'completedAt': FieldValue.serverTimestamp(),
                   'serviceNotes': notes,
                   'updatedAt': FieldValue.serverTimestamp(),
@@ -1393,9 +1254,6 @@ class _TowServiceRequestsScreenState extends State<TowServiceRequestsScreen>
         if (towRequestSnapshot.docs.isNotEmpty) {
           await towRequestSnapshot.docs.first.reference.update({
             'status': 'completed',
-            'serviceAmount': amount,
-            'providerUpiId': upiId,
-            'paymentStatus': 'pending',
             'completedAt': FieldValue.serverTimestamp(),
             'serviceNotes': notes,
             'updatedAt': FieldValue.serverTimestamp(),
@@ -1409,9 +1267,6 @@ class _TowServiceRequestsScreenState extends State<TowServiceRequestsScreen>
       try {
         await _dbRef.child('tow_requests').child(request.requestId).update({
           'status': 'completed',
-          'serviceAmount': amount,
-          'providerUpiId': upiId,
-          'paymentStatus': 'pending',
           'completedAt': DateTime.now().millisecondsSinceEpoch,
           'updatedAt': DateTime.now().millisecondsSinceEpoch,
         });
@@ -1419,7 +1274,7 @@ class _TowServiceRequestsScreenState extends State<TowServiceRequestsScreen>
         print('⚠️ Could not update Realtime Database: $e');
       }
 
-      // Send notification to user about service charges
+      // Send notification to user
       if (request.userEmail.isNotEmpty && request.userEmail != 'Unknown') {
         try {
           final userId = request.userId?.toString() ?? 
@@ -1433,20 +1288,17 @@ class _TowServiceRequestsScreenState extends State<TowServiceRequestsScreen>
           await userNotificationRef.set({
             'id': userNotificationRef.key,
             'requestId': request.requestId,
-            'title': 'Service Charges Updated 💰',
-            'message': 'Your service charges are ₹$amount. Please make payment to UPI: $upiId',
+            'title': 'Service Completed ✅',
+            'message': 'Your service has been completed successfully.',
             'timestamp': DateTime.now().millisecondsSinceEpoch,
             'read': false,
-            'type': 'service_charges_entered',
+            'type': 'service_completed',
             'vehicleNumber': request.vehicleNumber,
             'providerName': request.providerName,
             'status': 'completed',
-            'amount': amount,
-            'upiId': upiId,
-            'paymentStatus': 'pending',
           });
 
-          print('✅ Notification sent to user about service charges');
+          print('✅ Notification sent to user');
         } catch (e) {
           print('⚠️ Could not send notification: $e');
         }

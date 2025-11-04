@@ -962,30 +962,7 @@ class _BookingsScreenState extends State<BookingsScreen> with TickerProviderStat
   }
 
   Future<void> _showCompleteServiceDialog(ServiceRequest request) async {
-    final amountController = TextEditingController();
-    final upiIdController = TextEditingController();
     final notesController = TextEditingController();
-
-    // Try to load saved UPI ID
-    bool hasSavedUpiId = false;
-    if (_userEmail != null) {
-      try {
-        final profileDoc = await _firestore
-            .collection('garages')
-            .doc(_userEmail!)
-            .get();
-        
-        if (profileDoc.exists && profileDoc.data()?['upiId'] != null) {
-          final savedUpiId = profileDoc.data()!['upiId'].toString().trim();
-          if (savedUpiId.isNotEmpty) {
-            upiIdController.text = savedUpiId;
-            hasSavedUpiId = true;
-          }
-        }
-      } catch (e) {
-        print('⚠️ Could not load saved UPI ID: $e');
-      }
-    }
 
     final result = await showDialog<bool>(
       context: context,
@@ -996,27 +973,7 @@ class _BookingsScreenState extends State<BookingsScreen> with TickerProviderStat
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
-                controller: amountController,
-                decoration: InputDecoration(
-                  labelText: 'Service Amount *',
-                  hintText: 'Enter amount in ₹',
-                  prefixIcon: Icon(Icons.currency_rupee),
-                ),
-                keyboardType: TextInputType.numberWithOptions(decimal: true),
-              ),
-              SizedBox(height: 16),
-              TextField(
-                controller: upiIdController,
-                decoration: InputDecoration(
-                  labelText: 'Your UPI ID *',
-                  hintText: hasSavedUpiId ? null : 'yourname@paytm',
-                  prefixIcon: Icon(Icons.payment),
-                  helperText: hasSavedUpiId
-                      ? 'Pre-filled from your profile'
-                      : 'This will be used to receive payment',
-                ),
-              ),
+              Text('Are you sure you want to mark this service as completed?'),
               SizedBox(height: 16),
               TextField(
                 controller: notesController,
@@ -1037,25 +994,6 @@ class _BookingsScreenState extends State<BookingsScreen> with TickerProviderStat
           ),
           ElevatedButton(
             onPressed: () {
-              if (amountController.text.trim().isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Please enter service amount')),
-                );
-                return;
-              }
-              if (double.tryParse(amountController.text.trim()) == null ||
-                  double.parse(amountController.text.trim()) <= 0) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Please enter valid amount')),
-                );
-                return;
-              }
-              if (upiIdController.text.trim().isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Please enter UPI ID')),
-                );
-                return;
-              }
               Navigator.pop(context, true);
             },
             child: Text('Mark Complete'),
@@ -1065,38 +1003,19 @@ class _BookingsScreenState extends State<BookingsScreen> with TickerProviderStat
     );
 
     if (result == true) {
-      final amount = double.parse(amountController.text.trim());
-      final upiId = upiIdController.text.trim();
       final notes = notesController.text.trim();
-
-      await _completeServiceWithPayment(request, amount, upiId, notes);
+      await _completeService(request, notes);
     }
 
-    amountController.dispose();
-    upiIdController.dispose();
     notesController.dispose();
   }
 
-  Future<void> _completeServiceWithPayment(
+  Future<void> _completeService(
     ServiceRequest request,
-    double amount,
-    String upiId,
     String notes,
   ) async {
     try {
-      // Save UPI ID to profile
-      if (_userEmail != null) {
-        try {
-          await _firestore.collection('garages').doc(_userEmail!).set({
-            'upiId': upiId,
-            'updatedAt': FieldValue.serverTimestamp(),
-          }, SetOptions(merge: true));
-        } catch (e) {
-          print('⚠️ Could not save UPI ID: $e');
-        }
-      }
-
-      // Update request with completion and payment info
+      // Update request with completion info
       if (_garageId != null) {
         await _firestore
             .collection('garages')
@@ -1105,9 +1024,6 @@ class _BookingsScreenState extends State<BookingsScreen> with TickerProviderStat
             .doc(request.id)
             .update({
           'status': 'completed',
-          'serviceAmount': amount,
-          'providerUpiId': upiId,
-          'paymentStatus': 'pending',
           'notes': notes,
           'completedAt': FieldValue.serverTimestamp(),
           'updatedAt': FieldValue.serverTimestamp(),
@@ -1129,9 +1045,6 @@ class _BookingsScreenState extends State<BookingsScreen> with TickerProviderStat
           
           await userDoc.reference.update({
             'status': 'completed',
-            'serviceAmount': amount,
-            'providerUpiId': upiId,
-            'paymentStatus': 'pending',
             'notes': notes,
             'completedAt': FieldValue.serverTimestamp(),
             'updatedAt': FieldValue.serverTimestamp(),
@@ -1141,7 +1054,7 @@ class _BookingsScreenState extends State<BookingsScreen> with TickerProviderStat
         print('⚠️ Could not update user collection: $e');
       }
 
-      // Send notification to user about service charges
+      // Send notification to user
       if (userEmail != null && userEmail.isNotEmpty) {
         try {
           final userId = userEmail.replaceAll(RegExp(r'[\.#\$\[\]]'), '_');
@@ -1154,20 +1067,17 @@ class _BookingsScreenState extends State<BookingsScreen> with TickerProviderStat
           await userNotificationRef.set({
             'id': userNotificationRef.key,
             'requestId': request.requestId,
-            'title': 'Service Charges Updated 💰',
-            'message': 'Your service charges are ₹$amount. Please make payment to UPI: $upiId',
+            'title': 'Service Completed ✅',
+            'message': 'Your service has been completed successfully.',
             'timestamp': DateTime.now().millisecondsSinceEpoch,
             'read': false,
-            'type': 'service_charges_entered',
+            'type': 'service_completed',
             'vehicleNumber': request.vehicleNumber,
             'garageName': request.garageName,
             'status': 'completed',
-            'amount': amount,
-            'upiId': upiId,
-            'paymentStatus': 'pending',
           });
 
-          print('✅ Notification sent to user about service charges');
+          print('✅ Notification sent to user');
         } catch (e) {
           print('⚠️ Could not send notification: $e');
         }

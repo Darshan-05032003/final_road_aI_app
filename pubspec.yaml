@@ -37,6 +37,7 @@ dependencies:
   google_sign_in: ^6.2.1
   printing: ^5.14.2
   sqflite: ^2.3.3+2
+  connectivity_plus: ^6.1.0
   avatar_glow: ^3.0.1
   sensors_plus: ^7.0.0
   camera: ^0.11.3
