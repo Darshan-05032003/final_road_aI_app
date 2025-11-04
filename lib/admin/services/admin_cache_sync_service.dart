@@ -5,9 +5,9 @@ import 'package:smart_road_app/services/database_service.dart';
 
 /// Admin Cache Sync Service - Cache-first data loading for admin section
 class AdminCacheSyncService {
-  static final AdminCacheSyncService _instance = AdminCacheSyncService._internal();
   factory AdminCacheSyncService() => _instance;
   AdminCacheSyncService._internal();
+  static final AdminCacheSyncService _instance = AdminCacheSyncService._internal();
 
   final DatabaseService _dbService = DatabaseService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;

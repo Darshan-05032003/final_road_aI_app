@@ -614,14 +614,6 @@ class _ActiveJobsScreenState extends State<ActiveJobsScreen> with SingleTickerPr
 }
 
 class ActiveJob {
-  final String id;
-  final String userName;
-  final String vehicleType;
-  final String issueType;
-  final String status;
-  final String location;
-  final double estimatedFare;
-  final String startTime;
 
   ActiveJob({
     required this.id,
@@ -633,4 +625,12 @@ class ActiveJob {
     required this.estimatedFare,
     required this.startTime,
   });
+  final String id;
+  final String userName;
+  final String vehicleType;
+  final String issueType;
+  final String status;
+  final String location;
+  final double estimatedFare;
+  final String startTime;
 }

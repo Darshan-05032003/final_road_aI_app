@@ -4,17 +4,6 @@ import 'package:smart_road_app/core/animations/app_animations.dart';
 
 /// Enhanced Gradient Button
 class GradientButton extends StatelessWidget {
-  final String text;
-  final VoidCallback? onPressed;
-  final IconData? icon;
-  final Gradient gradient;
-  final EdgeInsets? padding;
-  final double? width;
-  final double? height;
-  final double? borderRadius;
-  final TextStyle? textStyle;
-  final bool isLoading;
-  final bool fullWidth;
   
   const GradientButton({
     super.key,
@@ -30,6 +19,17 @@ class GradientButton extends StatelessWidget {
     this.isLoading = false,
     this.fullWidth = false,
   }) : gradient = gradient ?? AppTheme.primaryGradient;
+  final String text;
+  final VoidCallback? onPressed;
+  final IconData? icon;
+  final Gradient gradient;
+  final EdgeInsets? padding;
+  final double? width;
+  final double? height;
+  final double? borderRadius;
+  final TextStyle? textStyle;
+  final bool isLoading;
+  final bool fullWidth;
   
   @override
   Widget build(BuildContext context) {
@@ -98,15 +98,6 @@ class GradientButton extends StatelessWidget {
 
 /// Modern Elevated Button with Animation
 class ModernElevatedButton extends StatelessWidget {
-  final String text;
-  final VoidCallback? onPressed;
-  final IconData? icon;
-  final Color? backgroundColor;
-  final Color? foregroundColor;
-  final EdgeInsets? padding;
-  final double? borderRadius;
-  final bool isLoading;
-  final bool fullWidth;
   
   const ModernElevatedButton({
     super.key,
@@ -120,6 +111,15 @@ class ModernElevatedButton extends StatelessWidget {
     this.isLoading = false,
     this.fullWidth = false,
   });
+  final String text;
+  final VoidCallback? onPressed;
+  final IconData? icon;
+  final Color? backgroundColor;
+  final Color? foregroundColor;
+  final EdgeInsets? padding;
+  final double? borderRadius;
+  final bool isLoading;
+  final bool fullWidth;
   
   @override
   Widget build(BuildContext context) {
@@ -194,14 +194,14 @@ class ModernElevatedButton extends StatelessWidget {
 
 /// Status Tag with Modern Design
 class StatusTag extends StatelessWidget {
-  final String status;
-  final Color? color;
   
   const StatusTag({
     super.key,
     required this.status,
     this.color,
   });
+  final String status;
+  final Color? color;
   
   @override
   Widget build(BuildContext context) {

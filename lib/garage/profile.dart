@@ -3,9 +3,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class ProfilePage extends StatefulWidget {
-  final String? userEmail;
 
   const ProfilePage({super.key, this.userEmail});
+  final String? userEmail;
 
   @override
   _ProfilePageState createState() => _ProfilePageState();

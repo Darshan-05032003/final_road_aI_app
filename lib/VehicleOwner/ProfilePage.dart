@@ -132,13 +132,13 @@ class ProfileDataFetcher {
 
 // Enhanced Profile Screen
 class EnhancedProfileScreen extends StatefulWidget {
-  final String userEmail;
 
   const EnhancedProfileScreen({
     super.key,
     required this.userEmail,
     required List serviceHistory,
   });
+  final String userEmail;
 
   @override
   _EnhancedProfileScreenState createState() => _EnhancedProfileScreenState();
@@ -673,9 +673,9 @@ class _EnhancedProfileScreenState extends State<EnhancedProfileScreen> {
 
 // SOS Emergency Screen (unchanged from your original code)
 class SOSEmergencyScreen extends StatelessWidget {
-  final List<String> emergencyContacts;
 
   const SOSEmergencyScreen({super.key, required this.emergencyContacts});
+  final List<String> emergencyContacts;
 
   @override
   Widget build(BuildContext context) {

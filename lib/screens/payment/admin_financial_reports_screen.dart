@@ -439,7 +439,7 @@ class _AdminFinancialReportsScreenState
                 ),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
-                  value: _selectedServiceType,
+                  initialValue: _selectedServiceType,
                   items: const [
                     DropdownMenuItem(value: 'all', child: Text('All')),
                     DropdownMenuItem(value: 'garage', child: Text('Garage')),

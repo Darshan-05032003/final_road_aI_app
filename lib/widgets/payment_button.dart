@@ -2,13 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:smart_road_app/screens/payment/payment_options_screen.dart';
 
 class PaymentButton extends StatelessWidget {
-  final String requestId;
-  final String serviceType;
-  final double amount;
-  final String providerUpiId;
-  final String providerEmail;
-  final String customerEmail;
-  final String? providerName;
 
   const PaymentButton({
     super.key,
@@ -20,6 +13,13 @@ class PaymentButton extends StatelessWidget {
     required this.customerEmail,
     this.providerName,
   });
+  final String requestId;
+  final String serviceType;
+  final double amount;
+  final String providerUpiId;
+  final String providerEmail;
+  final String customerEmail;
+  final String? providerName;
 
   @override
   Widget build(BuildContext context) {

@@ -6,14 +6,14 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 
 class NearbyGaragesScreen extends StatefulWidget {
-  final Position userLocation;
-  final String? userEmail;
 
   const NearbyGaragesScreen({
     super.key,
     required this.userLocation,
     required this.userEmail,
   });
+  final Position userLocation;
+  final String? userEmail;
 
   dynamic get Garage => null;
 
@@ -478,19 +478,6 @@ class _NearbyGaragesScreenState extends State<NearbyGaragesScreen> {
 
 // Updated Garage class with more fields
 class Garage {
-  final String id;
-  final String name;
-  final String address;
-  final double distance;
-  final double rating;
-  final int reviews;
-  final List<String> specialties;
-  final bool isAvailable;
-  final String phone;
-  final double latitude;
-  final double longitude;
-  final String ownerName;
-  final String email;
 
   Garage({
     required this.id,
@@ -507,6 +494,19 @@ class Garage {
     required this.ownerName,
     required this.email,
   });
+  final String id;
+  final String name;
+  final String address;
+  final double distance;
+  final double rating;
+  final int reviews;
+  final List<String> specialties;
+  final bool isAvailable;
+  final String phone;
+  final double latitude;
+  final double longitude;
+  final String ownerName;
+  final String email;
 }
 
 

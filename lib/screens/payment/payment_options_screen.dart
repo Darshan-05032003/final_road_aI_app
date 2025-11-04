@@ -3,13 +3,6 @@ import 'package:smart_road_app/screens/payment/upi_payment_handler.dart';
 import 'package:smart_road_app/services/payment_service.dart';
 
 class PaymentOptionsScreen extends StatefulWidget {
-  final String requestId;
-  final String serviceType;
-  final double amount;
-  final String providerUpiId;
-  final String providerEmail;
-  final String customerEmail;
-  final String? providerName;
 
   const PaymentOptionsScreen({
     super.key,
@@ -21,6 +14,13 @@ class PaymentOptionsScreen extends StatefulWidget {
     required this.customerEmail,
     this.providerName,
   });
+  final String requestId;
+  final String serviceType;
+  final double amount;
+  final String providerUpiId;
+  final String providerEmail;
+  final String customerEmail;
+  final String? providerName;
 
   @override
   State<PaymentOptionsScreen> createState() => _PaymentOptionsScreenState();
@@ -447,9 +447,6 @@ class _PaymentOptionsScreenState extends State<PaymentOptionsScreen> {
 }
 
 class PaymentSuccessScreen extends StatelessWidget {
-  final double amount;
-  final String transactionId;
-  final String requestId;
 
   const PaymentSuccessScreen({
     super.key,
@@ -457,6 +454,9 @@ class PaymentSuccessScreen extends StatelessWidget {
     required this.transactionId,
     required this.requestId,
   });
+  final double amount;
+  final String transactionId;
+  final String requestId;
 
   @override
   Widget build(BuildContext context) {

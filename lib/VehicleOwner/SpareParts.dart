@@ -2630,14 +2630,14 @@ class _SparePartsStoreState extends State<SparePartsStore> {
 }
 
 class PartDetailsBottomSheet extends StatelessWidget {
-  final Map<String, dynamic> part;
-  final VoidCallback onAddToCart;
 
   const PartDetailsBottomSheet({
     super.key,
     required this.part,
     required this.onAddToCart,
   });
+  final Map<String, dynamic> part;
+  final VoidCallback onAddToCart;
 
   @override
   Widget build(BuildContext context) {
@@ -2839,9 +2839,6 @@ class PartDetailsBottomSheet extends StatelessWidget {
 }
 
 class CartBottomSheet extends StatefulWidget {
-  final List<Map<String, dynamic>> cartItems;
-  final Function(List<Map<String, dynamic>>) onUpdateCart;
-  final VoidCallback onCheckout;
 
   const CartBottomSheet({
     super.key,
@@ -2849,6 +2846,9 @@ class CartBottomSheet extends StatefulWidget {
     required this.onUpdateCart,
     required this.onCheckout,
   });
+  final List<Map<String, dynamic>> cartItems;
+  final Function(List<Map<String, dynamic>>) onUpdateCart;
+  final VoidCallback onCheckout;
 
   @override
   _CartBottomSheetState createState() => _CartBottomSheetState();
@@ -3089,11 +3089,6 @@ class _CartBottomSheetState extends State<CartBottomSheet> {
 }
 
 class CheckoutScreen extends StatefulWidget {
-  final List<Map<String, dynamic>> cartItems;
-  final double totalAmount;
-  final VoidCallback onOrderPlaced;
-  final String? sparePartEmail;
-  final String? upiId;
 
   const CheckoutScreen({
     super.key,
@@ -3103,6 +3098,11 @@ class CheckoutScreen extends StatefulWidget {
     this.sparePartEmail,
     this.upiId,
   });
+  final List<Map<String, dynamic>> cartItems;
+  final double totalAmount;
+  final VoidCallback onOrderPlaced;
+  final String? sparePartEmail;
+  final String? upiId;
 
   @override
   _CheckoutScreenState createState() => _CheckoutScreenState();

@@ -1821,11 +1821,6 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
 }
 
 class _MenuItem {
-  final IconData icon;
-  final String title;
-  final IconData trailingIcon;
-  final bool isLogout;
-  final VoidCallback onTap;
 
   _MenuItem(
     this.icon,
@@ -1834,4 +1829,9 @@ class _MenuItem {
     this.isLogout = false,
     required this.onTap,
   });
+  final IconData icon;
+  final String title;
+  final IconData trailingIcon;
+  final bool isLogout;
+  final VoidCallback onTap;
 }

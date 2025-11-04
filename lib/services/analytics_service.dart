@@ -1,9 +1,9 @@
 /// Analytics Service for tracking user behavior and app performance
 /// Note: To enable Firebase Analytics, add firebase_analytics package
 class AnalyticsService {
-  static final AnalyticsService _instance = AnalyticsService._internal();
   factory AnalyticsService() => _instance;
   AnalyticsService._internal();
+  static final AnalyticsService _instance = AnalyticsService._internal();
   
   static Future<void> initialize() async {
     // Analytics initialization - ready for Firebase Analytics integration

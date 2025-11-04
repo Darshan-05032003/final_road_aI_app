@@ -3,16 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class SparePart {
-  final String id;
-  final String name;
-  final String category;
-  final String compatibleModels;
-  final String upiId;
-  final String description;
-  final double price;
-  final int stock;
-  final String imageUrl;
-  final bool isAvailable;
 
   const SparePart({
     required this.id,
@@ -26,6 +16,16 @@ class SparePart {
     required this.imageUrl,
     required this.isAvailable,
   });
+  final String id;
+  final String name;
+  final String category;
+  final String compatibleModels;
+  final String upiId;
+  final String description;
+  final double price;
+  final int stock;
+  final String imageUrl;
+  final bool isAvailable;
 
   SparePart copyWith({
     String? id,

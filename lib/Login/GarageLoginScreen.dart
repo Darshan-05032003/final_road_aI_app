@@ -2143,7 +2143,7 @@ class _GarageLoginPageState extends State<GarageLoginPage> {
       print('✅ Garage login state saved for: $email');
     } catch (e) {
       print('❌ Error saving garage login state: $e');
-      throw e;
+      rethrow;
     }
   }
 

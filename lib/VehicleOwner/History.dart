@@ -3,9 +3,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 
 class EnhancedHistoryScreen extends StatefulWidget {
-  final String userEmail;
 
   const EnhancedHistoryScreen({super.key, required this.userEmail, required List<Map<String, dynamic>> serviceHistory, required garageName});
+  final String userEmail;
 
   @override
   State<EnhancedHistoryScreen> createState() => _EnhancedHistoryScreenState();
@@ -65,7 +65,7 @@ class _EnhancedHistoryScreenState extends State<EnhancedHistoryScreen> {
 
         for (var doc in garageRequestsSnapshot.docs) {
           try {
-            final Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+            final Map<String, dynamic> data = doc.data();
             
             // Get status and only include completed/rejected requests
             String status = _getField(data, 'status', 'pending').toLowerCase();
@@ -92,10 +92,10 @@ class _EnhancedHistoryScreenState extends State<EnhancedHistoryScreen> {
             double? serviceAmount = _parseDouble(data['serviceAmount']);
             double? taxAmount = _parseDouble(data['taxAmount']);
             double? totalAmount = _parseDouble(data['totalAmount']);
-            String cost = totalAmount != null && totalAmount! > 0 
-                ? '₹${totalAmount!.toStringAsFixed(2)}' 
-                : (serviceAmount != null && serviceAmount! > 0 
-                    ? '₹${serviceAmount!.toStringAsFixed(2)}' 
+            String cost = totalAmount != null && totalAmount > 0 
+                ? '₹${totalAmount.toStringAsFixed(2)}' 
+                : (serviceAmount != null && serviceAmount > 0 
+                    ? '₹${serviceAmount.toStringAsFixed(2)}' 
                     : _getField(data, 'cost', _getField(data, 'amount', _getField(data, 'price', '₹0.00'))));
             
             String rating = _getField(data, 'rating', 'N/A');
@@ -169,7 +169,7 @@ class _EnhancedHistoryScreenState extends State<EnhancedHistoryScreen> {
 
         for (var doc in towRequestsSnapshot.docs) {
           try {
-            final Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+            final Map<String, dynamic> data = doc.data();
             
             // Get status and only include completed/rejected requests
             String status = _getField(data, 'status', 'pending').toLowerCase();
@@ -196,10 +196,10 @@ class _EnhancedHistoryScreenState extends State<EnhancedHistoryScreen> {
             double? serviceAmount = _parseDouble(data['serviceAmount']);
             double? taxAmount = _parseDouble(data['taxAmount']);
             double? totalAmount = _parseDouble(data['totalAmount']);
-            String cost = totalAmount != null && totalAmount! > 0 
-                ? '₹${totalAmount!.toStringAsFixed(2)}' 
-                : (serviceAmount != null && serviceAmount! > 0 
-                    ? '₹${serviceAmount!.toStringAsFixed(2)}' 
+            String cost = totalAmount != null && totalAmount > 0 
+                ? '₹${totalAmount.toStringAsFixed(2)}' 
+                : (serviceAmount != null && serviceAmount > 0 
+                    ? '₹${serviceAmount.toStringAsFixed(2)}' 
                     : _getField(data, 'cost', _getField(data, 'amount', _getField(data, 'price', '₹0.00'))));
             
             String rating = _getField(data, 'rating', 'N/A');
@@ -817,9 +817,9 @@ class _EnhancedHistoryScreenState extends State<EnhancedHistoryScreen> {
 }
 
 class ServiceDetailsBottomSheet extends StatelessWidget {
-  final ServiceHistory service;
 
   const ServiceDetailsBottomSheet({super.key, required this.service});
+  final ServiceHistory service;
 
   @override
   Widget build(BuildContext context) {
@@ -1085,27 +1085,6 @@ class ServiceDetailsBottomSheet extends StatelessWidget {
 }
 
 class ServiceHistory {
-  final String id;
-  final String requestId;
-  final String vehicleNumber;
-  final String serviceType;
-  final String preferredDate;
-  final String preferredTime;
-  final String name;
-  final String phone;
-  final String location;
-  final String problemDescription;
-  final String userEmail;
-  final String status;
-  final DateTime createdAt;
-  final DateTime updatedAt;
-  final String cost;
-  final String garageName;
-  final String rating;
-  final String vehicleModel;
-  final String fuelType;
-  final String vehicleType;
-  Map<String, dynamic> additionalData;
 
   ServiceHistory({
     required this.id,
@@ -1130,4 +1109,25 @@ class ServiceHistory {
     required this.vehicleType,
     Map<String, dynamic>? additionalData,
   }) : additionalData = additionalData ?? {};
+  final String id;
+  final String requestId;
+  final String vehicleNumber;
+  final String serviceType;
+  final String preferredDate;
+  final String preferredTime;
+  final String name;
+  final String phone;
+  final String location;
+  final String problemDescription;
+  final String userEmail;
+  final String status;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final String cost;
+  final String garageName;
+  final String rating;
+  final String vehicleModel;
+  final String fuelType;
+  final String vehicleType;
+  Map<String, dynamic> additionalData;
 }

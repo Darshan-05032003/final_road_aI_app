@@ -179,7 +179,7 @@ class _RevenuePageState extends State<RevenuePage> {
                               return AppAnimations.fadeIn(
                                 child: _buildTransactionItem(transaction),
                               );
-                            }).toList(),
+                            }),
                         ],
                       ),
                     ),

@@ -3,9 +3,9 @@ import 'package:smart_road_app/admin/services/admin_cache_sync_service.dart';
 
 /// Admin Data Service - Uses Cache-First Strategy for Fast Data Loading
 class AdminDataService {
-  static final AdminDataService _instance = AdminDataService._internal();
   factory AdminDataService() => _instance;
   AdminDataService._internal();
+  static final AdminDataService _instance = AdminDataService._internal();
 
   final AdminCacheSyncService _cacheSync = AdminCacheSyncService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;

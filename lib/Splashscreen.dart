@@ -355,9 +355,9 @@ class _SplashScreenState extends State<SplashScreen>
 }
 
 class _WavePainter extends CustomPainter {
-  final Animation<double> animation;
 
   _WavePainter({required this.animation}) : super(repaint: animation);
+  final Animation<double> animation;
 
   @override
   void paint(Canvas canvas, Size size) {

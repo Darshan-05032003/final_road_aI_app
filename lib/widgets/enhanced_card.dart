@@ -3,17 +3,6 @@ import 'package:smart_road_app/core/theme/app_theme.dart';
 
 /// Enhanced Card Widget with Modern Design
 class EnhancedCard extends StatelessWidget {
-  final Widget child;
-  final EdgeInsets? padding;
-  final EdgeInsets? margin;
-  final Color? backgroundColor;
-  final Gradient? gradient;
-  final double? elevation;
-  final VoidCallback? onTap;
-  final BorderRadius? borderRadius;
-  final BoxShadow? shadow;
-  final bool showBorder;
-  final Color? borderColor;
   
   const EnhancedCard({
     super.key,
@@ -29,6 +18,17 @@ class EnhancedCard extends StatelessWidget {
     this.showBorder = false,
     this.borderColor,
   });
+  final Widget child;
+  final EdgeInsets? padding;
+  final EdgeInsets? margin;
+  final Color? backgroundColor;
+  final Gradient? gradient;
+  final double? elevation;
+  final VoidCallback? onTap;
+  final BorderRadius? borderRadius;
+  final BoxShadow? shadow;
+  final bool showBorder;
+  final Color? borderColor;
   
   @override
   Widget build(BuildContext context) {
@@ -76,11 +76,6 @@ class EnhancedCard extends StatelessWidget {
 
 /// Gradient Card Widget
 class GradientCard extends StatelessWidget {
-  final Widget child;
-  final Gradient gradient;
-  final EdgeInsets? padding;
-  final EdgeInsets? margin;
-  final VoidCallback? onTap;
   
   const GradientCard({
     super.key,
@@ -90,6 +85,11 @@ class GradientCard extends StatelessWidget {
     this.margin,
     this.onTap,
   });
+  final Widget child;
+  final Gradient gradient;
+  final EdgeInsets? padding;
+  final EdgeInsets? margin;
+  final VoidCallback? onTap;
   
   @override
   Widget build(BuildContext context) {
@@ -106,9 +106,6 @@ class GradientCard extends StatelessWidget {
 
 /// Service Type Card with Color Coding
 class ServiceTypeCard extends StatelessWidget {
-  final String serviceType;
-  final Widget child;
-  final VoidCallback? onTap;
   
   const ServiceTypeCard({
     super.key,
@@ -116,6 +113,9 @@ class ServiceTypeCard extends StatelessWidget {
     required this.child,
     this.onTap,
   });
+  final String serviceType;
+  final Widget child;
+  final VoidCallback? onTap;
   
   @override
   Widget build(BuildContext context) {

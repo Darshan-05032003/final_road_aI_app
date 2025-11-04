@@ -5,16 +5,35 @@ class AuthService {
   static const String _userEmailKey = 'userEmail';
   static const String _loginTimeKey = 'loginTime';
   static const String _userTypeKey = 'userType';
+  static const String _userRoleKey = 'userRole';
+  static const String _userNameKey = 'userName';
+  static const String _userIdKey = 'userId';
 
   // Save login data to SharedPreferences
-  static Future<void> saveLoginData(String email, {String userType = 'vehicle_owner'}) async {
+  static Future<void> saveLoginData({
+    required String email,
+    required String role,
+    String userType = 'vehicle_owner',
+    String? userName,
+    String? userId,
+  }) async {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_isLoggedInKey, true);
       await prefs.setString(_userEmailKey, email);
-      await prefs.setString(_loginTimeKey, DateTime.now().toString());
+      await prefs.setString(_userRoleKey, role);
       await prefs.setString(_userTypeKey, userType);
-      print('✅ Login data saved for: $email');
+      await prefs.setString(_loginTimeKey, DateTime.now().toString());
+      
+      if (userName != null) {
+        await prefs.setString(_userNameKey, userName);
+      }
+      
+      if (userId != null) {
+        await prefs.setString(_userIdKey, userId);
+      }
+      
+      print('✅ Login data saved for: $email ($role)');
     } catch (e) {
       print('❌ Error saving login data: $e');
       throw Exception('Failed to save login data');
@@ -27,8 +46,11 @@ class AuthService {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_isLoggedInKey, false);
       await prefs.remove(_userEmailKey);
-      await prefs.remove(_loginTimeKey);
+      await prefs.remove(_userRoleKey);
       await prefs.remove(_userTypeKey);
+      await prefs.remove(_loginTimeKey);
+      await prefs.remove(_userNameKey);
+      await prefs.remove(_userIdKey);
       print('✅ Login data cleared successfully');
     } catch (e) {
       print('❌ Error clearing login data: $e');
@@ -58,6 +80,17 @@ class AuthService {
     }
   }
 
+  // Get user role from SharedPreferences
+  static Future<String?> getUserRole() async {
+    try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_userRoleKey);
+    } catch (e) {
+      print('❌ Error getting user role: $e');
+      return null;
+    }
+  }
+
   // Get user type from SharedPreferences
   static Future<String?> getUserType() async {
     try {
@@ -65,6 +98,28 @@ class AuthService {
       return prefs.getString(_userTypeKey);
     } catch (e) {
       print('❌ Error getting user type: $e');
+      return null;
+    }
+  }
+
+  // Get user name from SharedPreferences
+  static Future<String?> getUserName() async {
+    try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_userNameKey);
+    } catch (e) {
+      print('❌ Error getting user name: $e');
+      return null;
+    }
+  }
+
+  // Get user ID from SharedPreferences
+  static Future<String?> getUserId() async {
+    try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_userIdKey);
+    } catch (e) {
+      print('❌ Error getting user ID: $e');
       return null;
     }
   }
@@ -117,6 +172,25 @@ class AuthService {
     } catch (e) {
       print('❌ Error checking valid login: $e');
       return false;
+    }
+  }
+
+  // Get all user data at once
+  static Future<Map<String, dynamic>> getUserData() async {
+    try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      return {
+        'email': prefs.getString(_userEmailKey),
+        'role': prefs.getString(_userRoleKey),
+        'userType': prefs.getString(_userTypeKey),
+        'userName': prefs.getString(_userNameKey),
+        'userId': prefs.getString(_userIdKey),
+        'loginTime': prefs.getString(_loginTimeKey),
+        'isLoggedIn': prefs.getBool(_isLoggedInKey) ?? false,
+      };
+    } catch (e) {
+      print('❌ Error getting user data: $e');
+      return {};
     }
   }
 }

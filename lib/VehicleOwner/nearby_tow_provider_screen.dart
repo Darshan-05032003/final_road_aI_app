@@ -1557,14 +1557,14 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 
 class NearbyTowProvidersScreen extends StatefulWidget {
-  final Position userLocation;
-  final String? userEmail;
 
   const NearbyTowProvidersScreen({
     super.key,
     required this.userLocation,
     required this.userEmail,
   });
+  final Position userLocation;
+  final String? userEmail;
 
   @override
   _NearbyTowProvidersScreenState createState() =>
@@ -2062,20 +2062,6 @@ class _NearbyTowProvidersScreenState extends State<NearbyTowProvidersScreen> {
 }
 
 class TowProvider {
-  final String id;
-  final String driverName;
-  final String email;
-  final String phone;
-  final String truckNumber;
-  final String truckType;
-  final String serviceArea;
-  final double distance;
-  final double rating;
-  final int reviews;
-  final int totalJobs;
-  final bool isAvailable;
-  final double latitude;
-  final double longitude;
 
   TowProvider({
     required this.id,
@@ -2093,4 +2079,18 @@ class TowProvider {
     required this.latitude,
     required this.longitude,
   });
+  final String id;
+  final String driverName;
+  final String email;
+  final String phone;
+  final String truckNumber;
+  final String truckType;
+  final String serviceArea;
+  final double distance;
+  final double rating;
+  final int reviews;
+  final int totalJobs;
+  final bool isAvailable;
+  final double latitude;
+  final double longitude;
 }

@@ -2304,30 +2304,30 @@ class _GarageHomeScreenState extends State<GarageHomeScreen> {
 }
 
 class SummaryCard {
+
+  const SummaryCard(this.title, this.value, this.icon, this.color);
   final String title;
   final String value;
   final IconData icon;
   final Color color;
-
-  const SummaryCard(this.title, this.value, this.icon, this.color);
 }
 
 class QuickAction {
+
+  const QuickAction(this.title, this.icon, this.color, this.onTap);
   final String title;
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
-
-  const QuickAction(this.title, this.icon, this.color, this.onTap);
 }
 
 class Activity {
+
+  const Activity(this.title, this.time, this.icon, this.color);
   final String title;
   final String time;
   final IconData icon;
   final Color color;
-
-  const Activity(this.title, this.time, this.icon, this.color);
 }
 
 class DocumentsScreen extends StatelessWidget {

@@ -1612,11 +1612,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
 }
 
 class Activity {
+
+  Activity(this.title, this.description, this.time, this.icon, this.color);
   final String title;
   final String description;
   final String time;
   final IconData icon;
   final Color color;
-
-  Activity(this.title, this.description, this.time, this.icon, this.color);
 }

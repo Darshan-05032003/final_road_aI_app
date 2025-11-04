@@ -4,9 +4,9 @@ import 'package:smart_road_app/services/database_service.dart';
 /// Cache Sync Service
 /// Provides cache-first data access with background Firestore synchronization
 class CacheSyncService {
-  static final CacheSyncService _instance = CacheSyncService._internal();
   factory CacheSyncService() => _instance;
   CacheSyncService._internal();
+  static final CacheSyncService _instance = CacheSyncService._internal();
 
   final DatabaseService _dbService = DatabaseService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;

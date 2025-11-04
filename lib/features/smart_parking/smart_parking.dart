@@ -10,7 +10,10 @@ class SmartParkingOracle extends StatefulWidget {
 class _SmartParkingOracleState extends State<SmartParkingOracle> 
     with SingleTickerProviderStateMixin {
   late AnimationController _parkingController;
-  late Animation<double> _pulseAnimation;
+  late Animation<double> 
+  
+  
+  _pulseAnimation;
   
   ParkingPrediction? _currentPrediction;
   List<ParkingSpot> _availableSpots = [];

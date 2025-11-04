@@ -12,6 +12,9 @@ import 'package:smart_road_app/services/theme_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Request necessary permissions
+  await _requestPermissions();
+
   // Initialize Firebase
   try {
     if (Firebase.apps.isEmpty) {
@@ -21,19 +24,37 @@ void main() async {
           appId: "1:210471346742:android:e0432932179a38707f6e97", 
           messagingSenderId: "210471346742",
           projectId: "smart-4ebfc",
-          storageBucket: "gs://smart-4ebfc.firebasestorage.app",
+          storageBucket: "smart-4ebfc.firebasestorage.app", // Removed gs:// prefix
           databaseURL: "https://smart-4ebfc-default-rtdb.firebaseio.com/",
         ),
       );
-      print('Firebase initialized successfully');
+      print('✅ Firebase initialized successfully');
     } else {
-      print('Firebase already initialized');
+      print('ℹ️ Firebase already initialized');
     }
   } catch (e) {
-    print('Firebase initialization error: $e');
+    print('❌ Firebase initialization error: $e');
   }
 
   runApp(const SmartRoadApp());
+}
+
+// Request necessary permissions
+Future<void> _requestPermissions() async {
+  try {
+    // Request location permission
+    await Permission.location.request();
+    
+    // Request notification permission
+    await Permission.notification.request();
+    
+    // Request storage permission (if needed)
+    await Permission.storage.request();
+    
+    print('✅ Permissions requested');
+  } catch (e) {
+    print('❌ Error requesting permissions: $e');
+  }
 }
 
 class SmartRoadApp extends StatelessWidget {
@@ -46,31 +67,38 @@ class SmartRoadApp extends StatelessWidget {
         ChangeNotifierProvider(create: (context) => LanguageService()),
         ChangeNotifierProvider(create: (context) => ThemeService()),
       ],
-      child: Consumer<LanguageService>(
-        builder: (context, languageService, child) {
-          return Consumer<ThemeService>(
-            builder: (context, themeService, child) {
-              return MaterialApp(
-                title: 'Smart Road AI',
-                home: SplashScreen(),
-                debugShowCheckedModeBanner: false,
-                theme: ThemeData.light(),
-                darkTheme: ThemeData.dark(),
-                themeMode: themeService.themeMode, // Use theme service
-                locale: languageService.currentLocale,
-                localizationsDelegates: const [
-                  GlobalMaterialLocalizations.delegate,
-                  GlobalWidgetsLocalizations.delegate,
-                  GlobalCupertinoLocalizations.delegate,
-                ],
-                supportedLocales: const [
-                  Locale('en', 'US'),
-                  Locale('es', 'ES'),
-                  Locale('hi', 'IN'),
-                  Locale('fr', 'FR'),
-                ],
-                // Important: This ensures the app rebuilds when language changes
-                navigatorKey: languageService.navigatorKey,
+      child: Builder(
+        builder: (context) {
+          final languageService = Provider.of<LanguageService>(context, listen: true);
+          final themeService = Provider.of<ThemeService>(context, listen: true);
+          
+          return MaterialApp(
+            title: 'Smart Road AI',
+            home: SplashScreen(),
+            debugShowCheckedModeBanner: false,
+            theme: _buildLightTheme(),
+            darkTheme: _buildDarkTheme(),
+            themeMode: themeService.themeMode,
+            locale: languageService.currentLocale,
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: const [
+              Locale('en', 'US'),
+              Locale('es', 'ES'),
+              Locale('hi', 'IN'),
+              Locale('fr', 'FR'),
+            ],
+            navigatorKey: languageService.navigatorKey,
+            // Add error handling for better UX
+            builder: (context, child) {
+              return MediaQuery(
+                data: MediaQuery.of(context).copyWith(
+                  textScaleFactor: 1.0, // Prevent text scaling issues
+                ),
+                child: child!,
               );
             },
           );
@@ -78,10 +106,40 @@ class SmartRoadApp extends StatelessWidget {
       ),
     );
   }
+
+  // Custom light theme
+  ThemeData _buildLightTheme() {
+    return ThemeData.light().copyWith(
+      primaryColor: const Color(0xFF6D28D9),
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: const Color(0xFF6D28D9),
+        brightness: Brightness.light,
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFF6D28D9),
+        foregroundColor: Colors.white,
+        elevation: 0,
+      ),
+      useMaterial3: true,
+    );
+  }
+
+  // Custom dark theme
+  ThemeData _buildDarkTheme() {
+    return ThemeData.dark().copyWith(
+      primaryColor: const Color(0xFF8B5CF6),
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: const Color(0xFF8B5CF6),
+        brightness: Brightness.dark,
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFF1E1B4B),
+        elevation: 0,
+      ),
+      useMaterial3: true,
+    );
+  }
 }
-
-
-
 
 
 // import 'package:flutter/material.dart';

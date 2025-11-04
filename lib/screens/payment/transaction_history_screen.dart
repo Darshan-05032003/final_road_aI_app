@@ -4,15 +4,15 @@ import 'package:smart_road_app/models/payment_model.dart';
 import 'package:smart_road_app/services/payment_service.dart';
 import 'package:smart_road_app/services/receipt_service.dart';
 
-class TransactionHistoryScreen extends StatefulWidget {
-  final String userEmail;
-  final String userRole; // 'customer' or 'provider'
+class TransactionHistoryScreen extends StatefulWidget { // 'customer' or 'provider'
 
   const TransactionHistoryScreen({
     super.key,
     required this.userEmail,
     required this.userRole,
   });
+  final String userEmail;
+  final String userRole;
 
   @override
   State<TransactionHistoryScreen> createState() => _TransactionHistoryScreenState();
@@ -395,7 +395,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                 const Text('Payment Status:', style: TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
-                  value: _selectedStatus,
+                  initialValue: _selectedStatus,
                   items: const [
                     DropdownMenuItem(value: 'all', child: Text('All')),
                     DropdownMenuItem(value: 'paid', child: Text('Paid')),
@@ -415,7 +415,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                 const Text('Service Type:', style: TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
-                  value: _selectedServiceType,
+                  initialValue: _selectedServiceType,
                   items: const [
                     DropdownMenuItem(value: 'all', child: Text('All')),
                     DropdownMenuItem(value: 'garage', child: Text('Garage')),

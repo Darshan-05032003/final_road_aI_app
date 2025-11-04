@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 /// Error Handler Service for better error management
 /// Note: To enable Crashlytics, add firebase_crashlytics package
 class ErrorHandlerService {
-  static final ErrorHandlerService _instance = ErrorHandlerService._internal();
   factory ErrorHandlerService() => _instance;
   ErrorHandlerService._internal();
+  static final ErrorHandlerService _instance = ErrorHandlerService._internal();
 
   /// Show user-friendly error message
   static void showError(BuildContext context, String message, {String? title}) {

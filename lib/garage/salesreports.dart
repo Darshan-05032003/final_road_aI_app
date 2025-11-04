@@ -1043,21 +1043,6 @@ class _SalesReportsScreenState extends State<SalesReportsScreen> {
 
 // Extended Booking class with completion date
 class Booking {
-  final String id;
-  final String userName;
-  final String userPhone;
-  final String partName;
-  final String partId;
-  final int quantity;
-  final double totalPrice;
-  final String address;
-  final String status;
-  final String timestamp;
-  final String vehicleType;
-  final String paymentMethod;
-  final String email;
-  final List<Map<String, dynamic>> cartItems;
-  final DateTime? completionDate;
 
   Booking({
     required this.id,
@@ -1076,6 +1061,21 @@ class Booking {
     required this.cartItems,
     this.completionDate,
   });
+  final String id;
+  final String userName;
+  final String userPhone;
+  final String partName;
+  final String partId;
+  final int quantity;
+  final double totalPrice;
+  final String address;
+  final String status;
+  final String timestamp;
+  final String vehicleType;
+  final String paymentMethod;
+  final String email;
+  final List<Map<String, dynamic>> cartItems;
+  final DateTime? completionDate;
 
   Booking copyWith({
     String? id,

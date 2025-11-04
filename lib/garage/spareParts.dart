@@ -549,10 +549,10 @@ class _SparePartsScreenState extends State<SparePartsScreen> {
 }
 
 class AddPartDialog extends StatefulWidget {
-  final SparePart? part;
-  final Function(SparePart) onPartAdded;
 
   const AddPartDialog({super.key, this.part, required this.onPartAdded});
+  final SparePart? part;
+  final Function(SparePart) onPartAdded;
 
   @override
   _AddPartDialogState createState() => _AddPartDialogState();
@@ -748,16 +748,6 @@ class _AddPartDialogState extends State<AddPartDialog> {
 
 // Data Model for Spare Parts
 class SparePart {
-  final String id;
-  final String name;
-  final String category;
-  final String compatibleModels;
-  final String description;
-  final double price;
-  final int stock;
-  final String imageUrl;
-  final String upiId; // Added UPI ID field
-  final bool isAvailable;
 
   SparePart({
     required this.id,
@@ -771,6 +761,16 @@ class SparePart {
     required this.upiId, // Added UPI ID parameter
     required this.isAvailable,
   });
+  final String id;
+  final String name;
+  final String category;
+  final String compatibleModels;
+  final String description;
+  final double price;
+  final int stock;
+  final String imageUrl;
+  final String upiId; // Added UPI ID field
+  final bool isAvailable;
 
   SparePart copyWith({
     String? id,

@@ -1,18 +1,4 @@
 class PaymentModel {
-  final String? transactionId;
-  final String requestId;
-  final String serviceType; // 'garage' or 'tow'
-  final double amount;
-  final String paymentStatus; // 'pending', 'paid', 'failed'
-  final String? upiTransactionId;
-  final String providerEmail;
-  final String customerEmail;
-  final String providerUpiId;
-  final DateTime timestamp;
-  final DateTime? completedAt;
-  final DateTime? paidAt;
-  final String? paymentMethod;
-  final String? failureReason;
 
   PaymentModel({
     this.transactionId,
@@ -30,25 +16,6 @@ class PaymentModel {
     this.paymentMethod,
     this.failureReason,
   });
-
-  Map<String, dynamic> toMap() {
-    return {
-      'transactionId': transactionId,
-      'requestId': requestId,
-      'serviceType': serviceType,
-      'amount': amount,
-      'paymentStatus': paymentStatus,
-      'upiTransactionId': upiTransactionId,
-      'providerEmail': providerEmail,
-      'customerEmail': customerEmail,
-      'providerUpiId': providerUpiId,
-      'timestamp': timestamp.toIso8601String(),
-      'completedAt': completedAt?.toIso8601String(),
-      'paidAt': paidAt?.toIso8601String(),
-      'paymentMethod': paymentMethod,
-      'failureReason': failureReason,
-    };
-  }
 
   factory PaymentModel.fromMap(Map<String, dynamic> map) {
     return PaymentModel(
@@ -71,5 +38,38 @@ class PaymentModel {
       paymentMethod: map['paymentMethod'],
       failureReason: map['failureReason'],
     );
+  }
+  final String? transactionId;
+  final String requestId;
+  final String serviceType; // 'garage' or 'tow'
+  final double amount;
+  final String paymentStatus; // 'pending', 'paid', 'failed'
+  final String? upiTransactionId;
+  final String providerEmail;
+  final String customerEmail;
+  final String providerUpiId;
+  final DateTime timestamp;
+  final DateTime? completedAt;
+  final DateTime? paidAt;
+  final String? paymentMethod;
+  final String? failureReason;
+
+  Map<String, dynamic> toMap() {
+    return {
+      'transactionId': transactionId,
+      'requestId': requestId,
+      'serviceType': serviceType,
+      'amount': amount,
+      'paymentStatus': paymentStatus,
+      'upiTransactionId': upiTransactionId,
+      'providerEmail': providerEmail,
+      'customerEmail': customerEmail,
+      'providerUpiId': providerUpiId,
+      'timestamp': timestamp.toIso8601String(),
+      'completedAt': completedAt?.toIso8601String(),
+      'paidAt': paidAt?.toIso8601String(),
+      'paymentMethod': paymentMethod,
+      'failureReason': failureReason,
+    };
   }
 }

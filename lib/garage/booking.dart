@@ -902,8 +902,8 @@ class _BookingsScreenState extends State<BookingsScreen> with TickerProviderStat
                           Navigator.pop(context);
                           _updateServiceRequestStatus(request, 'Cancelled');
                         },
-                        child: Text('Reject'),
                         style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+                        child: Text('Reject'),
                       ),
                     ),
                     SizedBox(width: 12),
@@ -913,8 +913,8 @@ class _BookingsScreenState extends State<BookingsScreen> with TickerProviderStat
                           Navigator.pop(context);
                           _updateServiceRequestStatus(request, 'Confirmed');
                         },
-                        child: Text('Confirm'),
                         style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                        child: Text('Confirm'),
                       ),
                     ),
                   ],
@@ -927,8 +927,8 @@ class _BookingsScreenState extends State<BookingsScreen> with TickerProviderStat
                       Navigator.pop(context);
                       _showCompleteServiceDialog(request);
                     },
-                    child: Text('Mark as Completed'),
                     style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+                    child: Text('Mark as Completed'),
                   ),
                 ),
             ],
@@ -1678,21 +1678,6 @@ class _BookingsScreenState extends State<BookingsScreen> with TickerProviderStat
 }
 
 class Booking {
-  final String id;
-  final String userName;
-  final String userPhone;
-  final String partName;
-  final String partId;
-  final int quantity;
-  final double totalPrice;
-  final String address;
-  final String status;
-  final String timestamp;
-  final String vehicleType;
-  final String paymentMethod;
-  final String email;
-  final List<Map<String, dynamic>> cartItems;
-  final String? docId;
 
   Booking({
     required this.id,
@@ -1711,6 +1696,21 @@ class Booking {
     required this.cartItems,
     this.docId,
   });
+  final String id;
+  final String userName;
+  final String userPhone;
+  final String partName;
+  final String partId;
+  final int quantity;
+  final double totalPrice;
+  final String address;
+  final String status;
+  final String timestamp;
+  final String vehicleType;
+  final String paymentMethod;
+  final String email;
+  final List<Map<String, dynamic>> cartItems;
+  final String? docId;
 
   Booking copyWith({
     String? id,
@@ -1750,33 +1750,6 @@ class Booking {
 }
 
 class ServiceRequest {
-  final String id;
-  final String requestId;
-  final String vehicleNumber;
-  final String serviceType;
-  final String preferredDate;
-  final String preferredTime;
-  final String name;
-  final String phone;
-  final String location;
-  final String problemDescription;
-  final String userEmail;
-  final String status;
-  final DateTime createdAt;
-  final DateTime updatedAt;
-  final String vehicleModel;
-  final String vehicleType;
-  final String fuelType;
-  final List<String> selectedIssues;
-  final double? userLatitude;
-  final double? userLongitude;
-  final double? garageLatitude;
-  final double? garageLongitude;
-  final double distance;
-  final bool liveLocationEnabled;
-  final String garageName;
-  final String garageAddress;
-  final String garageEmail;
 
   ServiceRequest({
     required this.id,
@@ -1807,4 +1780,31 @@ class ServiceRequest {
     required this.garageAddress,
     required this.garageEmail,
   });
+  final String id;
+  final String requestId;
+  final String vehicleNumber;
+  final String serviceType;
+  final String preferredDate;
+  final String preferredTime;
+  final String name;
+  final String phone;
+  final String location;
+  final String problemDescription;
+  final String userEmail;
+  final String status;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final String vehicleModel;
+  final String vehicleType;
+  final String fuelType;
+  final List<String> selectedIssues;
+  final double? userLatitude;
+  final double? userLongitude;
+  final double? garageLatitude;
+  final double? garageLongitude;
+  final double distance;
+  final bool liveLocationEnabled;
+  final String garageName;
+  final String garageAddress;
+  final String garageEmail;
 }

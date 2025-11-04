@@ -6,10 +6,10 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:open_filex/open_filex.dart';
 
 class FileDownloadUtil {
-  // Singleton instance
-  static final FileDownloadUtil _instance = FileDownloadUtil._internal();
   factory FileDownloadUtil() => _instance;
   FileDownloadUtil._internal();
+  // Singleton instance
+  static final FileDownloadUtil _instance = FileDownloadUtil._internal();
 
   // Download file with error handling
   static Future<void> downloadFile({
@@ -136,7 +136,7 @@ class FileDownloadUtil {
       }
     } catch (e) {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      throw e;
+      rethrow;
     }
   }
 

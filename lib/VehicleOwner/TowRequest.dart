@@ -3521,9 +3521,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart' as geo;
 
 class TowServiceRequestScreen extends StatefulWidget {
-  final TowProvider selectedProvider;
-  final Position userLocation;
-  final String? userEmail;
 
   const TowServiceRequestScreen({
     super.key,
@@ -3531,6 +3528,9 @@ class TowServiceRequestScreen extends StatefulWidget {
     required this.userLocation,
     required this.userEmail,
   });
+  final TowProvider selectedProvider;
+  final Position userLocation;
+  final String? userEmail;
 
   @override
   _TowServiceRequestScreenState createState() =>

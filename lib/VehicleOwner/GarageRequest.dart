@@ -3864,14 +3864,14 @@ import 'package:geocoding/geocoding.dart' as geo;
 import 'package:intl/intl.dart';
 
 class NearbyGaragesScreen extends StatefulWidget {
-  final Position userLocation;
-  final String? userEmail;
 
   const NearbyGaragesScreen({
     super.key,
     required this.userLocation,
     required this.userEmail,
   });
+  final Position userLocation;
+  final String? userEmail;
 
   @override
   _NearbyGaragesScreenState createState() => _NearbyGaragesScreenState();
@@ -4342,19 +4342,6 @@ class _NearbyGaragesScreenState extends State<NearbyGaragesScreen> {
 }
 
 class Garage {
-  final String id;
-  final String name;
-  final String address;
-  final double distance;
-  final double rating;
-  final int reviews;
-  final List<String> specialties;
-  final bool isAvailable;
-  final String phone;
-  final double latitude;
-  final double longitude;
-  final String ownerName;
-  final String email;
 
   Garage({
     required this.id,
@@ -4371,13 +4358,23 @@ class Garage {
     required this.ownerName,
     required this.email,
   });
+  final String id;
+  final String name;
+  final String address;
+  final double distance;
+  final double rating;
+  final int reviews;
+  final List<String> specialties;
+  final bool isAvailable;
+  final String phone;
+  final double latitude;
+  final double longitude;
+  final String ownerName;
+  final String email;
 }
 
 // Updated Garage Service Request Screen with Live Location
 class GarageServiceRequestScreen extends StatefulWidget {
-  final Garage selectedGarage;
-  final Position userLocation;
-  final String? userEmail;
 
   const GarageServiceRequestScreen({
     super.key,
@@ -4385,6 +4382,9 @@ class GarageServiceRequestScreen extends StatefulWidget {
     required this.userLocation,
     required this.userEmail,
   });
+  final Garage selectedGarage;
+  final Position userLocation;
+  final String? userEmail;
 
   @override
   _GarageServiceRequestScreenState createState() =>
@@ -5746,16 +5746,6 @@ class _GarageServiceRequestScreenState
 
 // Updated Garage Request Confirmation with Live Location Info
 class GarageRequestConfirmation extends StatelessWidget {
-  final String requestId;
-  final String vehicleNumber;
-  final String serviceType;
-  final DateTime? preferredDate;
-  final TimeOfDay? preferredTime;
-  final String garageName;
-  final double garageDistance;
-  final bool isLiveLocationEnabled;
-  final VoidCallback onClose;
-  final VoidCallback onTrack;
 
   const GarageRequestConfirmation({
     super.key,
@@ -5770,6 +5760,16 @@ class GarageRequestConfirmation extends StatelessWidget {
     required this.onClose,
     required this.onTrack,
   });
+  final String requestId;
+  final String vehicleNumber;
+  final String serviceType;
+  final DateTime? preferredDate;
+  final TimeOfDay? preferredTime;
+  final String garageName;
+  final double garageDistance;
+  final bool isLiveLocationEnabled;
+  final VoidCallback onClose;
+  final VoidCallback onTrack;
 
   @override
   Widget build(BuildContext context) {

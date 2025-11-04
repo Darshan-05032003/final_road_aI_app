@@ -614,7 +614,7 @@ class _AdvancedAIAssistantScreenState extends State<AdvancedAIAssistantScreen>
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => RealVoiceAssistant(), // Your target screen
+        builder: (context) => SmartRoadVoiceAssistant(), // Your target screen
       ),
     );
   },
@@ -1090,23 +1090,6 @@ class _AdvancedAIAssistantScreenState extends State<AdvancedAIAssistantScreen>
 
 // Data Models
 class DamageAnalysisResult {
-  final String damageType;
-  final String severity;
-  final double confidence;
-  final String description;
-  final List<String> issues;
-  final List<String> solutions;
-  final List<YouTubeLink> youtubeLinks;
-  final List<SearchLink> googleSearchLinks;
-  final List<AlternativeSolution> alternativeSolutions;
-  final String estimatedRepairCost;
-  final String repairTime;
-  final List<String> toolsRequired;
-  final List<String> materialsRequired;
-  final List<String> safetyPrecautions;
-  final List<String> expertTips;
-  final List<String> immediateActions;
-  final List<String> preventionTips;
 
   const DamageAnalysisResult({
     required this.damageType,
@@ -1127,13 +1110,26 @@ class DamageAnalysisResult {
     required this.immediateActions,
     required this.preventionTips,
   });
+  final String damageType;
+  final String severity;
+  final double confidence;
+  final String description;
+  final List<String> issues;
+  final List<String> solutions;
+  final List<YouTubeLink> youtubeLinks;
+  final List<SearchLink> googleSearchLinks;
+  final List<AlternativeSolution> alternativeSolutions;
+  final String estimatedRepairCost;
+  final String repairTime;
+  final List<String> toolsRequired;
+  final List<String> materialsRequired;
+  final List<String> safetyPrecautions;
+  final List<String> expertTips;
+  final List<String> immediateActions;
+  final List<String> preventionTips;
 }
 
 class YouTubeLink {
-  final String title;
-  final String url;
-  final String duration;
-  final String channel;
 
   const YouTubeLink({
     required this.title,
@@ -1141,26 +1137,25 @@ class YouTubeLink {
     required this.duration,
     required this.channel,
   });
+  final String title;
+  final String url;
+  final String duration;
+  final String channel;
 }
 
 class SearchLink {
-  final String title;
-  final String url;
-  final String description;
 
   const SearchLink({
     required this.title,
     required this.url,
     required this.description,
   });
+  final String title;
+  final String url;
+  final String description;
 }
 
 class AlternativeSolution {
-  final String title;
-  final String description;
-  final String cost;
-  final String time;
-  final double rating;
 
   const AlternativeSolution({
     required this.title,
@@ -1169,13 +1164,18 @@ class AlternativeSolution {
     required this.time,
     required this.rating,
   });
+  final String title;
+  final String description;
+  final String cost;
+  final String time;
+  final double rating;
 }
 
 // Bottom Sheet Widgets
 class DamageAnalysisBottomSheet extends StatelessWidget {
-  final DamageAnalysisResult result;
 
   const DamageAnalysisBottomSheet({super.key, required this.result});
+  final DamageAnalysisResult result;
 
   @override
   Widget build(BuildContext context) {
@@ -1332,9 +1332,9 @@ class DamageAnalysisBottomSheet extends StatelessWidget {
 }
 
 class SolutionsBottomSheet extends StatelessWidget {
-  final DamageAnalysisResult result;
 
   const SolutionsBottomSheet({super.key, required this.result});
+  final DamageAnalysisResult result;
 
   @override
   Widget build(BuildContext context) {
@@ -1505,9 +1505,9 @@ class SolutionsBottomSheet extends StatelessWidget {
 }
 
 class YouTubeLinksBottomSheet extends StatelessWidget {
-  final List<YouTubeLink> links;
 
   const YouTubeLinksBottomSheet({super.key, required this.links});
+  final List<YouTubeLink> links;
 
   @override
   Widget build(BuildContext context) {
@@ -1573,9 +1573,9 @@ class YouTubeLinksBottomSheet extends StatelessWidget {
 }
 
 class GoogleLinksBottomSheet extends StatelessWidget {
-  final List<SearchLink> links;
 
   const GoogleLinksBottomSheet({super.key, required this.links});
+  final List<SearchLink> links;
 
   @override
   Widget build(BuildContext context) {
@@ -1627,9 +1627,9 @@ class GoogleLinksBottomSheet extends StatelessWidget {
 }
 
 class AlternativeSolutionsBottomSheet extends StatelessWidget {
-  final List<AlternativeSolution> solutions;
 
   const AlternativeSolutionsBottomSheet({super.key, required this.solutions});
+  final List<AlternativeSolution> solutions;
 
   @override
   Widget build(BuildContext context) {
@@ -1721,9 +1721,9 @@ class AlternativeSolutionsBottomSheet extends StatelessWidget {
 }
 
 class DetailedAnalysisBottomSheet extends StatelessWidget {
-  final DamageAnalysisResult result;
 
   const DetailedAnalysisBottomSheet({super.key, required this.result});
+  final DamageAnalysisResult result;
 
   @override
   Widget build(BuildContext context) {
@@ -1863,6 +1863,8 @@ class DetailedAnalysisBottomSheet extends StatelessWidget {
 }
 
 class CarSymbolsGuideBottomSheet extends StatelessWidget {
+
+  CarSymbolsGuideBottomSheet({super.key});
   final Map<String, Map<String, String>> commonSymbols = {
     'Check Engine': {
       'icon': '🚨',
@@ -1907,8 +1909,6 @@ class CarSymbolsGuideBottomSheet extends StatelessWidget {
       'immediate_action': 'Check tire pressure when safe'
     },
   };
-
-  CarSymbolsGuideBottomSheet({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -2029,6 +2029,8 @@ class CarSymbolsGuideBottomSheet extends StatelessWidget {
 }
 
 class CarDamageGuideBottomSheet extends StatelessWidget {
+
+  CarDamageGuideBottomSheet({super.key});
   final Map<String, Map<String, String>> damageTypes = {
     'Dents & Dings': {
       'icon': '🔨',
@@ -2071,8 +2073,6 @@ class CarDamageGuideBottomSheet extends StatelessWidget {
       'time_required': '1-3 hours'
     },
   };
-
-  CarDamageGuideBottomSheet({super.key});
 
   @override
 

@@ -842,9 +842,6 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
 
 class RequestInsuranceScreen extends StatefulWidget {
-  final bool isRenewal;
-  final Map<String, dynamic>? existingPolicy;
-  final String? selectedProvider;
 
   const RequestInsuranceScreen({
     super.key,
@@ -852,6 +849,9 @@ class RequestInsuranceScreen extends StatefulWidget {
     this.existingPolicy,
     this.selectedProvider,
   });
+  final bool isRenewal;
+  final Map<String, dynamic>? existingPolicy;
+  final String? selectedProvider;
 
   @override
   State<RequestInsuranceScreen> createState() => _RequestInsuranceScreenState();
@@ -2180,12 +2180,6 @@ class _RequestInsuranceScreenState extends State<RequestInsuranceScreen> {
 }
 
 class InsuranceRequestConfirmation extends StatelessWidget {
-  final String requestId;
-  final String vehicleNumber;
-  final String insuranceType;
-  final String provider;
-  final String userEmail;
-  final double estimatedPremium;
 
   const InsuranceRequestConfirmation({
     super.key,
@@ -2196,6 +2190,12 @@ class InsuranceRequestConfirmation extends StatelessWidget {
     required this.userEmail,
     required this.estimatedPremium,
   });
+  final String requestId;
+  final String vehicleNumber;
+  final String insuranceType;
+  final String provider;
+  final String userEmail;
+  final double estimatedPremium;
 
   @override
   Widget build(BuildContext context) {
@@ -2357,13 +2357,13 @@ class InsuranceRequestConfirmation extends StatelessWidget {
 }
 
 class TrackInsuranceRequest extends StatefulWidget {
-  final String requestId;
-  final String userEmail;
   const TrackInsuranceRequest({
     super.key,
     required this.requestId,
     required this.userEmail,
   });
+  final String requestId;
+  final String userEmail;
   @override
   State<TrackInsuranceRequest> createState() => _TrackInsuranceRequestState();
 }

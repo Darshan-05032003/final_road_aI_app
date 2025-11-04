@@ -8,9 +8,9 @@ import 'package:flutter/material.dart';
 /// SQLite Database Service for local caching
 /// This service provides fast local storage for frequently accessed data
 class DatabaseService {
-  static final DatabaseService _instance = DatabaseService._internal();
   factory DatabaseService() => _instance;
   DatabaseService._internal();
+  static final DatabaseService _instance = DatabaseService._internal();
 
   static Database? _database;
 

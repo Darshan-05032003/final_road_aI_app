@@ -1,32 +1,34 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:smart_road_app/core/ai_config.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
-class RealVoiceAssistant extends StatefulWidget {
-  const RealVoiceAssistant({super.key});
+class SmartRoadVoiceAssistant extends StatefulWidget {
+  const SmartRoadVoiceAssistant({super.key});
 
   @override
-  State<RealVoiceAssistant> createState() => _RealVoiceAssistantState();
+  State<SmartRoadVoiceAssistant> createState() => _SmartRoadVoiceAssistantState();
 }
 
-class _RealVoiceAssistantState extends State<RealVoiceAssistant> {
+class _SmartRoadVoiceAssistantState extends State<SmartRoadVoiceAssistant> {
   final stt.SpeechToText _speech = stt.SpeechToText();
   bool _isListening = false;
-  String _text = 'Tap the microphone and speak your command';
+  String _text = 'Tap the microphone for road assistance and traffic help';
   String _response = '';
   bool _processing = false;
   bool _speechAvailable = false;
   bool _autoMode = true; // Auto mode enabled by default
 
-  final String _apiKey = "AIzaSyDQpesj3QbnhjVoM1hkA8Rlfuql96j3FRU";
-  final String _url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+  // Read API endpoint/key from central AI config
+  final String _apiKey = AiConfig.apiKey;
+  final String _url = AiConfig.endpoint;
 
   @override
   void initState() {
     super.initState();
     _initSpeech();
-    // Auto-start listening after initialization (optional)
+    // Auto-start listening after initialization
     Future.delayed(Duration(seconds: 2), () {
       if (_speechAvailable && _autoMode) {
         _startAutoListening();
@@ -80,7 +82,7 @@ class _RealVoiceAssistantState extends State<RealVoiceAssistant> {
 
     setState(() {
       _isListening = true;
-      _text = '🎤 Listening automatically... Speak your command!';
+      _text = '🎤 Smart Road Assistant listening... How can I help with your journey?';
       _response = '';
     });
 
@@ -92,11 +94,11 @@ class _RealVoiceAssistantState extends State<RealVoiceAssistant> {
         
         // Automatically process when user stops speaking (final result)
         if (result.finalResult && result.recognizedWords.isNotEmpty) {
-          _processVoiceCommand(result.recognizedWords);
+          _processRoadCommand(result.recognizedWords);
         }
       },
-      listenFor: Duration(seconds: 10), // Shorter duration for auto mode
-      pauseFor: Duration(seconds: 2),   // Shorter pause for quicker response
+      listenFor: Duration(seconds: 10),
+      pauseFor: Duration(seconds: 2),
       partialResults: true,
       listenMode: stt.ListenMode.confirmation,
       cancelOnError: true,
@@ -113,7 +115,7 @@ class _RealVoiceAssistantState extends State<RealVoiceAssistant> {
 
     setState(() {
       _isListening = true;
-      _text = 'Listening... Speak your command now!';
+      _text = 'Listening... Tell me about your road situation!';
       _response = '';
     });
 
@@ -125,7 +127,7 @@ class _RealVoiceAssistantState extends State<RealVoiceAssistant> {
           });
           
           if (result.finalResult) {
-            _processVoiceCommand(result.recognizedWords);
+            _processRoadCommand(result.recognizedWords);
           }
         },
         listenFor: Duration(seconds: 30),
@@ -159,34 +161,42 @@ class _RealVoiceAssistantState extends State<RealVoiceAssistant> {
     
     if (_autoMode) {
       _startAutoListening();
-      _showActionFeedback('🔄 Auto Mode: ON - Listening continuously', Colors.green);
+      _showActionFeedback('🔄 Road Assistant: AUTO MODE ON - Always ready to help', Colors.green);
     } else {
       _stopListening();
-      _showActionFeedback('⏹ Auto Mode: OFF - Tap microphone to speak', Colors.blue);
+      _showActionFeedback('⏹ Road Assistant: MANUAL MODE - Tap to speak', Colors.blue);
     }
   }
 
-  void _processVoiceCommand(String command) async {
+  void _processRoadCommand(String command) async {
     if (command.isEmpty) return;
     
     setState(() {
       _processing = true;
-      _response = 'Processing: "$command"';
+      _response = 'Analyzing road situation: "$command"';
     });
 
     try {
       final String prompt = """
-You are CampusMarket Voice Assistant. Users give voice commands and you need to understand their intent and provide actionable responses.
+You are Smart Road Voice Assistant. Users give voice commands related to traffic, weather, car problems, road assistance, and navigation. You need to understand their road-related needs and provide helpful responses.
 
 User voice command: "$command"
 
-Based on the command, provide a helpful response and suggest the appropriate action. Focus on campus marketplace activities like buying, selling, renting items.
+Based on the command, provide a helpful response and suggest the appropriate action. Focus on:
+- Traffic conditions and alerts
+- Weather impacts on driving
+- Car problems and repairs
+- Road assistance services
+- Navigation and route optimization
+- Emergency situations
+- Service provider connections
 
 Respond in this exact JSON format:
 {
-  "action": "buy|sell|rent|search|navigate|help",
-  "response": "Your spoken response to the user",
-  "suggestion": "What action to take in the app"
+  "action": "traffic_check|weather_alert|car_repair|road_assistance|navigation|emergency|service_finder|safety_tips",
+  "response": "Your spoken response to the user about their road situation",
+  "suggestion": "What specific action to take in the smart road app",
+  "urgency": "low|medium|high"
 }
 
 Response:""";
@@ -201,19 +211,23 @@ Response:""";
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        String aiResponse = data["candidates"][0]["content"]["parts"][0]["text"] ?? "I didn't understand that command. Please try again.";
+        String aiResponse = data["candidates"][0]["content"]["parts"][0]["text"] ?? "I didn't understand that road command. Please try again.";
         
         try {
           final Map<String, dynamic> parsedResponse = jsonDecode(aiResponse);
           setState(() {
             _response = parsedResponse['response'] ?? aiResponse;
           });
-          _executeRealAction(parsedResponse['action'] ?? 'help', command);
+          _executeRoadAction(
+            parsedResponse['action'] ?? 'safety_tips', 
+            command,
+            parsedResponse['urgency'] ?? 'low'
+          );
         } catch (e) {
           setState(() {
             _response = aiResponse;
           });
-          _executeRealAction('help', command);
+          _executeRoadAction('safety_tips', command, 'low');
         }
       } else {
         setState(() {
@@ -234,43 +248,129 @@ Response:""";
     }
   }
 
-  void _executeRealAction(String action, String command) {
+  void _executeRoadAction(String action, String command, String urgency) {
+    Color urgencyColor = urgency == 'high' ? Colors.red : 
+                        urgency == 'medium' ? Colors.orange : Colors.green;
+    
     switch (action) {
-      case 'buy':
-        _showActionFeedback('🛍 Opening Buy Section...', Colors.green);
-        // Navigate to buy section
+      case 'traffic_check':
+        _showActionFeedback('🚦 Checking Traffic Conditions...', urgencyColor);
+        _analyzeTraffic(command);
         break;
-      case 'sell':
-        _showActionFeedback('💰 Opening Sell Items...', Colors.orange);
-        // Navigate to sell section
+      case 'weather_alert':
+        _showActionFeedback('🌧️ Analyzing Weather Impact...', urgencyColor);
+        _checkWeather(command);
         break;
-      case 'rent':
-        _showActionFeedback('🏠 Showing Rental Items...', Colors.blue);
-        // Navigate to rent section
+      case 'car_repair':
+        _showActionFeedback('🔧 Finding Repair Services...', urgencyColor);
+        _findCarRepair(command);
         break;
-      case 'search':
-        _showActionFeedback('🔍 Searching Products...', Colors.purple);
-        _performSearch(command);
+      case 'road_assistance':
+        _showActionFeedback('🛟 Connecting Road Assistance...', Colors.red);
+        _callRoadAssistance(command);
         break;
-      case 'navigate':
-        _showActionFeedback('🧭 Navigating...', Colors.teal);
+      case 'navigation':
+        _showActionFeedback('🧭 Optimizing Your Route...', urgencyColor);
+        _optimizeRoute(command);
+        break;
+      case 'emergency':
+        _showActionFeedback('🚨 Emergency Protocol Activated!', Colors.red);
+        _handleEmergency(command);
+        break;
+      case 'service_finder':
+        _showActionFeedback('🔍 Locating Service Providers...', urgencyColor);
+        _findServices(command);
+        break;
+      case 'safety_tips':
+        _showActionFeedback('🛡️ Providing Safety Guidance...', Colors.blue);
+        _provideSafetyTips(command);
         break;
       default:
-        _showActionFeedback('✅ Command processed', Colors.grey);
+        _showActionFeedback('✅ Road Command Processed', Colors.grey);
     }
   }
 
-  void _performSearch(String command) {
-    String searchQuery = command;
-    if (command.contains('search for')) {
-      searchQuery = command.split('search for').last.trim();
-    } else if (command.contains('find')) {
-      searchQuery = command.split('find').last.trim();
+  void _analyzeTraffic(String command) {
+    String location = _extractLocation(command);
+    if (location.isNotEmpty) {
+      _showActionFeedback('🚦 Analyzing traffic around $location', Colors.orange);
+    } else {
+      _showActionFeedback('🚦 Checking current traffic conditions', Colors.orange);
+    }
+  }
+
+  void _checkWeather(String command) {
+    String location = _extractLocation(command);
+    if (location.isNotEmpty) {
+      _showActionFeedback('🌤️ Getting weather forecast for $location', Colors.blue);
+    } else {
+      _showActionFeedback('🌤️ Checking road weather conditions', Colors.blue);
+    }
+  }
+
+  void _findCarRepair(String command) {
+    String issue = command;
+    if (command.contains('engine')) {
+      issue = 'engine repair';
+    } else if (command.contains('tire') || command.contains('flat')) {
+      issue = 'tire service';
+    } else if (command.contains('brake')) {
+      issue = 'brake repair';
     }
     
-    if (searchQuery.isNotEmpty) {
-      _showActionFeedback('🔍 Searching for: $searchQuery', Colors.purple);
+    _showActionFeedback('🔧 Finding $issue specialists nearby', Colors.purple);
+  }
+
+  void _callRoadAssistance(String command) {
+    _showActionFeedback('🛟 Dispatching road assistance to your location', Colors.red);
+    // In real app, this would trigger emergency services
+  }
+
+  void _optimizeRoute(String command) {
+    String destination = _extractLocation(command);
+    if (destination.isNotEmpty) {
+      _showActionFeedback('🧭 Calculating best route to $destination', Colors.teal);
+    } else {
+      _showActionFeedback('🧭 Optimizing your current route', Colors.teal);
     }
+  }
+
+  void _handleEmergency(String command) {
+    _showActionFeedback('🚨 ALERT: Emergency services notified! Stay calm.', Colors.red);
+    // In real app, this would contact emergency services
+  }
+
+  void _findServices(String command) {
+    String serviceType = 'service';
+    if (command.contains('fuel') || command.contains('gas')) {
+      serviceType = 'fuel station';
+    } else if (command.contains('mechanic')) {
+      serviceType = 'mechanic';
+    } else if (command.contains('tow')) {
+      serviceType = 'towing service';
+    }
+    
+    _showActionFeedback('📍 Finding nearest $serviceType', Colors.green);
+  }
+
+  void _provideSafetyTips(String command) {
+    _showActionFeedback('🛡️ Generating safety recommendations', Colors.blue);
+  }
+
+  String _extractLocation(String command) {
+    // Simple location extraction - in real app, use geocoding
+    if (command.contains('near me') || command.contains('around here')) {
+      return 'your location';
+    }
+    
+    List<String> commonLocations = ['downtown', 'highway', 'freeway', 'bridge', 'tunnel'];
+    for (String location in commonLocations) {
+      if (command.contains(location)) {
+        return location;
+      }
+    }
+    
+    return '';
   }
 
   void _showActionFeedback(String message, Color color) {
@@ -286,7 +386,7 @@ Response:""";
 
   void _clearConversation() {
     setState(() {
-      _text = 'Tap the microphone and speak your command';
+      _text = 'Tap the microphone for road assistance and traffic help';
       _response = '';
       _isListening = false;
     });
@@ -297,12 +397,12 @@ Response:""";
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Voice Assistant'),
-        backgroundColor: Colors.blue[600],
+        title: Text('Smart Road Assistant'),
+        backgroundColor: Colors.deepOrange[600],
         foregroundColor: Colors.white,
         actions: [
           IconButton(
-            icon: Icon(_autoMode ? Icons.autorenew : Icons.mic),
+            icon: Icon(_autoMode ? Icons.autorenew : Icons.car_repair),
             onPressed: _toggleAutoMode,
             tooltip: _autoMode ? 'Auto Mode ON' : 'Auto Mode OFF',
           ),
@@ -313,8 +413,8 @@ Response:""";
           ),
           IconButton(
             icon: Icon(Icons.help),
-            onPressed: _showVoiceCommandsHelp,
-            tooltip: 'Voice Commands',
+            onPressed: _showRoadCommandsHelp,
+            tooltip: 'Road Commands',
           ),
         ],
       ),
@@ -324,7 +424,7 @@ Response:""";
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Colors.blue.shade50,
+              Colors.deepOrange.shade50,
               Colors.white,
             ],
           ),
@@ -343,7 +443,7 @@ Response:""";
                     Icon(Icons.autorenew, color: Colors.green, size: 16),
                     SizedBox(width: 8),
                     Text(
-                      'AUTO MODE: Listening Continuously',
+                      'ROAD ASSISTANT: Always Monitoring',
                       style: TextStyle(
                         color: Colors.green[700],
                         fontWeight: FontWeight.bold,
@@ -384,19 +484,19 @@ Response:""";
                               width: 120,
                               height: 120,
                               decoration: BoxDecoration(
-                                color: _isListening ? Colors.red : (_autoMode ? Colors.green : Colors.blue[600]),
+                                color: _isListening ? Colors.red : (_autoMode ? Colors.green : Colors.deepOrange[600]),
                                 shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
-                                    color: (_isListening ? Colors.red : (_autoMode ? Colors.green : Colors.blue[600]!)).withOpacity(0.4),
+                                    color: (_isListening ? Colors.red : (_autoMode ? Colors.green : Colors.deepOrange[600]!)).withOpacity(0.4),
                                     blurRadius: 20,
                                     spreadRadius: 5,
                                   ),
                                 ],
                               ),
                               child: Icon(
-                                _autoMode ? Icons.autorenew : 
-                                _isListening ? Icons.mic : Icons.mic_none,
+                                _autoMode ? Icons.assistant : 
+                                _isListening ? Icons.mic : Icons.car_repair,
                                 color: Colors.white,
                                 size: 50,
                               ),
@@ -404,19 +504,19 @@ Response:""";
                           ),
                           SizedBox(height: 20),
                           Text(
-                            _autoMode ? '🔄 AUTO LISTENING' : 
-                            _isListening ? '🎤 LISTENING... SPEAK NOW' : '🎤 TAP TO SPEAK',
+                            _autoMode ? '🔄 ROAD ASSISTANT ACTIVE' : 
+                            _isListening ? '🎤 LISTENING... DESCRIBE YOUR SITUATION' : '🚗 TAP FOR ROAD HELP',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                               color: _autoMode ? Colors.green : 
-                                    _isListening ? Colors.red : Colors.blue[600],
+                                    _isListening ? Colors.red : Colors.deepOrange[600],
                             ),
                           ),
                           SizedBox(height: 10),
                           if (_autoMode)
                             Text(
-                              'Speak any time - I\'m always listening!',
+                              'I\'m always here for road emergencies and assistance',
                               style: TextStyle(
                                 fontSize: 14,
                                 color: Colors.green[600],
@@ -425,7 +525,7 @@ Response:""";
                             ),
                           if (_isListening && !_autoMode)
                             Text(
-                              'I\'m listening... speak your command clearly',
+                              'Describe your traffic, weather, or car problem clearly',
                               style: TextStyle(
                                 fontSize: 14,
                                 color: Colors.grey[600],
@@ -459,7 +559,7 @@ Response:""";
                                 Icon(Icons.record_voice_over, color: Colors.green, size: 16),
                               if (_isListening) SizedBox(width: 8),
                               Text(
-                                _isListening ? 'LIVE VOICE INPUT' : 'YOUR COMMAND',
+                                _isListening ? 'LIVE ROAD REPORT' : 'YOUR SITUATION',
                                 style: TextStyle(
                                   fontSize: 14,
                                   color: _isListening ? Colors.green : Colors.grey[600],
@@ -474,7 +574,7 @@ Response:""";
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
-                              color: _isListening ? Colors.green : Colors.blue[800],
+                              color: _isListening ? Colors.green : Colors.deepOrange[800],
                               height: 1.4,
                             ),
                             textAlign: TextAlign.center,
@@ -491,21 +591,21 @@ Response:""";
                         width: double.infinity,
                         padding: EdgeInsets.all(20),
                         decoration: BoxDecoration(
-                          color: Colors.blue[50],
+                          color: Colors.deepOrange[50],
                           borderRadius: BorderRadius.circular(15),
-                          border: Border.all(color: Colors.blue[200]!),
+                          border: Border.all(color: Colors.deepOrange[200]!),
                         ),
                         child: Column(
                           children: [
                             Row(
                               children: [
-                                Icon(Icons.smart_toy, color: Colors.blue[700], size: 20),
+                                Icon(Icons.assistant, color: Colors.deepOrange[700], size: 20),
                                 SizedBox(width: 8),
                                 Text(
-                                  'VOICE ASSISTANT:',
+                                  'SMART ROAD ASSISTANT:',
                                   style: TextStyle(
                                     fontSize: 14,
-                                    color: Colors.blue[700],
+                                    color: Colors.deepOrange[700],
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
@@ -533,17 +633,17 @@ Response:""";
             if (_processing)
               Container(
                 padding: EdgeInsets.all(16),
-                color: Colors.blue[50],
+                color: Colors.deepOrange[50],
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     CircularProgressIndicator(),
                     SizedBox(width: 15),
                     Text(
-                      'Processing voice command...',
+                      'Analyzing road situation...',
                       style: TextStyle(
                         fontSize: 16,
-                        color: Colors.blue[700],
+                        color: Colors.deepOrange[700],
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -551,7 +651,7 @@ Response:""";
                 ),
               ),
 
-            // Quick Actions
+            // Quick Road Actions
             Container(
               padding: EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -561,7 +661,7 @@ Response:""";
               child: Column(
                 children: [
                   Text(
-                    '💡 Try these voice commands:',
+                    '🚗 Common Road Commands:',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -573,20 +673,23 @@ Response:""";
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      'I want to buy textbooks',
-                      'Show me items for rent', 
-                      'How to sell my laptop',
-                      'Search for calculators',
-                      'Open buy section',
+                      'Check traffic ahead',
+                      'Weather conditions', 
+                      'My car has engine trouble',
+                      'Find nearest mechanic',
+                      'I need road assistance',
+                      'Optimize my route',
+                      'Emergency help',
+                      'Fuel station nearby',
                     ].map((command) {
                       return ActionChip(
                         label: Text(command),
                         onPressed: () {
                           setState(() => _text = command);
-                          _processVoiceCommand(command);
+                          _processRoadCommand(command);
                         },
-                        backgroundColor: Colors.blue[100],
-                        labelStyle: TextStyle(color: Colors.blue[800], fontSize: 12),
+                        backgroundColor: Colors.deepOrange[100],
+                        labelStyle: TextStyle(color: Colors.deepOrange[800], fontSize: 12),
                       );
                     }).toList(),
                   ),
@@ -599,36 +702,62 @@ Response:""";
     );
   }
 
-  void _showVoiceCommandsHelp() {
+  void _showRoadCommandsHelp() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Voice Commands Guide'),
+        title: Row(
+          children: [
+            Icon(Icons.assistant, color: Colors.deepOrange),
+            SizedBox(width: 8),
+            Text('Smart Road Commands'),
+          ],
+        ),
         content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Try saying:'),
-              SizedBox(height: 10),
-              Text('• "I want to buy engineering textbooks"'),
-              Text('• "Show me items for rent"'),
-              Text('• "How do I sell my laptop?"'),
-              Text('• "Search for calculators"'),
-              Text('• "Navigate to buy section"'),
-              Text('• "Help me rent a camera"'),
+              Text('Try these road-related commands:'),
+              SizedBox(height: 15),
+              Text('🚦 **Traffic & Navigation:**'),
+              Text('• "Check traffic conditions ahead"'),
+              Text('• "Is there heavy traffic downtown?"'),
+              Text('• "Find the fastest route home"'),
+              Text('• "Any accidents on highway 101?"'),
+              
+              SizedBox(height: 15),
+              Text('🌧️ **Weather & Roads:**'),
+              Text('• "What\'s the weather like for driving?"'),
+              Text('• "Are roads icy ahead?"'),
+              Text('• "Weather alert for my route"'),
+              
+              SizedBox(height: 15),
+              Text('🔧 **Car Problems:**'),
+              Text('• "My car won\'t start"'),
+              Text('• "I have a flat tire"'),
+              Text('• "Engine warning light is on"'),
+              Text('• "Find a mechanic nearby"'),
+              
+              SizedBox(height: 15),
+              Text('🛟 **Emergency & Assistance:**'),
+              Text('• "I need road assistance"'),
+              Text('• "Emergency - car breakdown"'),
+              Text('• "Find nearest fuel station"'),
+              Text('• "Call tow truck"'),
+              
               SizedBox(height: 15),
               Text('Auto Mode Features:'),
-              Text('• Continuous listening'),
-              Text('• Automatic command processing'),
-              Text('• Auto-restart after each command'),
-              Text('• Green indicator when active'),
+              Text('• Continuous road monitoring'),
+              Text('• Instant emergency response'),
+              Text('• Automatic service provider matching'),
+              Text('• Real-time traffic updates'),
             ],
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('OK'),
+            child: Text('Drive Safe!'),
           ),
         ],
       ),

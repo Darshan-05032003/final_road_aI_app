@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 class GarageServiceProviderScreen extends StatefulWidget {
-  final String garageEmail;
 
   const GarageServiceProviderScreen({super.key, required this.garageEmail});
+  final String garageEmail;
 
   @override
   _GarageServiceProviderScreenState createState() =>

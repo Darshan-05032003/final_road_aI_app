@@ -3122,7 +3122,7 @@ class AuthService {
       print('✅ Login data cleared successfully');
     } catch (e) {
       print('❌ Error clearing login data: $e');
-      throw e;
+      rethrow;
     }
   }
 

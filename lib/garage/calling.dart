@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class DynamicCallScreen extends StatefulWidget {
-  final String phoneNumber;
 
   const DynamicCallScreen({
     super.key,
     required this.phoneNumber,
   });
+  final String phoneNumber;
 
   @override
   State<DynamicCallScreen> createState() => _DynamicCallScreenState();

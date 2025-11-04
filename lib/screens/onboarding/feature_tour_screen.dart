@@ -266,11 +266,6 @@ class _FeatureTourScreenState extends State<FeatureTourScreen> {
 }
 
 class FeatureItem {
-  final IconData icon;
-  final IconData illustration;
-  final String title;
-  final String description;
-  final Color color;
 
   FeatureItem({
     required this.icon,
@@ -279,5 +274,10 @@ class FeatureItem {
     required this.description,
     required this.color,
   });
+  final IconData icon;
+  final IconData illustration;
+  final String title;
+  final String description;
+  final Color color;
 }
 

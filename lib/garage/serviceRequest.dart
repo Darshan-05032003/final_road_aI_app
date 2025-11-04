@@ -1994,33 +1994,6 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen>
 }
 
 class ServiceRequest {
-  final String id;
-  final String requestId;
-  final String vehicleNumber;
-  final String serviceType;
-  final String preferredDate;
-  final String preferredTime;
-  final String name;
-  final String phone;
-  final String location;
-  final String problemDescription;
-  final String userEmail;
-  final String status;
-  final DateTime createdAt;
-  final DateTime updatedAt;
-  final String vehicleModel;
-  final String vehicleType;
-  final String fuelType;
-  final List<String> selectedIssues;
-  final double? userLatitude;
-  final double? userLongitude;
-  final double? garageLatitude;
-  final double? garageLongitude;
-  final double distance;
-  final bool liveLocationEnabled;
-  final String garageName;
-  final String garageAddress;
-  final String garageEmail;
 
   ServiceRequest({
     required this.id,
@@ -2051,13 +2024,40 @@ class ServiceRequest {
     required this.garageAddress,
     required this.garageEmail,
   });
+  final String id;
+  final String requestId;
+  final String vehicleNumber;
+  final String serviceType;
+  final String preferredDate;
+  final String preferredTime;
+  final String name;
+  final String phone;
+  final String location;
+  final String problemDescription;
+  final String userEmail;
+  final String status;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final String vehicleModel;
+  final String vehicleType;
+  final String fuelType;
+  final List<String> selectedIssues;
+  final double? userLatitude;
+  final double? userLongitude;
+  final double? garageLatitude;
+  final double? garageLongitude;
+  final double distance;
+  final bool liveLocationEnabled;
+  final String garageName;
+  final String garageAddress;
+  final String garageEmail;
 }
 
 // Garage Notifications Screen (placeholder - you'll need to implement this)
 class GarageNotificationsScreen extends StatelessWidget {
-  final String garageId;
 
   const GarageNotificationsScreen({super.key, required this.garageId});
+  final String garageId;
 
   @override
   Widget build(BuildContext context) {

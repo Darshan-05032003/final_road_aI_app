@@ -208,10 +208,6 @@ class AppAnimations {
 
 /// Animated Container Widget
 class AnimatedGradientContainer extends StatefulWidget {
-  final Widget child;
-  final List<Color> colors;
-  final AlignmentGeometry begin;
-  final AlignmentGeometry end;
   
   const AnimatedGradientContainer({
     super.key,
@@ -220,6 +216,10 @@ class AnimatedGradientContainer extends StatefulWidget {
     this.begin = Alignment.topLeft,
     this.end = Alignment.bottomRight,
   });
+  final Widget child;
+  final List<Color> colors;
+  final AlignmentGeometry begin;
+  final AlignmentGeometry end;
   
   @override
   State<AnimatedGradientContainer> createState() => _AnimatedGradientContainerState();
@@ -271,9 +271,6 @@ class _AnimatedGradientContainerState extends State<AnimatedGradientContainer>
 
 /// Shimmer Loading Effect
 class ShimmerLoading extends StatefulWidget {
-  final Widget child;
-  final Color baseColor;
-  final Color highlightColor;
   
   const ShimmerLoading({
     super.key,
@@ -281,6 +278,9 @@ class ShimmerLoading extends StatefulWidget {
     this.baseColor = const Color(0xFFE0E0E0),
     this.highlightColor = const Color(0xFFF5F5F5),
   });
+  final Widget child;
+  final Color baseColor;
+  final Color highlightColor;
   
   @override
   State<ShimmerLoading> createState() => _ShimmerLoadingState();

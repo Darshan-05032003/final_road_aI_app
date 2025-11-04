@@ -241,10 +241,6 @@ class _PermissionsExplanationScreenState
 }
 
 class PermissionItem {
-  final IconData icon;
-  final String title;
-  final String description;
-  final Color color;
 
   PermissionItem({
     required this.icon,
@@ -252,5 +248,9 @@ class PermissionItem {
     required this.description,
     required this.color,
   });
+  final IconData icon;
+  final String title;
+  final String description;
+  final Color color;
 }
 

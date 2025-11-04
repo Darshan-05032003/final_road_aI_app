@@ -1414,30 +1414,6 @@ class _TowServiceRequestsScreenState extends State<TowServiceRequestsScreen>
 }
 
 class TowServiceRequest {
-  final String id;
-  final String requestId;
-  final String name;
-  final String phone;
-  final String vehicleNumber;
-  final String vehicleType;
-  final String issueType;
-  final String location;
-  final String description;
-  final bool isUrgent;
-  final String status;
-  final DateTime timestamp;
-  final String userEmail;
-  final String? userId;
-  final double? userLatitude;
-  final double? userLongitude;
-  final double? providerLatitude;
-  final double? providerLongitude;
-  final double distance;
-  final String providerName;
-  final String providerPhone;
-  final String truckNumber;
-  final String truckType;
-  final String? providerEmail;
 
   TowServiceRequest({
     required this.id,
@@ -1465,13 +1441,37 @@ class TowServiceRequest {
     required this.truckType,
     this.providerEmail,
   });
+  final String id;
+  final String requestId;
+  final String name;
+  final String phone;
+  final String vehicleNumber;
+  final String vehicleType;
+  final String issueType;
+  final String location;
+  final String description;
+  final bool isUrgent;
+  final String status;
+  final DateTime timestamp;
+  final String userEmail;
+  final String? userId;
+  final double? userLatitude;
+  final double? userLongitude;
+  final double? providerLatitude;
+  final double? providerLongitude;
+  final double distance;
+  final String providerName;
+  final String providerPhone;
+  final String truckNumber;
+  final String truckType;
+  final String? providerEmail;
 }
 
 // Tow Provider Notifications Screen (placeholder)
 class TowProviderNotificationsScreen extends StatelessWidget {
-  final String providerId;
 
   const TowProviderNotificationsScreen({super.key, required this.providerId});
+  final String providerId;
 
   @override
   Widget build(BuildContext context) {
