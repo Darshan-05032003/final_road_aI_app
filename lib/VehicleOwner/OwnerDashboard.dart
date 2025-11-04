@@ -4956,7 +4956,6 @@
 // //   }
 // // }
 
-
 // import 'dart:async';
 // import 'package:flutter/material.dart';
 // import 'package:smart_road_app/core/language/app_localizations.dart';
@@ -5041,7 +5040,7 @@
 //   _EnhancedVehicleDashboardState createState() => _EnhancedVehicleDashboardState();
 // }
 
-// class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard> 
+// class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
 //     with SingleTickerProviderStateMixin {
 //   int _currentIndex = 0;
 //   late AnimationController _animationController;
@@ -5078,14 +5077,14 @@
 //     try {
 //       String? userEmail = await AuthService.getUserEmail();
 //       final user = FirebaseAuth.instance.currentUser;
-      
+
 //       setState(() {
 //         _userEmail = userEmail;
 //         _userId = user?.uid;
 //       });
-      
+
 //       print('✅ Dashboard loaded for user: $_userEmail');
-      
+
 //       // Start listening to notifications
 //       if (_userId != null) {
 //         _startNotificationListener();
@@ -5127,7 +5126,7 @@
 
 //     try {
 //       LocationPermission permission = await Geolocator.checkPermission();
-      
+
 //       if (permission == LocationPermission.denied) {
 //         permission = await Geolocator.requestPermission();
 //         if (permission == LocationPermission.denied) {
@@ -5254,7 +5253,7 @@
 //   @override
 //   Widget build(BuildContext context) {
 //     final localizations = AppLocalizations.of(context);
-    
+
 //     return Scaffold(
 //       backgroundColor: Colors.grey[50],
 //       appBar: _buildEnhancedAppBar(localizations),
@@ -5734,11 +5733,11 @@
 
 //   void _logout() async {
 //     print('🚪 Logout button pressed...');
-    
+
 //     Navigator.pop(context);
-    
+
 //     final localizations = AppLocalizations.of(context);
-    
+
 //     showDialog(
 //       context: context,
 //       barrierDismissible: false,
@@ -5758,7 +5757,7 @@
 //               onPressed: () async {
 //                 Navigator.of(context).pop();
 //                 print('✅ User confirmed logout');
-                
+
 //                 try {
 //                   showDialog(
 //                     context: context,
@@ -5782,27 +5781,27 @@
 
 //                   print('🗑️ Clearing shared preferences...');
 //                   await AuthService.clearLoginData();
-                  
+
 //                   print('🔥 Signing out from Firebase...');
 //                   await FirebaseAuth.instance.signOut();
-                  
+
 //                   Navigator.of(context).pop();
-                  
+
 //                   print('🔄 Navigating to login page...');
 //                   Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
 //                     MaterialPageRoute(builder: (context) => VehicleLoginPage()),
 //                     (Route<dynamic> route) => false,
 //                   );
-                  
+
 //                   print('🎉 Logout completed successfully!');
-                  
+
 //                 } catch (e) {
 //                   print('❌ Error during logout: $e');
-                  
+
 //                   if (Navigator.canPop(context)) {
 //                     Navigator.of(context).pop();
 //                   }
-                  
+
 //                   ScaffoldMessenger.of(context).showSnackBar(
 //                     SnackBar(
 //                       content: Text(localizations?.translate('logout_failed') ?? 'Logout failed. Please try again.'),
@@ -5852,7 +5851,7 @@
 //   @override
 //   Widget build(BuildContext context) {
 //     final localizations = AppLocalizations.of(context);
-    
+
 //     return SingleChildScrollView(
 //       padding: EdgeInsets.all(16),
 //       child: Column(
@@ -6323,7 +6322,7 @@
 //   @override
 //   Widget build(BuildContext context) {
 //     final localizations = AppLocalizations.of(context);
-    
+
 //     return CustomScrollView(
 //       slivers: [
 //         SliverToBoxAdapter(
@@ -6540,7 +6539,6 @@
 //   }
 // }
 
-
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:smart_road_app/core/language/app_localizations.dart';
@@ -6560,6 +6558,7 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:smart_road_app/screens/chat/chat_screen.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:smart_road_app/VehicleOwner/nearby_tow_provider_screen.dart';
 import 'package:smart_road_app/VehicleOwner/notification.dart';
@@ -6847,7 +6846,7 @@ class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
       'emergencyContacts': ['+1-234-567-8900', '+1-234-567-8901'],
     };
   }
-  
+
   String? get _garageName => null;
 
   @override
@@ -6992,11 +6991,14 @@ class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
               title: localizations?.translate('insurance') ?? 'Insurance',
               onTap: () => _navigateToIndex(3),
             ),
-          _buildDrawerItem(
-  icon: Icons.build_circle_rounded,
-  title: localizations?.translate('spare_parts') ?? 'Spare Parts',
-  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => SparePartsStore())),
-),
+            _buildDrawerItem(
+              icon: Icons.build_circle_rounded,
+              title: localizations?.translate('spare_parts') ?? 'Spare Parts',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => SparePartsStore()),
+              ),
+            ),
             _buildDrawerItem(
               icon: Icons.history_rounded,
               title: localizations?.history ?? 'Service History',
@@ -7155,9 +7157,9 @@ class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
         );
       case 2:
         return EnhancedHistoryScreen(
-          userEmail: _userEmail ?? 'avi@gmail.com', 
-          serviceHistory: [], 
-          garageName: _garageName
+          userEmail: _userEmail ?? 'avi@gmail.com',
+          serviceHistory: [],
+          garageName: _garageName,
         );
       case 3:
         return RequestInsuranceScreen();
@@ -7349,7 +7351,9 @@ class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
 
   void _showSpareParts() {
     Navigator.pop(context);
-    Navigator.of(context).push(MaterialPageRoute(builder: (context) => SparePartsStore()));
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (context) => SparePartsStore()));
   }
 
   void _logout() async {
@@ -7459,7 +7463,6 @@ class _EnhancedVehicleDashboardState extends State<EnhancedVehicleDashboard>
 
 // Enhanced Home Screen with Insurance Integration
 class EnhancedHomeScreenWithInsurance extends StatefulWidget {
-
   const EnhancedHomeScreenWithInsurance({
     super.key,
     required this.userData,
@@ -7487,10 +7490,12 @@ class EnhancedHomeScreenWithInsurance extends StatefulWidget {
   final VoidCallback onNotificationTap;
 
   @override
-  State<EnhancedHomeScreenWithInsurance> createState() => _EnhancedHomeScreenWithInsuranceState();
+  State<EnhancedHomeScreenWithInsurance> createState() =>
+      _EnhancedHomeScreenWithInsuranceState();
 }
 
-class _EnhancedHomeScreenWithInsuranceState extends State<EnhancedHomeScreenWithInsurance> 
+class _EnhancedHomeScreenWithInsuranceState
+    extends State<EnhancedHomeScreenWithInsurance>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _jumpAnimation;
@@ -7498,24 +7503,18 @@ class _EnhancedHomeScreenWithInsuranceState extends State<EnhancedHomeScreenWith
   @override
   void initState() {
     super.initState();
-    
+
     // Initialize animation controller for jumping effect
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-    
+
     // Create jumping animation
-    _jumpAnimation = Tween<double>(
-      begin: 0.0,
-      end: -15.0,
-    ).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeInOut,
-      ),
+    _jumpAnimation = Tween<double>(begin: 0.0, end: -15.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
-    
+
     // Start repeating animation
     _startJumpingAnimation();
   }
@@ -7526,9 +7525,9 @@ class _EnhancedHomeScreenWithInsuranceState extends State<EnhancedHomeScreenWith
 
   void _navigateToMainDashboard() {
     // Navigate to main dashboard screen
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (context) => MainAiDashboard()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (context) => MainAiDashboard()));
   }
 
   @override
@@ -7609,7 +7608,8 @@ class _EnhancedHomeScreenWithInsuranceState extends State<EnhancedHomeScreenWith
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          localizations?.translate('ai_assistant') ?? 'AI Assistant',
+                          localizations?.translate('ai_assistant') ??
+                              'AI Assistant',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 18,
@@ -7618,7 +7618,10 @@ class _EnhancedHomeScreenWithInsuranceState extends State<EnhancedHomeScreenWith
                         ),
                         SizedBox(height: 4),
                         Text(
-                          localizations?.translate('ai_assistant_description') ?? 'Get smart recommendations and instant help',
+                          localizations?.translate(
+                                'ai_assistant_description',
+                              ) ??
+                              'Get smart recommendations and instant help',
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.8),
                             fontSize: 12,
@@ -7701,7 +7704,9 @@ class _EnhancedHomeScreenWithInsuranceState extends State<EnhancedHomeScreenWith
                       shape: BoxShape.circle,
                     ),
                     child: Text(
-                      widget.unreadNotifications > 9 ? '9+' : '${widget.unreadNotifications}',
+                      widget.unreadNotifications > 9
+                          ? '9+'
+                          : '${widget.unreadNotifications}',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 12,
@@ -7736,10 +7741,7 @@ class _EnhancedHomeScreenWithInsuranceState extends State<EnhancedHomeScreenWith
                 SizedBox(width: 4),
                 Text(
                   '${localizations?.translate('next_service') ?? 'Next'}: ${widget.userData['nextService']}',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
                 ),
               ],
             ),
@@ -7774,11 +7776,7 @@ class _EnhancedHomeScreenWithInsuranceState extends State<EnhancedHomeScreenWith
                   ),
                 ),
                 if (widget.currentPosition != null)
-                  Icon(
-                    Icons.check_circle,
-                    color: Colors.green,
-                    size: 20,
-                  ),
+                  Icon(Icons.check_circle, color: Colors.green, size: 20),
               ],
             ),
             SizedBox(height: 8),
@@ -7932,10 +7930,14 @@ class _EnhancedHomeScreenWithInsuranceState extends State<EnhancedHomeScreenWith
     );
   }
 
-  Widget _buildInsuranceReminder(BuildContext context, AppLocalizations? localizations) {
+  Widget _buildInsuranceReminder(
+    BuildContext context,
+    AppLocalizations? localizations,
+  ) {
     // FIXED: Use widget.insuranceRequests instead of the null getter
-    final List<Map<String, dynamic>> insuranceRequests = widget.insuranceRequests;
-    
+    final List<Map<String, dynamic>> insuranceRequests =
+        widget.insuranceRequests;
+
     if (insuranceRequests.isEmpty) {
       return Container(
         padding: EdgeInsets.all(16),
@@ -8132,7 +8134,6 @@ class _EnhancedHomeScreenWithInsuranceState extends State<EnhancedHomeScreenWith
 
 // Enhanced Services Screen
 class EnhancedServicesScreen extends StatefulWidget {
-
   const EnhancedServicesScreen({
     super.key,
     required this.currentPosition,
@@ -8163,13 +8164,143 @@ class EnhancedServicesScreen extends StatefulWidget {
 
 class _EnhancedServicesScreenState extends State<EnhancedServicesScreen> {
   final CacheSyncService _cacheSync = CacheSyncService();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   List<Map<String, dynamic>> _allServices = [];
   bool _isLoadingServices = true;
+  StreamSubscription<QuerySnapshot>? _garageSubscription;
+  StreamSubscription<QuerySnapshot>? _towSubscription;
 
   @override
   void initState() {
     super.initState();
     _loadAllServices();
+    _setupRealtimeListeners();
+  }
+
+  @override
+  void dispose() {
+    _garageSubscription?.cancel();
+    _towSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _setupRealtimeListeners() {
+    if (widget.userEmail == null || widget.userEmail!.isEmpty) {
+      return;
+    }
+
+    final userEmail = widget.userEmail!;
+
+    // Listen to garage requests in real-time
+    _garageSubscription = _firestore
+        .collection('owner')
+        .doc(userEmail)
+        .collection('garagerequest')
+        .snapshots()
+        .listen((snapshot) {
+          _handleRealtimeUpdate(snapshot, 'Garage Service');
+        });
+
+    // Listen to tow requests in real-time
+    _towSubscription = _firestore
+        .collection('owner')
+        .doc(userEmail)
+        .collection('towrequest')
+        .snapshots()
+        .listen((snapshot) {
+          _handleRealtimeUpdate(snapshot, 'Tow Service');
+        });
+  }
+
+  void _handleRealtimeUpdate(QuerySnapshot snapshot, String serviceType) {
+    if (!mounted) return;
+
+    try {
+      // Process all documents from the snapshot
+      final updatedServices = snapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        // Determine service type
+        final determinedServiceType = serviceType == 'Garage Service'
+            ? (data.containsKey('garageName') || data.containsKey('garageEmail')
+                  ? 'Garage Service'
+                  : serviceType)
+            : serviceType;
+
+        return {
+          ...data,
+          'id': doc.id,
+          'serviceType': determinedServiceType,
+          'requestId': data['requestId'] ?? doc.id,
+          'status': _normalizeStatus(data['status'] ?? 'pending'),
+          'userEmail': widget.userEmail,
+          // Ensure provider email is preserved for chat button
+          'garageEmail': data['garageEmail'] ?? data['assignedGarage'] ?? '',
+          'providerEmail':
+              data['providerEmail'] ?? data['assignedProvider'] ?? '',
+        };
+      }).toList();
+
+      // Update the existing services list
+      setState(() {
+        // Create a map to track services by requestId to avoid duplicates
+        final Map<String, Map<String, dynamic>> servicesMap = {};
+
+        // Add existing services (excluding the type being updated)
+        for (var service in _allServices) {
+          if (service['serviceType'] != serviceType) {
+            final requestId = service['requestId'] ?? service['id'] ?? '';
+            if (requestId.isNotEmpty) {
+              servicesMap[requestId] = service;
+            }
+          }
+        }
+
+        // Add/update services from the real-time snapshot
+        for (var service in updatedServices) {
+          final requestId = service['requestId'] ?? service['id'] ?? '';
+          if (requestId.isNotEmpty) {
+            servicesMap[requestId] = service;
+          }
+        }
+
+        // Convert map back to list
+        final allServices = servicesMap.values.toList();
+
+        // Filter to show only ongoing services (not completed or rejected)
+        final currentServices = allServices.where((service) {
+          final status = (service['status'] as String?)?.toLowerCase() ?? '';
+          final normalizedStatus = _normalizeStatus(status);
+
+          // Exclude completed and rejected services
+          if (normalizedStatus == 'completed' ||
+              normalizedStatus == 'rejected' ||
+              status.contains('complete') ||
+              status.contains('reject') ||
+              status.contains('cancel')) {
+            return false;
+          }
+
+          // Include all other statuses (pending, in process, accepted, confirmed, assigned, etc.)
+          return true;
+        }).toList();
+
+        // Sort by creation date (newest first)
+        currentServices.sort((a, b) {
+          final aDate = _parseTimestamp(a['createdAt']);
+          final bDate = _parseTimestamp(b['createdAt']);
+          return bDate.compareTo(aDate);
+        });
+
+        _allServices = currentServices;
+        _isLoadingServices = false;
+      });
+
+      print(
+        '✅ Real-time update: ${updatedServices.length} $serviceType services updated',
+      );
+    } catch (e) {
+      print('❌ Error handling real-time update: $e');
+    }
   }
 
   Future<void> _loadAllServices() async {
@@ -8207,30 +8338,23 @@ class _EnhancedServicesScreenState extends State<EnhancedServicesScreen> {
         };
       }).toList();
 
-      // Filter to show only current services (pending, in process, or completed with pending payment)
+      // Filter to show only ongoing services (not completed or rejected)
       final currentServices = formattedServices.where((service) {
         final status = (service['status'] as String?)?.toLowerCase() ?? '';
-        final paymentStatus =
-            (service['paymentStatus'] as String?)?.toLowerCase() ?? 'pending';
-        final serviceAmount = service['serviceAmount'];
+        final normalizedStatus = _normalizeStatus(status);
 
-        // Include pending or in process services
-        if (status == 'pending' ||
-            status == 'in process' ||
-            status.contains('pending') ||
-            status.contains('process')) {
-          return true;
+        // Include only ongoing services: pending, in process, accepted, confirmed, assigned
+        // Exclude completed and rejected services (they go to history)
+        if (normalizedStatus == 'completed' ||
+            normalizedStatus == 'rejected' ||
+            status.contains('complete') ||
+            status.contains('reject') ||
+            status.contains('cancel')) {
+          return false;
         }
 
-        // Also include completed services with pending payment
-        if ((status == 'completed' || status.contains('complete')) &&
-            paymentStatus == 'pending' &&
-            serviceAmount != null &&
-            (serviceAmount is num && serviceAmount > 0)) {
-          return true;
-        }
-
-        return false;
+        // Include all other statuses (pending, in process, accepted, confirmed, assigned, etc.)
+        return true;
       }).toList();
 
       // Sort by creation date (newest first)
@@ -8658,10 +8782,7 @@ class _EnhancedServicesScreenState extends State<EnhancedServicesScreen> {
           // Request ID
           Text(
             'Request ID: $requestId',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
           ),
           SizedBox(height: 12),
           // Vehicle Number
@@ -8683,10 +8804,7 @@ class _EnhancedServicesScreenState extends State<EnhancedServicesScreen> {
               Expanded(
                 child: Text(
                   vehicleNumber,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
               ),
             ],
@@ -8699,7 +8817,10 @@ class _EnhancedServicesScreenState extends State<EnhancedServicesScreen> {
               decoration: BoxDecoration(
                 color: Colors.grey[50],
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color.fromARGB(255, 238, 231, 231), width: 1),
+                border: Border.all(
+                  color: const Color.fromARGB(255, 238, 231, 231),
+                  width: 1,
+                ),
               ),
               child: Text(
                 serviceDescription,
@@ -8719,26 +8840,49 @@ class _EnhancedServicesScreenState extends State<EnhancedServicesScreen> {
                     color: Colors.teal.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(
-                    Icons.business,
-                    size: 16,
-                    color: Colors.teal,
-                  ),
+                  child: Icon(Icons.business, size: 16, color: Colors.teal),
                 ),
                 SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     providerName,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
             ),
+          // Chat Button - Show when service is accepted or in progress
+          if ((status.toLowerCase() == 'accepted' ||
+                  status.toLowerCase() == 'in process' ||
+                  status.toLowerCase() == 'confirmed') &&
+              providerEmail.isNotEmpty) ...[
+            SizedBox(height: 16),
+            Divider(height: 1),
+            SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _openChat(
+                  context,
+                  requestId: requestId,
+                  userEmail: widget.userEmail ?? '',
+                  userName: service['name'] ?? 'Customer',
+                  otherPartyEmail: providerEmail,
+                  otherPartyName: providerName ?? 'Provider',
+                  serviceType: serviceType,
+                ),
+                icon: Icon(Icons.chat),
+                label: Text('Chat with Provider'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Color(0xFF6D28D9),
+                  side: BorderSide(color: Color(0xFF6D28D9)),
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+          ],
           // Pay Now Button - Show when service is completed with pending payment
           if (shouldShowPayButton) ...[
             SizedBox(height: 16),
@@ -8880,11 +9024,34 @@ class _EnhancedServicesScreenState extends State<EnhancedServicesScreen> {
       ),
     );
   }
+
+  void _openChat(
+    BuildContext context, {
+    required String requestId,
+    required String userEmail,
+    required String userName,
+    required String otherPartyEmail,
+    required String otherPartyName,
+    required String serviceType,
+  }) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ChatScreen(
+          requestId: requestId,
+          userEmail: userEmail,
+          userName: userName,
+          otherPartyEmail: otherPartyEmail,
+          otherPartyName: otherPartyName,
+          serviceType: serviceType,
+        ),
+      ),
+    );
+  }
 }
 
 // Status Tag Widget
 class StatusTag extends StatelessWidget {
-
   const StatusTag({super.key, required this.status});
   final String status;
 
@@ -8955,7 +9122,6 @@ class StatusTag extends StatelessWidget {
 
 // Service Type Card Widget
 class ServiceTypeCard extends StatelessWidget {
-
   const ServiceTypeCard({
     super.key,
     required this.serviceType,
@@ -8974,10 +9140,7 @@ class ServiceTypeCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: EdgeInsets.all(16),
-          child: child,
-        ),
+        child: Padding(padding: EdgeInsets.all(16), child: child),
       ),
     );
   }
@@ -8985,7 +9148,6 @@ class ServiceTypeCard extends StatelessWidget {
 
 // Gradient Button Widget
 class GradientButton extends StatelessWidget {
-
   const GradientButton({
     super.key,
     required this.text,

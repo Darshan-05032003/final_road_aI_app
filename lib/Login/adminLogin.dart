@@ -849,6 +849,7 @@
 
 import 'package:smart_road_app/Login/adminRegister.dart';
 import 'package:smart_road_app/admin/adminDashbord.dart';
+import 'package:smart_road_app/core/theme/app_theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 //import 'package:smart_road_app/services/auth_service.dart';
@@ -873,40 +874,14 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
   @override
   void initState() {
     super.initState();
-    _checkLoginStatus();
+    // REMOVED automatic login check to prevent flickering
+    // Login check will only happen after explicit user action (login button press)
   }
-
-  // Check if user is already logged in using AuthService
-  Future<void> _checkLoginStatus() async {
-    try {
-      final isLoggedIn = await AuthService.checkValidLogin();
-      final userRole = await AuthService.getUserRole();
-      
-      // Check if user is admin and logged in
-      if (isLoggedIn && userRole == 'admin' && mounted) {
-        // Auto-navigate to admin dashboard if already logged in
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(
-                builder: (context) => MaterialApp(
-                  title: 'Smart Road Admin',
-                  theme: Theme.of(context).copyWith(
-                    primaryColor: const Color(0xFF6366F1),
-                    colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6366F1)),
-                  ),
-                  home: const VehicleAssistAdminApp(),
-                  debugShowCheckedModeBanner: false,
-                ),
-              ),
-              (route) => false,
-            );
-          }
-        });
-      }
-    } catch (e) {
-      print('Error checking admin login status: $e');
-    }
+  
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Prevent any automatic checks on dependency changes
   }
 
   void _login() async {
@@ -938,17 +913,16 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
         context,
       ).showSnackBar(const SnackBar(content: Text("Sign in successful")));
 
-      // Navigate to admin dashboard
+      // Navigate to admin dashboard immediately (skip auth check since we just logged in)
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(
             builder: (context) => MaterialApp(
               title: 'Smart Road Admin',
-              theme: Theme.of(context).copyWith(
-                primaryColor: const Color(0xFF6366F1),
-                colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6366F1)),
-              ),
-              home: const VehicleAssistAdminApp(),
+              theme: AppTheme.lightTheme,
+              darkTheme: AppTheme.darkTheme,
+              themeMode: ThemeMode.light,
+              home: const AdminDashboard(skipAuthCheck: true), // Skip auth check since we just logged in
               debugShowCheckedModeBanner: false,
             ),
           ),
@@ -1167,15 +1141,15 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
             ),
           );
 
+          // Navigate to admin dashboard immediately (skip auth check since we just logged in)
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(
               builder: (context) => MaterialApp(
                 title: 'Smart Road Admin',
-                theme: Theme.of(context).copyWith(
-                  primaryColor: const Color(0xFF6366F1),
-                  colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6366F1)),
-                ),
-                home: const VehicleAssistAdminApp(),
+                theme: AppTheme.lightTheme,
+                darkTheme: AppTheme.darkTheme,
+                themeMode: ThemeMode.light,
+                home: const AdminDashboard(skipAuthCheck: true), // Skip auth check since we just logged in
                 debugShowCheckedModeBanner: false,
               ),
             ),
@@ -1213,15 +1187,12 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        // Navigate back to role selection instead of exiting app
-        Navigator.of(context).pop();
-        return false;
-      },
+    // Use RepaintBoundary to prevent unnecessary repaints and remove WillPopScope to prevent navigation loops
+    return RepaintBoundary(
       child: Scaffold(
         backgroundColor: Colors.white,
         body: SingleChildScrollView(
+          physics: const ClampingScrollPhysics(),
           child: Column(
             children: [
               // Header Section
@@ -1395,13 +1366,10 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                       height: 50,
                       child: OutlinedButton.icon(
                         onPressed: _isLoading ? null : _signInWithGoogle,
-                        icon: Image.network(
-                          'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg',
-                          height: 24,
-                          width: 24,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Icon(Icons.g_mobiledata, size: 24, color: Colors.red[600]);
-                          },
+                        icon: Icon(
+                          Icons.g_mobiledata,
+                          size: 24,
+                          color: Colors.red[600],
                         ),
                         label: Text(
                           'Continue with Google',
@@ -1415,8 +1383,8 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                           side: BorderSide(color: Colors.grey[300]!),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
-                                ),
-                              ),
+                          ),
+                        ),
                       ),
                     ),
 
@@ -1481,5 +1449,13 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
         ),
       ),
     );
+  }
+  
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
   }
 }

@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart' hide Query;
 import 'package:url_launcher/url_launcher.dart';
+import '../screens/chat/chat_screen.dart';
 
 class AuthService {
   static Future<String?> getUserEmail() async {
@@ -932,6 +933,18 @@ class _TowServiceRequestsScreenState extends State<TowServiceRequestsScreen>
                     ),
                   ),
                   SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _openChat(request),
+                      icon: Icon(Icons.chat, size: 16),
+                      label: Text('Chat'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Color(0xFF6D28D9),
+                        side: BorderSide(color: Color(0xFF6D28D9)),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 8),
                   // TRACK LOCATION BUTTON FOR ACCEPTED REQUESTS WITH COORDINATES
                   if (request.userLatitude != null &&
                       request.userLongitude != null)
@@ -1392,6 +1405,53 @@ class _TowServiceRequestsScreenState extends State<TowServiceRequestsScreen>
         print('⚠️ Could not update towrequest collection: $e');
       }
 
+      // Update Realtime Database
+      try {
+        await _dbRef.child('tow_requests').child(request.requestId).update({
+          'status': 'completed',
+          'serviceAmount': amount,
+          'providerUpiId': upiId,
+          'paymentStatus': 'pending',
+          'completedAt': DateTime.now().millisecondsSinceEpoch,
+          'updatedAt': DateTime.now().millisecondsSinceEpoch,
+        });
+      } catch (e) {
+        print('⚠️ Could not update Realtime Database: $e');
+      }
+
+      // Send notification to user about service charges
+      if (request.userEmail.isNotEmpty && request.userEmail != 'Unknown') {
+        try {
+          final userId = request.userId?.toString() ?? 
+              request.userEmail.replaceAll(RegExp(r'[\.#\$\[\]]'), '_');
+          
+          final userNotificationRef = _dbRef
+              .child('notifications')
+              .child(userId)
+              .push();
+
+          await userNotificationRef.set({
+            'id': userNotificationRef.key,
+            'requestId': request.requestId,
+            'title': 'Service Charges Updated 💰',
+            'message': 'Your service charges are ₹$amount. Please make payment to UPI: $upiId',
+            'timestamp': DateTime.now().millisecondsSinceEpoch,
+            'read': false,
+            'type': 'service_charges_entered',
+            'vehicleNumber': request.vehicleNumber,
+            'providerName': request.providerName,
+            'status': 'completed',
+            'amount': amount,
+            'upiId': upiId,
+            'paymentStatus': 'pending',
+          });
+
+          print('✅ Notification sent to user about service charges');
+        } catch (e) {
+          print('⚠️ Could not send notification: $e');
+        }
+      }
+
       // Refresh data
       _loadServiceRequests();
 
@@ -1408,6 +1468,50 @@ class _TowServiceRequestsScreenState extends State<TowServiceRequestsScreen>
           content: Text('Failed to complete service: $e'),
           backgroundColor: Colors.red,
         ),
+      );
+    }
+  }
+
+  Future<void> _openChat(TowServiceRequest request) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null || user.email == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Please login to chat')),
+        );
+        return;
+      }
+
+      final requestId = request.requestId;
+      final userEmail = request.userEmail;
+      final userName = request.name;
+      final providerEmail = request.providerEmail ?? _userEmail ?? '';
+      final providerName = request.providerName;
+
+      if (requestId.isEmpty || providerEmail.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Invalid request information')),
+        );
+        return;
+      }
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ChatScreen(
+            requestId: requestId,
+            userEmail: providerEmail,
+            userName: providerName,
+            otherPartyEmail: userEmail,
+            otherPartyName: userName,
+            serviceType: 'Tow Service',
+          ),
+        ),
+      );
+    } catch (e) {
+      print('Error opening chat: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to open chat: $e')),
       );
     }
   }

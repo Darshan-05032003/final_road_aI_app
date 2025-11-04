@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:smart_road_app/admin/services/admin_data_service.dart';
+import 'package:smart_road_app/admin/services/admin_service.dart';
 import 'package:smart_road_app/core/theme/app_theme.dart';
 import 'package:smart_road_app/core/animations/app_animations.dart';
 import 'package:smart_road_app/widgets/enhanced_card.dart';
@@ -12,16 +12,18 @@ class AnalyticsPage extends StatefulWidget {
 }
 
 class _AnalyticsPageState extends State<AnalyticsPage> with SingleTickerProviderStateMixin {
-  final AdminDataService _dataService = AdminDataService();
+  final AdminService _adminService = AdminService();
   late TabController _tabController;
   bool _isLoading = true;
   
+  String _timeRange = 'Monthly';
+  String _serviceFilter = 'All Services';
   Map<String, dynamic> _analyticsData = {};
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 3, vsync: this); // Fixed: 3 tabs, not 4
     _loadAnalytics();
   }
 
@@ -35,7 +37,10 @@ class _AnalyticsPageState extends State<AnalyticsPage> with SingleTickerProvider
     setState(() => _isLoading = true);
     
     try {
-      final data = await _dataService.getAnalyticsData();
+      final data = await _adminService.getAnalyticsData(
+        timeRange: _timeRange,
+        serviceFilter: _serviceFilter,
+      );
       if (mounted) {
         setState(() {
           _analyticsData = data;
@@ -43,7 +48,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> with SingleTickerProvider
         });
       }
     } catch (e) {
-      print('Error loading analytics: $e');
+      print('❌ Error loading analytics: $e');
       if (mounted) {
         setState(() => _isLoading = false);
       }

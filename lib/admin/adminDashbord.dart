@@ -5014,9 +5014,8 @@ import 'package:smart_road_app/admin/revenue.dart';
 import 'package:smart_road_app/admin/service_provider.dart';
 import 'package:smart_road_app/admin/usermanagement.dart';
 import 'package:smart_road_app/core/theme/app_theme.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smart_road_app/Login/adminLogin.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:smart_road_app/shared_prefrences.dart';
 
 class VehicleAssistAdminApp extends StatelessWidget {
   const VehicleAssistAdminApp({super.key});
@@ -5028,14 +5027,15 @@ class VehicleAssistAdminApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.light,
-      home: const AdminDashboard(), // This will check auth and redirect if needed
+      home: const AdminDashboard(skipAuthCheck: false), // This will check auth and redirect if needed
       debugShowCheckedModeBanner: false,
     );
   }
 }
 
 class AdminDashboard extends StatefulWidget {
-  const AdminDashboard({super.key});
+  final bool skipAuthCheck; // Skip auth check if coming from login
+  const AdminDashboard({super.key, this.skipAuthCheck = false});
 
   @override
   State<AdminDashboard> createState() => _AdminDashboardState();
@@ -5046,6 +5046,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
   late TabController _tabController;
   bool _isCheckingAuth = true;
   bool _isAuthenticated = false;
+  bool _hasNavigated = false; // Prevent multiple navigations
   
   final List<Widget> _pages = [
     const DashboardHomePage(),
@@ -5065,69 +5066,9 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
     'Providers',
   ];
 
-  // Logout function
-  Future<void> _logout() async {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Logout'),
-          content: const Text('Are you sure you want to logout?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () async {
-                Navigator.of(context).pop(); // Close dialog
-                
-                // Show loading indicator
-                showDialog(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (BuildContext context) {
-                    return const Center(
-                      child: CircularProgressIndicator(),
-                    );
-                  },
-                );
-
-                // Perform logout
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.setBool('adminIsLoggedIn', false);
-                await prefs.remove('adminUserEmail');
-                try {
-                  await FirebaseAuth.instance.signOut();
-                } catch (e) {
-                  print('Error signing out from Firebase: $e');
-                }
-
-                // Close loading indicator
-                if (mounted) {
-                  Navigator.of(context).pop();
-                }
-
-                // Navigate to login page
-                if (mounted) {
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (context) => const AdminLoginPage()),
-                    (route) => false,
-                  );
-                }
-              },
-              child: const Text('Logout', style: TextStyle(color: Colors.red)),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   @override
   void initState() {
     super.initState();
-    _checkAuthentication();
     _tabController = TabController(length: _pages.length, vsync: this);
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) {
@@ -5136,34 +5077,65 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
         });
       }
     });
+    
+    // If coming from login, skip auth check and show dashboard immediately
+    if (widget.skipAuthCheck) {
+      setState(() {
+        _isCheckingAuth = false;
+        _isAuthenticated = true;
+      });
+    } else {
+      // Check authentication immediately without delay
+      // Use microtask to ensure it runs after the widget tree is built
+      Future.microtask(() {
+        if (mounted && !_hasNavigated && !_isAuthenticated) {
+          _checkAuthentication();
+        }
+      });
+    }
   }
 
   Future<void> _checkAuthentication() async {
+    // Prevent multiple simultaneous checks or if already navigated
+    if (_isCheckingAuth || _isAuthenticated || _hasNavigated) return;
+    
+    _isCheckingAuth = true;
+    
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final isLoggedIn = prefs.getBool('adminIsLoggedIn') ?? false;
-      final userEmail = prefs.getString('adminUserEmail');
+      // Use AuthService instead of SharedPreferences directly
+      final isLoggedIn = await AuthService.checkValidLogin();
+      
+      if (!mounted) {
+        _isCheckingAuth = false;
+        return;
+      }
+      
+      final userRole = await AuthService.getUserRole();
 
-      if (!isLoggedIn || userEmail == null) {
-        // Not authenticated, redirect to login
-        if (mounted) {
+      if (!mounted) {
+        _isCheckingAuth = false;
+        return;
+      }
+
+      if (!isLoggedIn || userRole != 'admin') {
+        // Not authenticated, redirect to login - but only once
+        if (!_hasNavigated && !_isAuthenticated) {
+          _hasNavigated = true; // Mark as navigated BEFORE navigation
           setState(() {
             _isCheckingAuth = false;
             _isAuthenticated = false;
           });
           
-          // Navigate to login screen
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (context) => const AdminLoginPage()),
-                (route) => false,
-              );
-            }
-          });
+          // Navigate immediately without delay
+          if (mounted) {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (context) => const AdminLoginPage()),
+              (route) => false,
+            );
+          }
         }
       } else {
-        // Authenticated, show dashboard
+        // Authenticated, show dashboard immediately
         if (mounted) {
           setState(() {
             _isCheckingAuth = false;
@@ -5172,22 +5144,21 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
         }
       }
     } catch (e) {
-      print('Error checking admin authentication: $e');
-      if (mounted) {
+      print('❌ Error checking admin authentication: $e');
+      if (mounted && !_hasNavigated && !_isAuthenticated) {
+        _hasNavigated = true; // Mark as navigated BEFORE navigation
         setState(() {
           _isCheckingAuth = false;
           _isAuthenticated = false;
         });
         
-        // On error, redirect to login
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(builder: (context) => const AdminLoginPage()),
-              (route) => false,
-            );
-          }
-        });
+        // On error, redirect to login immediately
+        if (mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const AdminLoginPage()),
+            (route) => false,
+          );
+        }
       }
     }
   }
@@ -5200,34 +5171,39 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
 
   @override
   Widget build(BuildContext context) {
-    // Show loading while checking authentication
-    if (_isCheckingAuth) {
+    // If already navigated to login, show nothing
+    if (_hasNavigated) {
+      return const SizedBox.shrink();
+    }
+
+    // If skipAuthCheck is true (coming from login), show dashboard immediately
+    if (widget.skipAuthCheck) {
+      // Dashboard is ready, show it directly
+      return _buildDashboard();
+    }
+
+    // Show loading only if we're still checking AND not authenticated yet
+    if (_isCheckingAuth && !_isAuthenticated) {
       return Scaffold(
         backgroundColor: AppTheme.lightBackground,
         body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryPurple),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Checking authentication...',
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
-            ],
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryPurple),
           ),
         ),
       );
     }
 
-    // If not authenticated, show nothing (navigation will happen in initState)
+    // If not authenticated after check, show nothing (will navigate)
     if (!_isAuthenticated) {
       return const SizedBox.shrink();
     }
+    
+    // Show dashboard
+    return _buildDashboard();
+  }
 
-    // Show dashboard if authenticated
+  Widget _buildDashboard() {
     return Scaffold(
       backgroundColor: AppTheme.lightBackground,
       appBar: AppBar(
@@ -5273,15 +5249,12 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                 );
 
                 if (shouldLogout == true && mounted) {
-                  // Clear admin login state
-                  final prefs = await SharedPreferences.getInstance();
-                  await prefs.setBool('adminIsLoggedIn', false);
-                  await prefs.remove('adminUserEmail');
-                  // Sign out from Firebase
+                  // Perform logout using AuthService
                   try {
-                    await FirebaseAuth.instance.signOut();
+                    await AuthService.logout();
                   } catch (e) {
-                    print('Error signing out from Firebase: $e');
+                    print('❌ Error during logout: $e');
+                    // Continue with navigation even if logout fails
                   }
 
                   // Navigate back to login

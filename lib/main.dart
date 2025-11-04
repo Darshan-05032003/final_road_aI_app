@@ -4,57 +4,81 @@ import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:smart_road_app/Splashscreen.dart';
-
-import 'package:smart_road_app/main_dashboard.dart';
 import 'package:smart_road_app/core/language/language_service.dart';
 import 'package:smart_road_app/services/theme_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Request necessary permissions
-  await _requestPermissions();
+  // Initialize Firebase first (before permissions to avoid conflicts)
+  await _initializeFirebase();
 
-  // Initialize Firebase
+  // Request necessary permissions (non-blocking for better performance)
+  _requestPermissions();
+
+  runApp(const SmartRoadApp());
+}
+
+// Initialize Firebase with proper error handling
+Future<void> _initializeFirebase() async {
   try {
+    // Check if Firebase is already initialized
     if (Firebase.apps.isEmpty) {
       await Firebase.initializeApp(
         options: const FirebaseOptions(
           apiKey: "AIzaSyCOfjtsUEcqxB5Zr7d5BvnRKKiz3fLqUuE",
-          appId: "1:210471346742:android:e0432932179a38707f6e97", 
+          appId: "1:210471346742:android:e0432932179a38707f6e97",
           messagingSenderId: "210471346742",
           projectId: "smart-4ebfc",
-          storageBucket: "smart-4ebfc.firebasestorage.app", // Removed gs:// prefix
+          storageBucket: "smart-4ebfc.firebasestorage.app",
           databaseURL: "https://smart-4ebfc-default-rtdb.firebaseio.com/",
         ),
       );
       print('✅ Firebase initialized successfully');
     } else {
-      print('ℹ️ Firebase already initialized');
+      // Firebase is already initialized (possibly by google-services.json)
+      print('ℹ️ Firebase already initialized (${Firebase.apps.length} app(s))');
     }
   } catch (e) {
-    print('❌ Firebase initialization error: $e');
+    // Handle duplicate app error specifically - this is not critical
+    final errorStr = e.toString();
+    if (errorStr.contains('duplicate-app') ||
+        errorStr.contains('already exists') ||
+        errorStr.contains('[DEFAULT]')) {
+      print('ℹ️ Firebase app already exists, using existing instance');
+    } else {
+      print('⚠️ Firebase initialization warning: $e');
+      // Continue anyway as Firebase might be auto-initialized
+    }
   }
-
-  runApp(const SmartRoadApp());
 }
 
-// Request necessary permissions
-Future<void> _requestPermissions() async {
-  try {
-    // Request location permission
-    await Permission.location.request();
-    
-    // Request notification permission
-    await Permission.notification.request();
-    
-    // Request storage permission (if needed)
-    await Permission.storage.request();
-    
-    print('✅ Permissions requested');
-  } catch (e) {
-    print('❌ Error requesting permissions: $e');
-  }
+// Request necessary permissions (non-blocking for better performance)
+void _requestPermissions() {
+  // Run permissions in background to avoid blocking main thread
+  Future.microtask(() async {
+    try {
+      // Request location permission
+      final locationStatus = await Permission.location.request();
+      if (locationStatus.isGranted) {
+        print('✅ Location permission granted');
+      }
+
+      // Request notification permission (Android 13+)
+      if (await Permission.notification.isDenied) {
+        await Permission.notification.request();
+      }
+
+      // Request storage permission (Android 13+ uses different permissions)
+      if (await Permission.storage.isDenied) {
+        await Permission.storage.request();
+      }
+
+      print('✅ Permissions requested');
+    } catch (e) {
+      print('❌ Error requesting permissions: $e');
+    }
+  });
 }
 
 class SmartRoadApp extends StatelessWidget {
@@ -69,9 +93,12 @@ class SmartRoadApp extends StatelessWidget {
       ],
       child: Builder(
         builder: (context) {
-          final languageService = Provider.of<LanguageService>(context, listen: true);
+          final languageService = Provider.of<LanguageService>(
+            context,
+            listen: true,
+          );
           final themeService = Provider.of<ThemeService>(context, listen: true);
-          
+
           return MaterialApp(
             title: 'Smart Road AI',
             home: SplashScreen(),

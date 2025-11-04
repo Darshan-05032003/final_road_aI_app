@@ -472,6 +472,7 @@ import 'package:smart_road_app/Login/InsuranceLogin.dart';
 import 'package:smart_road_app/Login/ToeProviderLogin.dart';
 import 'package:smart_road_app/Login/VehicleOwneLogin.dart';
 import 'package:smart_road_app/Login/adminLogin.dart';
+import 'package:smart_road_app/screens/AboutUsPage.dart';
 import 'package:flutter/material.dart';
 
 class RoleSelectionScreen extends StatefulWidget {
@@ -673,6 +674,13 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
                                 subtitle: 'System administrator',
                                 color: const Color(0xFF8B5CF6), // Violet
                                 index: 4,
+                              ),
+                              _buildEnhancedRoleCard(
+                                icon: Icons.info_rounded,
+                                title: 'About Us',
+                                subtitle: '',
+                                color: const Color(0xFFFF6B35), // Orange/Teal
+                                index: 5,
                               ),
                             ],
                           ),
@@ -878,6 +886,9 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
         case 'Admin':
           _navigateToAdminScreen();
           break;
+        case 'About Us':
+          _navigateToAboutUsScreen();
+          break;
       }
     });
   }
@@ -935,6 +946,13 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const AdminLoginPage()),
+    );
+  }
+
+  void _navigateToAboutUsScreen() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const AboutUsPage()),
     );
   }
 }

@@ -24,7 +24,7 @@ class DatabaseService {
     String path = join(await getDatabasesPath(), 'smart_road_app.db');
     return await openDatabase(
       path,
-      version: 1,
+      version: 2, // Incremented version to trigger upgrade for existing databases
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -62,14 +62,16 @@ class DatabaseService {
         completed_at INTEGER,
         paid_at INTEGER,
         data_json TEXT,
-        last_synced INTEGER NOT NULL,
-        INDEX idx_user_email (user_email),
-        INDEX idx_status (status),
-        INDEX idx_service_type (service_type),
-        INDEX idx_request_id (request_id),
-        INDEX idx_last_synced (last_synced)
+        last_synced INTEGER NOT NULL
       )
     ''');
+
+    // Create indexes for service_requests
+    await db.execute('CREATE INDEX idx_sr_user_email ON service_requests(user_email)');
+    await db.execute('CREATE INDEX idx_sr_status ON service_requests(status)');
+    await db.execute('CREATE INDEX idx_sr_service_type ON service_requests(service_type)');
+    await db.execute('CREATE INDEX idx_sr_request_id ON service_requests(request_id)');
+    await db.execute('CREATE INDEX idx_sr_last_synced ON service_requests(last_synced)');
 
     // Payment History Table
     await db.execute('''
@@ -90,13 +92,15 @@ class DatabaseService {
         created_at INTEGER NOT NULL,
         paid_at INTEGER,
         data_json TEXT,
-        last_synced INTEGER NOT NULL,
-        INDEX idx_user_email (user_email),
-        INDEX idx_request_id (request_id),
-        INDEX idx_payment_status (payment_status),
-        INDEX idx_created_at (created_at)
+        last_synced INTEGER NOT NULL
       )
     ''');
+
+    // Create indexes for payments
+    await db.execute('CREATE INDEX idx_pay_user_email ON payments(user_email)');
+    await db.execute('CREATE INDEX idx_pay_request_id ON payments(request_id)');
+    await db.execute('CREATE INDEX idx_pay_payment_status ON payments(payment_status)');
+    await db.execute('CREATE INDEX idx_pay_created_at ON payments(created_at)');
 
     // User Profiles Table
     await db.execute('''
@@ -109,10 +113,12 @@ class DatabaseService {
         upi_id TEXT,
         address TEXT,
         data_json TEXT,
-        last_synced INTEGER NOT NULL,
-        INDEX idx_role (role)
+        last_synced INTEGER NOT NULL
       )
     ''');
+
+    // Create indexes for user_profiles
+    await db.execute('CREATE INDEX idx_up_role ON user_profiles(role)');
 
     // Notifications Table
     await db.execute('''
@@ -125,12 +131,14 @@ class DatabaseService {
         is_read INTEGER NOT NULL DEFAULT 0,
         data_json TEXT,
         created_at INTEGER NOT NULL,
-        last_synced INTEGER NOT NULL,
-        INDEX idx_user_email (user_email),
-        INDEX idx_is_read (is_read),
-        INDEX idx_created_at (created_at)
+        last_synced INTEGER NOT NULL
       )
     ''');
+
+    // Create indexes for notifications
+    await db.execute('CREATE INDEX idx_notif_user_email ON notifications(user_email)');
+    await db.execute('CREATE INDEX idx_notif_is_read ON notifications(is_read)');
+    await db.execute('CREATE INDEX idx_notif_created_at ON notifications(created_at)');
 
     // Inventory Parts Table (for Garage)
     await db.execute('''
@@ -149,12 +157,14 @@ class DatabaseService {
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
         data_json TEXT,
-        last_synced INTEGER NOT NULL,
-        INDEX idx_garage_email (garage_email),
-        INDEX idx_category (category),
-        INDEX idx_is_available (is_available)
+        last_synced INTEGER NOT NULL
       )
     ''');
+
+    // Create indexes for inventory_parts
+    await db.execute('CREATE INDEX idx_inv_garage_email ON inventory_parts(garage_email)');
+    await db.execute('CREATE INDEX idx_inv_category ON inventory_parts(category)');
+    await db.execute('CREATE INDEX idx_inv_is_available ON inventory_parts(is_available)');
 
     // Service History Table (for quick access)
     await db.execute('''
@@ -169,12 +179,14 @@ class DatabaseService {
         created_at INTEGER NOT NULL,
         completed_at INTEGER,
         data_json TEXT,
-        last_synced INTEGER NOT NULL,
-        INDEX idx_user_email (user_email),
-        INDEX idx_status (status),
-        INDEX idx_created_at (created_at)
+        last_synced INTEGER NOT NULL
       )
     ''');
+
+    // Create indexes for service_history
+    await db.execute('CREATE INDEX idx_sh_user_email ON service_history(user_email)');
+    await db.execute('CREATE INDEX idx_sh_status ON service_history(status)');
+    await db.execute('CREATE INDEX idx_sh_created_at ON service_history(created_at)');
 
     // Admin Users Table (for admin dashboard)
     await db.execute('''
@@ -188,12 +200,14 @@ class DatabaseService {
         registration_date INTEGER,
         avatar_color INTEGER,
         data_json TEXT,
-        last_synced INTEGER NOT NULL,
-        INDEX idx_user_type (user_type),
-        INDEX idx_status (status),
-        INDEX idx_email (email)
+        last_synced INTEGER NOT NULL
       )
     ''');
+
+    // Create indexes for admin_users
+    await db.execute('CREATE INDEX idx_admin_u_user_type ON admin_users(user_type)');
+    await db.execute('CREATE INDEX idx_admin_u_status ON admin_users(status)');
+    await db.execute('CREATE INDEX idx_admin_u_email ON admin_users(email)');
 
     // Admin Services Table (all active services)
     await db.execute('''
@@ -209,12 +223,14 @@ class DatabaseService {
         provider_email TEXT,
         created_at INTEGER NOT NULL,
         data_json TEXT,
-        last_synced INTEGER NOT NULL,
-        INDEX idx_service_type (service_type),
-        INDEX idx_status (status),
-        INDEX idx_created_at (created_at)
+        last_synced INTEGER NOT NULL
       )
     ''');
+
+    // Create indexes for admin_services
+    await db.execute('CREATE INDEX idx_admin_s_service_type ON admin_services(service_type)');
+    await db.execute('CREATE INDEX idx_admin_s_status ON admin_services(status)');
+    await db.execute('CREATE INDEX idx_admin_s_created_at ON admin_services(created_at)');
 
     // Admin Revenue Table
     await db.execute('''
@@ -232,12 +248,14 @@ class DatabaseService {
         created_at INTEGER NOT NULL,
         paid_at INTEGER,
         data_json TEXT,
-        last_synced INTEGER NOT NULL,
-        INDEX idx_customer_email (customer_email),
-        INDEX idx_payment_status (payment_status),
-        INDEX idx_created_at (created_at)
+        last_synced INTEGER NOT NULL
       )
     ''');
+
+    // Create indexes for admin_revenue
+    await db.execute('CREATE INDEX idx_admin_r_customer_email ON admin_revenue(customer_email)');
+    await db.execute('CREATE INDEX idx_admin_r_payment_status ON admin_revenue(payment_status)');
+    await db.execute('CREATE INDEX idx_admin_r_created_at ON admin_revenue(created_at)');
 
     // Admin Providers Table
     await db.execute('''
@@ -250,11 +268,13 @@ class DatabaseService {
         services_count INTEGER DEFAULT 0,
         rating REAL DEFAULT 0.0,
         data_json TEXT,
-        last_synced INTEGER NOT NULL,
-        INDEX idx_provider_type (provider_type),
-        INDEX idx_email (email)
+        last_synced INTEGER NOT NULL
       )
     ''');
+
+    // Create indexes for admin_providers
+    await db.execute('CREATE INDEX idx_admin_p_provider_type ON admin_providers(provider_type)');
+    await db.execute('CREATE INDEX idx_admin_p_email ON admin_providers(email)');
 
     // Admin Stats Cache Table (for quick stats)
     await db.execute('''
@@ -266,11 +286,45 @@ class DatabaseService {
       )
     ''');
 
-    print('✅ Database tables created successfully');
+    print('✅ Database tables and indexes created successfully');
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    // Handle database upgrades here if needed
+    print('🔄 Upgrading database from version $oldVersion to $newVersion');
+    
+    // If upgrading from version 1, drop and recreate tables with correct syntax
+    if (oldVersion < 2) {
+      try {
+        // Drop all existing tables
+        await db.execute('DROP TABLE IF EXISTS service_requests');
+        await db.execute('DROP TABLE IF EXISTS payments');
+        await db.execute('DROP TABLE IF EXISTS user_profiles');
+        await db.execute('DROP TABLE IF EXISTS notifications');
+        await db.execute('DROP TABLE IF EXISTS inventory_parts');
+        await db.execute('DROP TABLE IF EXISTS service_history');
+        await db.execute('DROP TABLE IF EXISTS admin_users');
+        await db.execute('DROP TABLE IF EXISTS admin_services');
+        await db.execute('DROP TABLE IF EXISTS admin_revenue');
+        await db.execute('DROP TABLE IF EXISTS admin_providers');
+        await db.execute('DROP TABLE IF EXISTS admin_stats');
+        
+        // Drop all indexes if they exist
+        await db.execute('DROP INDEX IF EXISTS idx_user_email');
+        await db.execute('DROP INDEX IF EXISTS idx_status');
+        await db.execute('DROP INDEX IF EXISTS idx_service_type');
+        await db.execute('DROP INDEX IF EXISTS idx_request_id');
+        await db.execute('DROP INDEX IF EXISTS idx_last_synced');
+        
+        // Recreate tables and indexes with correct syntax
+        await _onCreate(db, newVersion);
+        
+        print('✅ Database upgraded successfully');
+      } catch (e) {
+        print('❌ Error during database upgrade: $e');
+        // If upgrade fails, try to recreate from scratch
+        await _onCreate(db, newVersion);
+      }
+    }
   }
 
   // ==================== Service Requests ====================
@@ -694,6 +748,47 @@ class DatabaseService {
 
   // ==================== Utility Methods ====================
 
+  /// Convert data to JSON-serializable format (remove Timestamps, IconData, Colors)
+  Map<String, dynamic> _convertToJsonSerializable(Map<String, dynamic> data) {
+    final Map<String, dynamic> serializable = {};
+    
+    data.forEach((key, value) {
+      if (value == null) {
+        serializable[key] = null;
+      } else if (value is Timestamp) {
+        serializable[key] = value.millisecondsSinceEpoch;
+      } else if (value is DateTime) {
+        serializable[key] = value.millisecondsSinceEpoch;
+      } else if (value is Color) {
+        serializable[key] = value.value;
+      } else if (value is IconData) {
+        // Skip IconData - it's not serializable
+        // Don't add this field to the serializable map
+      } else if (value is Map) {
+        serializable[key] = _convertToJsonSerializable(Map<String, dynamic>.from(value));
+      } else if (value is List) {
+        serializable[key] = value.map((item) {
+          if (item is Map) {
+            return _convertToJsonSerializable(Map<String, dynamic>.from(item));
+          } else if (item is Timestamp) {
+            return item.millisecondsSinceEpoch;
+          } else if (item is DateTime) {
+            return item.millisecondsSinceEpoch;
+          } else if (item is Color) {
+            return item.value;
+          } else if (item is IconData) {
+            return null; // Skip IconData
+          }
+          return item;
+        }).where((item) => item != null).toList();
+      } else {
+        serializable[key] = value;
+      }
+    });
+    
+    return serializable;
+  }
+
   int _parseTimestamp(dynamic timestamp) {
     if (timestamp == null) return DateTime.now().millisecondsSinceEpoch;
     if (timestamp is Timestamp) return timestamp.millisecondsSinceEpoch;
@@ -701,6 +796,12 @@ class DatabaseService {
     if (timestamp is int) return timestamp;
     if (timestamp is String) {
       try {
+        // Try parsing as milliseconds first
+        final intValue = int.tryParse(timestamp);
+        if (intValue != null && intValue > 1000000000000) {
+          // Likely milliseconds timestamp
+          return intValue;
+        }
         return DateTime.parse(timestamp).millisecondsSinceEpoch;
       } catch (e) {
         return DateTime.now().millisecondsSinceEpoch;
@@ -780,8 +881,12 @@ class DatabaseService {
           'user_type': user['type'] ?? '',
           'status': user['status'] ?? 'Active',
           'registration_date': _parseTimestamp(user['registrationDate']),
-          'avatar_color': (user['avatarColor'] as Color?)?.value ?? 0xFF6366F1,
-          'data_json': jsonEncode(user),
+          'avatar_color': (user['avatarColor'] is Color) 
+              ? (user['avatarColor'] as Color).value 
+              : ((user['avatarColor'] is int) 
+                  ? user['avatarColor'] 
+                  : 0xFF6366F1),
+          'data_json': jsonEncode(_convertToJsonSerializable(user)),
           'last_synced': now,
         },
         conflictAlgorithm: ConflictAlgorithm.replace,
@@ -904,7 +1009,7 @@ class DatabaseService {
           'provider_name': service['provider'] ?? service['providerName'] ?? service['garageName'],
           'provider_email': service['providerEmail'] ?? service['garageEmail'],
           'created_at': _parseTimestamp(service['createdAt']),
-          'data_json': jsonEncode(service),
+          'data_json': jsonEncode(_convertToJsonSerializable(service)),
           'last_synced': now,
         },
         conflictAlgorithm: ConflictAlgorithm.replace,
@@ -1012,7 +1117,7 @@ class DatabaseService {
           'payment_status': transaction['status'] ?? transaction['paymentStatus'] ?? 'pending',
           'created_at': _parseTimestamp(transaction['date'] ?? transaction['createdAt'] ?? transaction['paidAt']),
           'paid_at': _parseTimestamp(transaction['paidAt']),
-          'data_json': jsonEncode(transaction),
+          'data_json': jsonEncode(_convertToJsonSerializable(transaction)),
           'last_synced': now,
         },
         conflictAlgorithm: ConflictAlgorithm.replace,
@@ -1135,7 +1240,7 @@ class DatabaseService {
           'phone': provider['phone'],
           'services_count': provider['services'] ?? 0,
           'rating': provider['rating'] ?? 0.0,
-          'data_json': jsonEncode(provider),
+          'data_json': jsonEncode(_convertToJsonSerializable(provider)),
           'last_synced': now,
         },
         conflictAlgorithm: ConflictAlgorithm.replace,
@@ -1209,7 +1314,7 @@ class DatabaseService {
         {
           'key': key,
           'value': stats['total'] ?? 0,
-          'data_json': jsonEncode(stats),
+          'data_json': jsonEncode(_convertToJsonSerializable(stats)),
           'last_synced': now,
         },
         conflictAlgorithm: ConflictAlgorithm.replace,

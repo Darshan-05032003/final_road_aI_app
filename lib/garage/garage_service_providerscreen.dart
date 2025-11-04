@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../screens/chat/chat_screen.dart';
 
 class GarageServiceProviderScreen extends StatefulWidget {
 
@@ -441,27 +443,28 @@ class _GarageServiceProviderScreenState
         'updatedAt': DateTime.now().millisecondsSinceEpoch,
       });
 
-      // Send notification to user
+      // Send notification to user about service charges
+      final userId = request['userId']?.toString() ?? 
+          (userEmail != null ? userEmail!.replaceAll(RegExp(r'[\.#\$\[\]]'), '_') : 'unknown');
+      
       final userNotificationRef = dbRef
           .child('notifications')
-          .child(
-            request['userId']?.replaceAll(RegExp(r'[\.#\$\[\]]'), '_') ??
-                'unknown',
-          )
+          .child(userId)
           .push();
 
       await userNotificationRef.set({
         'id': userNotificationRef.key,
         'requestId': requestId,
-        'title': 'Service Completed - Payment Pending 💰',
-        'message': 'Your service is completed. Please pay ₹$amount',
+        'title': 'Service Charges Updated 💰',
+        'message': 'Your service charges are ₹$amount. Please make payment to UPI: $upiId',
         'timestamp': DateTime.now().millisecondsSinceEpoch,
         'read': false,
-        'type': 'service_completed_payment_pending',
-        'vehicleNumber': request['vehicleNumber'],
-        'garageName': request['garageName'],
+        'type': 'service_charges_entered',
+        'vehicleNumber': request['vehicleNumber'] ?? 'N/A',
+        'garageName': request['garageName'] ?? widget.garageEmail,
         'status': 'completed',
         'amount': amount,
+        'upiId': upiId,
         'paymentStatus': 'pending',
       });
 
@@ -978,6 +981,18 @@ class _GarageServiceProviderScreenState
                   ),
                 ] else if (request['status'] == 'Accepted') ...[
                   Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _openChat(request),
+                      icon: Icon(Icons.chat, size: 16),
+                      label: Text('Chat'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Color(0xFF6D28D9),
+                        side: BorderSide(color: Color(0xFF6D28D9)),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
                     child: ElevatedButton(
                       onPressed: () => _showCompleteServiceDialog(request),
                       style: ElevatedButton.styleFrom(
@@ -1007,6 +1022,63 @@ class _GarageServiceProviderScreenState
         return Colors.blue;
       default:
         return Colors.grey;
+    }
+  }
+
+  Future<void> _openChat(Map<String, dynamic> request) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null || user.email == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Please login to chat')),
+        );
+        return;
+      }
+
+      final requestId = request['requestId'] ?? request['id'] ?? '';
+      final userEmail = request['userEmail'] ?? '';
+      final userName = request['name'] ?? 'Customer';
+      final garageEmail = widget.garageEmail;
+      
+      // Get garage name
+      String garageName = 'Garage';
+      try {
+        final garageDoc = await FirebaseFirestore.instance
+            .collection('garages')
+            .doc(garageEmail)
+            .get();
+        if (garageDoc.exists) {
+          garageName = garageDoc.data()?['name'] ?? 'Garage';
+        }
+      } catch (e) {
+        print('Error getting garage name: $e');
+      }
+
+      if (requestId.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Invalid request ID')),
+        );
+        return;
+      }
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ChatScreen(
+            requestId: requestId,
+            userEmail: garageEmail,
+            userName: garageName,
+            otherPartyEmail: userEmail,
+            otherPartyName: userName,
+            serviceType: 'Garage Service',
+          ),
+        ),
+      );
+    } catch (e) {
+      print('Error opening chat: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to open chat: $e')),
+      );
     }
   }
 }

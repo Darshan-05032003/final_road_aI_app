@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -33,6 +34,7 @@ class _BookingsScreenState extends State<BookingsScreen> with TickerProviderStat
   late TabController _serviceTabController; // For service requests status tabs
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final DatabaseReference _dbRef = FirebaseDatabase.instance.ref();
   String? _userEmail;
   String? _garageId;
   bool _isLoading = true;
@@ -1113,6 +1115,7 @@ class _BookingsScreenState extends State<BookingsScreen> with TickerProviderStat
       }
 
       // Also update in user's collection
+      String? userEmail;
       try {
         final userRequestQuery = await _firestore
             .collectionGroup('garagerequest')
@@ -1121,7 +1124,10 @@ class _BookingsScreenState extends State<BookingsScreen> with TickerProviderStat
             .get();
 
         if (userRequestQuery.docs.isNotEmpty) {
-          await userRequestQuery.docs.first.reference.update({
+          final userDoc = userRequestQuery.docs.first;
+          userEmail = userDoc.data()['userEmail']?.toString() ?? request.userEmail;
+          
+          await userDoc.reference.update({
             'status': 'completed',
             'serviceAmount': amount,
             'providerUpiId': upiId,
@@ -1133,6 +1139,38 @@ class _BookingsScreenState extends State<BookingsScreen> with TickerProviderStat
         }
       } catch (e) {
         print('⚠️ Could not update user collection: $e');
+      }
+
+      // Send notification to user about service charges
+      if (userEmail != null && userEmail.isNotEmpty) {
+        try {
+          final userId = userEmail.replaceAll(RegExp(r'[\.#\$\[\]]'), '_');
+          
+          final userNotificationRef = _dbRef
+              .child('notifications')
+              .child(userId)
+              .push();
+
+          await userNotificationRef.set({
+            'id': userNotificationRef.key,
+            'requestId': request.requestId,
+            'title': 'Service Charges Updated 💰',
+            'message': 'Your service charges are ₹$amount. Please make payment to UPI: $upiId',
+            'timestamp': DateTime.now().millisecondsSinceEpoch,
+            'read': false,
+            'type': 'service_charges_entered',
+            'vehicleNumber': request.vehicleNumber,
+            'garageName': request.garageName,
+            'status': 'completed',
+            'amount': amount,
+            'upiId': upiId,
+            'paymentStatus': 'pending',
+          });
+
+          print('✅ Notification sent to user about service charges');
+        } catch (e) {
+          print('⚠️ Could not send notification: $e');
+        }
       }
 
       // Reload requests

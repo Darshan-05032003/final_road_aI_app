@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:smart_road_app/admin/services/admin_service.dart';
 import 'package:smart_road_app/admin/services/admin_data_service.dart';
 import 'package:smart_road_app/core/theme/app_theme.dart';
 import 'package:smart_road_app/core/animations/app_animations.dart';
@@ -15,6 +16,7 @@ class UserManagementPage extends StatefulWidget {
 }
 
 class _UserManagementPageState extends State<UserManagementPage> {
+  final AdminService _adminService = AdminService();
   final AdminDataService _dataService = AdminDataService();
   final TextEditingController _searchController = TextEditingController();
   
@@ -31,6 +33,12 @@ class _UserManagementPageState extends State<UserManagementPage> {
   @override
   void initState() {
     super.initState();
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text;
+      });
+      _loadUsers();
+    });
     _loadUsers();
   }
 
@@ -44,7 +52,18 @@ class _UserManagementPageState extends State<UserManagementPage> {
     setState(() => _isLoading = true);
     
     try {
-      final users = await _dataService.getAllUsers();
+      // Use AdminService for filtering
+      String? userType;
+      if (_selectedTab == 1) userType = 'Vehicle Owners';
+      else if (_selectedTab == 2) userType = 'Mechanics';
+      else if (_selectedTab == 3) userType = 'Tow Providers';
+      else if (_selectedTab == 4) userType = 'Insurance';
+      
+      final users = await _adminService.getAllUsers(
+        searchQuery: _searchQuery.isEmpty ? null : _searchQuery,
+        status: _selectedFilter == 'All Status' ? null : _selectedFilter,
+        userType: userType,
+      );
       final counts = await _dataService.getUsersCount();
       
       if (mounted) {
@@ -55,44 +74,141 @@ class _UserManagementPageState extends State<UserManagementPage> {
         });
       }
     } catch (e) {
-      print('Error loading users: $e');
+      print('❌ Error loading users: $e');
       if (mounted) {
         setState(() => _isLoading = false);
       }
     }
   }
 
+  Future<void> _handleUserAction(String action, Map<String, dynamic> user) async {
+    switch (action) {
+      case 'view':
+        _showUserDetails(user);
+        break;
+      case 'activate':
+        await _updateUserStatus(user, 'Active');
+        break;
+      case 'suspend':
+        await _updateUserStatus(user, 'Suspended');
+        break;
+      case 'reject':
+        await _updateUserStatus(user, 'Rejected');
+        break;
+      case 'delete':
+        await _deleteUser(user);
+        break;
+    }
+  }
+
+  Future<void> _updateUserStatus(Map<String, dynamic> user, String newStatus) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Update User Status'),
+        content: Text('Are you sure you want to change ${user['name']}\'s status to $newStatus?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryPurple,
+            ),
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        final success = await _adminService.updateUserStatus(
+          user['id'] ?? user['email'],
+          user['type'] ?? 'Vehicle Owner',
+          newStatus,
+        );
+
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('User status updated to $newStatus'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          _loadUsers();
+        } else {
+          throw Exception('Failed to update status');
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error updating status: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteUser(Map<String, dynamic> user) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete User'),
+        content: Text(
+          'Are you sure you want to permanently delete ${user['name']}? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        final success = await _adminService.deleteUser(
+          user['id'] ?? user['email'],
+          user['type'] ?? 'Vehicle Owner',
+        );
+
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('User deleted successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          _loadUsers();
+        } else {
+          throw Exception('Failed to delete user');
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error deleting user: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   List<Map<String, dynamic>> get _filteredUsers {
-    List<Map<String, dynamic>> filtered = List.from(_allUsers);
-    
-    // Search filter
-    if (_searchQuery.isNotEmpty) {
-      filtered = filtered.where((user) {
-        final name = (user['name'] ?? '').toString().toLowerCase();
-        final email = (user['email'] ?? '').toString().toLowerCase();
-        final phone = (user['phone'] ?? '').toString().toLowerCase();
-        final query = _searchQuery.toLowerCase();
-        return name.contains(query) || email.contains(query) || phone.contains(query);
-      }).toList();
-    }
-    
-    // Status filter
-    if (_selectedFilter != 'All Status') {
-      filtered = filtered.where((user) => user['status'] == _selectedFilter).toList();
-    }
-    
-    // Type filter
-    if (_selectedTab == 1) {
-      filtered = filtered.where((user) => user['type'] == 'Vehicle Owner').toList();
-    } else if (_selectedTab == 2) {
-      filtered = filtered.where((user) => user['type'] == 'Garage').toList();
-    } else if (_selectedTab == 3) {
-      filtered = filtered.where((user) => user['type'] == 'Tow Provider').toList();
-    } else if (_selectedTab == 4) {
-      filtered = filtered.where((user) => user['type'] == 'Insurance').toList();
-    }
-    
-    return filtered;
+    // AdminService already handles filtering, so return all users
+    return _allUsers;
   }
 
   int _getTabCount(int index) {
@@ -212,7 +328,10 @@ class _UserManagementPageState extends State<UserManagementPage> {
                         label: const Text('Pending'),
                         selected: _selectedFilter == 'Pending',
                         onSelected: (selected) {
-                          setState(() => _selectedFilter = selected ? 'Pending' : 'All Status');
+                          setState(() {
+                        _selectedFilter = selected ? 'Pending' : 'All Status';
+                        _loadUsers();
+                      });
                         },
                         selectedColor: AppTheme.pendingColor.withValues(alpha: 0.2),
                         checkmarkColor: AppTheme.pendingColor,
@@ -239,7 +358,10 @@ class _UserManagementPageState extends State<UserManagementPage> {
                 return AppAnimations.fadeIn(
                   delay: index * 30,
                   child: GestureDetector(
-                    onTap: () => setState(() => _selectedTab = index),
+                    onTap: () {
+                      setState(() => _selectedTab = index);
+                      _loadUsers();
+                    },
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                       decoration: BoxDecoration(
@@ -453,10 +575,67 @@ class _UserManagementPageState extends State<UserManagementPage> {
               ),
             ),
             
-            // Actions
-            IconButton(
-              icon: const Icon(Icons.arrow_forward_ios, size: 16),
-              onPressed: () => _showUserDetails(user),
+            // Actions Menu
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert, size: 20),
+              onSelected: (value) => _handleUserAction(value, user),
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'view',
+                  child: Row(
+                    children: [
+                      Icon(Icons.visibility, size: 18),
+                      SizedBox(width: 8),
+                      Text('View Details'),
+                    ],
+                  ),
+                ),
+                const PopupMenuDivider(),
+                if (user['status'] != 'Active')
+                  const PopupMenuItem(
+                    value: 'activate',
+                    child: Row(
+                      children: [
+                        Icon(Icons.check_circle, size: 18, color: Colors.green),
+                        SizedBox(width: 8),
+                        Text('Activate'),
+                      ],
+                    ),
+                  ),
+                if (user['status'] != 'Suspended')
+                  const PopupMenuItem(
+                    value: 'suspend',
+                    child: Row(
+                      children: [
+                        Icon(Icons.pause_circle, size: 18, color: Colors.orange),
+                        SizedBox(width: 8),
+                        Text('Suspend'),
+                      ],
+                    ),
+                  ),
+                if (user['status'] != 'Rejected')
+                  const PopupMenuItem(
+                    value: 'reject',
+                    child: Row(
+                      children: [
+                        Icon(Icons.cancel, size: 18, color: Colors.red),
+                        SizedBox(width: 8),
+                        Text('Reject'),
+                      ],
+                    ),
+                  ),
+                const PopupMenuDivider(),
+                const PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete, size: 18, color: Colors.red),
+                      SizedBox(width: 8),
+                      Text('Delete'),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ],
         ),

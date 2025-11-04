@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
@@ -17,11 +18,214 @@ class _EnhancedHistoryScreenState extends State<EnhancedHistoryScreen> {
   bool _isLoading = true;
   bool _hasError = false;
   String _errorMessage = '';
+  StreamSubscription<QuerySnapshot>? _garageSubscription;
+  StreamSubscription<QuerySnapshot>? _towSubscription;
+  final Map<String, ServiceHistory> _historyMap = {}; // Track history items by requestId
 
   @override
   void initState() {
     super.initState();
     _loadServiceHistory();
+    _setupRealtimeListeners();
+  }
+
+  @override
+  void dispose() {
+    _garageSubscription?.cancel();
+    _towSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _setupRealtimeListeners() {
+    if (widget.userEmail.isEmpty) {
+      return;
+    }
+
+    final userEmail = widget.userEmail;
+
+    // Listen to garage requests in real-time
+    _garageSubscription = _firestore
+        .collection('owner')
+        .doc(userEmail)
+        .collection('garagerequest')
+        .snapshots()
+        .listen((snapshot) {
+      _handleRealtimeUpdate(snapshot, 'Garage Service');
+    }, onError: (error) {
+      print('❌ Error in garage listener: $error');
+    });
+
+    // Listen to tow requests in real-time
+    _towSubscription = _firestore
+        .collection('owner')
+        .doc(userEmail)
+        .collection('towrequest')
+        .snapshots()
+        .listen((snapshot) {
+      _handleRealtimeUpdate(snapshot, 'Tow Service');
+    }, onError: (error) {
+      print('❌ Error in tow listener: $error');
+    });
+  }
+
+  void _handleRealtimeUpdate(QuerySnapshot snapshot, String serviceType) {
+    if (!mounted) return;
+
+    try {
+      bool hasUpdates = false;
+
+      // Process each document in the snapshot
+      for (var doc in snapshot.docs) {
+        try {
+          final Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+          
+          // Get status and determine if it's a past service
+          String status = _getField(data, 'status', 'pending').toLowerCase().trim();
+          String normalizedStatus = _normalizeStatus(status);
+          
+          // Check if this is an ongoing service (should be excluded from history)
+          bool isOngoing = normalizedStatus == 'pending' || 
+                          normalizedStatus == 'in process' ||
+                          status.contains('pending') ||
+                          status.contains('process') ||
+                          status.contains('accepted') ||
+                          status.contains('confirmed') ||
+                          status.contains('assigned');
+          
+          String requestId = _getField(data, 'requestId', doc.id);
+          
+          // If service is ongoing, remove it from history if it exists
+          if (isOngoing) {
+            if (_historyMap.containsKey(requestId)) {
+              _historyMap.remove(requestId);
+              hasUpdates = true;
+              print('🔄 Removed ongoing service from history: $requestId');
+            }
+            continue;
+          }
+          
+          // Only include past services (completed, rejected, cancelled)
+          // Skip if already in history and unchanged
+          if (_historyMap.containsKey(requestId)) {
+            final existingService = _historyMap[requestId]!;
+            // Check if status changed
+            if (existingService.status != normalizedStatus) {
+              // Status changed, update it
+              hasUpdates = true;
+            } else {
+              // No change, skip
+              continue;
+            }
+          }
+          
+          print('✅ Adding/updating service in history: $requestId - status: $normalizedStatus');
+          
+          // Parse dates safely
+          DateTime createdAt = _parseTimestamp(data['createdAt']);
+          DateTime updatedAt = _parseTimestamp(data['updatedAt']);
+          DateTime? completedAt = data['completedAt'] != null ? _parseTimestamp(data['completedAt']) : null;
+          DateTime? paidAt = data['paidAt'] != null ? _parseTimestamp(data['paidAt']) : null;
+          
+          // Extract all possible fields with proper fallbacks
+          String vehicleNumber = _getField(data, 'vehicleNumber', 'Not Specified');
+          String garageName = serviceType == 'Garage Service'
+              ? _getField(data, 'assignedGarage', 
+                  _getField(data, 'garageName', 'AutoCare Garage'))
+              : _getField(data, 'providerName', 
+                  _getField(data, 'towProviderName', 'Tow Provider'));
+          
+          // Get pricing information
+          double? serviceAmount = _parseDouble(data['serviceAmount']);
+          double? taxAmount = _parseDouble(data['taxAmount']);
+          double? totalAmount = _parseDouble(data['totalAmount']);
+          String cost = totalAmount != null && totalAmount > 0 
+              ? '₹${totalAmount.toStringAsFixed(2)}' 
+              : (serviceAmount != null && serviceAmount > 0 
+                  ? '₹${serviceAmount.toStringAsFixed(2)}' 
+                  : _getField(data, 'cost', _getField(data, 'amount', _getField(data, 'price', '₹0.00'))));
+          
+          String rating = _getField(data, 'rating', 'N/A');
+          
+          // Get date and time
+          String preferredDate = _getField(data, 'preferredDate', _formatDate(createdAt));
+          String preferredTime = _getField(data, 'preferredTime', _formatTime(createdAt));
+          
+          // Handle problem description
+          String problemDescription = serviceType == 'Garage Service'
+              ? _getField(data, 'problemDescription', 
+                  _getField(data, 'description', 
+                  _getField(data, 'additionalDetails', 
+                  _getField(data, 'issueDescription', 'No description provided'))))
+              : _getField(data, 'description', 
+                  _getField(data, 'issue', 
+                  _getField(data, 'problemDescription', 'No description provided')));
+
+          ServiceHistory service = ServiceHistory(
+            id: doc.id,
+            requestId: requestId,
+            vehicleNumber: vehicleNumber,
+            serviceType: serviceType,
+            preferredDate: preferredDate,
+            preferredTime: preferredTime,
+            name: _getField(data, 'name', 'Customer'),
+            phone: _getField(data, 'phone', 'Not Provided'),
+            location: _getField(data, 'location', 'Not Provided'),
+            problemDescription: problemDescription,
+            userEmail: widget.userEmail,
+            status: normalizedStatus,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            cost: cost,
+            garageName: garageName,
+            rating: rating,
+            vehicleModel: _getField(data, 'vehicleModel', 'Not Specified'),
+            fuelType: _getField(data, 'fuelType', 'Not Specified'),
+            vehicleType: _getField(data, 'vehicleType', 'Car'),
+            additionalData: {
+              'serviceAmount': serviceAmount,
+              'taxAmount': taxAmount,
+              'totalAmount': totalAmount,
+              'paymentStatus': data['paymentStatus'] ?? 'pending',
+              'paymentMethod': data['paymentMethod'],
+              'transactionId': data['paymentTransactionId'] ?? data['transactionId'],
+              'upiTransactionId': data['upiTransactionId'],
+              'completedAt': completedAt,
+              'paidAt': paidAt,
+              'providerUpiId': data['providerUpiId'],
+            },
+          );
+          
+          _historyMap[requestId] = service;
+          hasUpdates = true;
+          
+        } catch (e) {
+          print('⚠️ Error processing document ${doc.id}: $e');
+        }
+      }
+
+      // Update UI if there were changes
+      if (hasUpdates) {
+        _updateHistoryList();
+      }
+    } catch (e) {
+      print('❌ Error handling real-time update: $e');
+    }
+  }
+
+  void _updateHistoryList() {
+    if (!mounted) return;
+
+    // Convert map to list and sort by creation date (newest first)
+    final historyList = _historyMap.values.toList();
+    historyList.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+    setState(() {
+      _serviceHistory = historyList;
+      _isLoading = false;
+      _hasError = false;
+    });
+
+    print('✅ History updated: ${historyList.length} services in history');
   }
 
   Future<void> _loadServiceHistory() async {
@@ -54,26 +258,51 @@ class _EnhancedHistoryScreenState extends State<EnhancedHistoryScreen> {
       
       // Load Garage Requests
       try {
-        final garageRequestsSnapshot = await _firestore
-            .collection('owner')
-            .doc(widget.userEmail)
-            .collection('garagerequest')
-            .orderBy('createdAt', descending: true)
-            .get();
+        QuerySnapshot garageRequestsSnapshot;
+        try {
+          garageRequestsSnapshot = await _firestore
+              .collection('owner')
+              .doc(widget.userEmail)
+              .collection('garagerequest')
+              .orderBy('createdAt', descending: true)
+              .get();
+        } catch (e) {
+          // If orderBy fails (missing index), load without ordering
+          print('⚠️ OrderBy failed, loading without ordering: $e');
+          garageRequestsSnapshot = await _firestore
+              .collection('owner')
+              .doc(widget.userEmail)
+              .collection('garagerequest')
+              .get();
+        }
 
         print('📥 Found ${garageRequestsSnapshot.docs.length} garage requests');
 
         for (var doc in garageRequestsSnapshot.docs) {
           try {
-            final Map<String, dynamic> data = doc.data();
+            final Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
             
-            // Get status and only include completed/rejected requests
-            String status = _getField(data, 'status', 'pending').toLowerCase();
+            // Get status and determine if it's a past service
+            String status = _getField(data, 'status', 'pending').toLowerCase().trim();
             String normalizedStatus = _normalizeStatus(status);
             
-            if (normalizedStatus != 'completed' && normalizedStatus != 'rejected') {
-              continue; // Skip non-completed/rejected requests
+            // Check if this is an ongoing service (should be excluded from history)
+            bool isOngoing = normalizedStatus == 'pending' || 
+                            normalizedStatus == 'in process' ||
+                            status.contains('pending') ||
+                            status.contains('process') ||
+                            status.contains('accepted') ||
+                            status.contains('confirmed') ||
+                            status.contains('assigned');
+            
+            // Only include past services (completed, rejected, cancelled)
+            // Exclude all ongoing services
+            if (isOngoing) {
+              print('⏭️ Skipping ongoing service: ${doc.id} - status: $status');
+              continue;
             }
+            
+            print('✅ Including past service: ${doc.id} - status: $normalizedStatus');
             
             // Parse dates safely
             DateTime createdAt = _parseTimestamp(data['createdAt']);
@@ -158,26 +387,51 @@ class _EnhancedHistoryScreenState extends State<EnhancedHistoryScreen> {
 
       // Load Tow Requests
       try {
-        final towRequestsSnapshot = await _firestore
-            .collection('owner')
-            .doc(widget.userEmail)
-            .collection('towrequest')
-            .orderBy('createdAt', descending: true)
-            .get();
+        QuerySnapshot towRequestsSnapshot;
+        try {
+          towRequestsSnapshot = await _firestore
+              .collection('owner')
+              .doc(widget.userEmail)
+              .collection('towrequest')
+              .orderBy('createdAt', descending: true)
+              .get();
+        } catch (e) {
+          // If orderBy fails (missing index), load without ordering
+          print('⚠️ OrderBy failed, loading without ordering: $e');
+          towRequestsSnapshot = await _firestore
+              .collection('owner')
+              .doc(widget.userEmail)
+              .collection('towrequest')
+              .get();
+        }
 
         print('📥 Found ${towRequestsSnapshot.docs.length} tow requests');
 
         for (var doc in towRequestsSnapshot.docs) {
           try {
-            final Map<String, dynamic> data = doc.data();
+            final Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
             
-            // Get status and only include completed/rejected requests
-            String status = _getField(data, 'status', 'pending').toLowerCase();
+            // Get status and determine if it's a past service
+            String status = _getField(data, 'status', 'pending').toLowerCase().trim();
             String normalizedStatus = _normalizeStatus(status);
             
-            if (normalizedStatus != 'completed' && normalizedStatus != 'rejected') {
-              continue; // Skip non-completed/rejected requests
+            // Check if this is an ongoing service (should be excluded from history)
+            bool isOngoing = normalizedStatus == 'pending' || 
+                            normalizedStatus == 'in process' ||
+                            status.contains('pending') ||
+                            status.contains('process') ||
+                            status.contains('accepted') ||
+                            status.contains('confirmed') ||
+                            status.contains('assigned');
+            
+            // Only include past services (completed, rejected, cancelled)
+            // Exclude all ongoing services
+            if (isOngoing) {
+              print('⏭️ Skipping ongoing service: ${doc.id} - status: $status');
+              continue;
             }
+            
+            print('✅ Including past service: ${doc.id} - status: $normalizedStatus');
             
             // Parse dates safely
             DateTime createdAt = _parseTimestamp(data['createdAt']);
@@ -257,6 +511,12 @@ class _EnhancedHistoryScreenState extends State<EnhancedHistoryScreen> {
         }
       } catch (e) {
         print('❌ Error loading tow requests: $e');
+      }
+
+      // Populate history map for real-time updates
+      _historyMap.clear();
+      for (var service in history) {
+        _historyMap[service.requestId] = service;
       }
 
       // Sort by creation date (newest first)
@@ -351,9 +611,29 @@ class _EnhancedHistoryScreenState extends State<EnhancedHistoryScreen> {
       
       if (timestamp is Timestamp) {
         return timestamp.toDate();
-      } 
+      }
+      
+      if (timestamp is DateTime) {
+        return timestamp;
+      }
+      
+      if (timestamp is int) {
+        // Handle milliseconds timestamp
+        if (timestamp > 1000000000000) {
+          return DateTime.fromMillisecondsSinceEpoch(timestamp);
+        } else {
+          // Might be seconds
+          return DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
+        }
+      }
       
       if (timestamp is String) {
+        // Try to parse as milliseconds first
+        final intValue = int.tryParse(timestamp);
+        if (intValue != null && intValue > 1000000000000) {
+          return DateTime.fromMillisecondsSinceEpoch(intValue);
+        }
+        
         // Try to parse various date formats
         try {
           return DateTime.parse(timestamp);
