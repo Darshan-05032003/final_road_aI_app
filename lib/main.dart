@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:smart_road_app/Splashscreen.dart';
-import 'package:smart_road_app/core/language/language_service.dart';
-import 'package:smart_road_app/services/theme_service.dart';
+import 'package:smart_road_app/core/language/bloc/language_bloc.dart';
+import 'package:smart_road_app/core/language/bloc/language_state.dart';
+import 'package:smart_road_app/core/theme/bloc/theme_bloc.dart';
+import 'package:smart_road_app/core/theme/bloc/theme_state.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -86,46 +88,44 @@ class SmartRoadApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
+    return MultiBlocProvider(
       providers: [
-        ChangeNotifierProvider(create: (context) => LanguageService()),
-        ChangeNotifierProvider(create: (context) => ThemeService()),
+        BlocProvider(create: (context) => LanguageBloc()),
+        BlocProvider(create: (context) => ThemeBloc()),
       ],
-      child: Builder(
-        builder: (context) {
-          final languageService = Provider.of<LanguageService>(
-            context,
-            listen: true,
-          );
-          final themeService = Provider.of<ThemeService>(context, listen: true);
-
-          return MaterialApp(
-            title: 'Smart Road AI',
-            home: SplashScreen(),
-            debugShowCheckedModeBanner: false,
-            theme: _buildLightTheme(),
-            darkTheme: _buildDarkTheme(),
-            themeMode: themeService.themeMode,
-            locale: languageService.currentLocale,
-            localizationsDelegates: const [
-              GlobalMaterialLocalizations.delegate,
-              GlobalWidgetsLocalizations.delegate,
-              GlobalCupertinoLocalizations.delegate,
-            ],
-            supportedLocales: const [
-              Locale('en', 'US'),
-              Locale('es', 'ES'),
-              Locale('hi', 'IN'),
-              Locale('fr', 'FR'),
-            ],
-            navigatorKey: languageService.navigatorKey,
-            // Add error handling for better UX
-            builder: (context, child) {
-              return MediaQuery(
-                data: MediaQuery.of(context).copyWith(
-                  textScaleFactor: 1.0, // Prevent text scaling issues
-                ),
-                child: child!,
+      child: BlocBuilder<ThemeBloc, ThemeState>(
+        builder: (context, themeState) {
+          return BlocBuilder<LanguageBloc, LanguageState>(
+            builder: (context, languageState) {
+              return MaterialApp(
+                title: 'Smart Road AI',
+                home: SplashScreen(),
+                debugShowCheckedModeBanner: false,
+                theme: themeState.lightTheme ?? _buildLightTheme(),
+                darkTheme: themeState.darkTheme ?? _buildDarkTheme(),
+                themeMode: themeState.themeMode,
+                locale: languageState.currentLocale,
+                localizationsDelegates: const [
+                  GlobalMaterialLocalizations.delegate,
+                  GlobalWidgetsLocalizations.delegate,
+                  GlobalCupertinoLocalizations.delegate,
+                ],
+                supportedLocales: const [
+                  Locale('en', 'US'),
+                  Locale('es', 'ES'),
+                  Locale('hi', 'IN'),
+                  Locale('fr', 'FR'),
+                ],
+                navigatorKey: languageState.navigatorKey,
+                // Add error handling for better UX
+                builder: (context, child) {
+                  return MediaQuery(
+                    data: MediaQuery.of(context).copyWith(
+                      textScaleFactor: 1.0, // Prevent text scaling issues
+                    ),
+                    child: child!,
+                  );
+                },
               );
             },
           );

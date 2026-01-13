@@ -62,6 +62,8 @@ The project is organized like this:
   - `features/` - AI features
   - `services/` - backend services
   - `screens/` - UI screens
+  - `core/` - some core stuff like theme and language
+  - `Login/` - login screens
 
 ## Features
 
@@ -102,6 +104,7 @@ The project is organized like this:
 
 - Flutter (obviously)
 - Firebase (for backend)
+- Bloc (for state management - I just migrated from Provider)
 - Google Sign In
 - UPI payment integration
 - Location services
@@ -120,6 +123,7 @@ The project is organized like this:
 - Some features might not work perfectly (still working on it)
 - The UI might look different on different screen sizes
 - Some error handling might be missing (sorry!)
+- The code structure is a bit messy in some places (I'm still learning!)
 
 ## Screenshots
 
@@ -144,9 +148,12 @@ Thanks to:
 - Firebase for backend
 - All the package developers
 - My friends who helped test the app
+- Stack Overflow (used it a lot 😅)
 
 ---
 
 **Note:** This is still a work in progress, so some features might not be fully implemented yet. But it's getting there! 🚀
 
 P.S. - If you find any bugs, please let me know! I'm still learning 😅
+
+P.P.S. - I'm using Bloc for state management now (just migrated from Provider). It's a bit more complex but seems better for bigger apps.

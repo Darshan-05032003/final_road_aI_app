@@ -473,8 +473,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smart_road_app/services/account_service.dart';
-import 'package:smart_road_app/services/theme_service.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:smart_road_app/core/theme/bloc/theme_bloc.dart';
+import 'package:smart_road_app/core/theme/bloc/theme_event.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -1088,9 +1089,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _darkModeEnabled = value;
                   });
                   _saveSetting('dark_mode_enabled', value);
-                  // Update ThemeService
-                  final themeService = Provider.of<ThemeService>(context, listen: false);
-                  themeService.setThemeMode(value ? ThemeMode.dark : ThemeMode.light);
+                  // Update ThemeBloc
+                  context.read<ThemeBloc>().add(
+                    ChangeThemeModeEvent(value ? ThemeMode.dark : ThemeMode.light),
+                  );
                   _showSnackBar('Dark mode ${value ? 'enabled' : 'disabled'}');
                 },
                 activeThumbColor: const Color(0xFF6D28D9),
